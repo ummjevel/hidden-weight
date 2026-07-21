@@ -76,5 +76,26 @@ namespace RookieToCEO.Tests.EditMode
 
             Assert.AreEqual(BossGlancePhase.Idle, glance.Phase);
         }
+
+        [Test]
+        public void ForceTrigger는_Idle_상태에서_즉시_경고_단계로_넘긴다()
+        {
+            var glance = new BossGlanceSystem(sweepSeconds: 4f, gazeHalfWidth: 0.1f, sweepCount: 1);
+
+            glance.ForceTrigger();
+
+            Assert.AreEqual(BossGlancePhase.Warning, glance.Phase);
+        }
+
+        [Test]
+        public void ForceTrigger는_이미_경고나_이동_중이면_아무_효과가_없다()
+        {
+            var glance = new BossGlanceSystem(sweepSeconds: 4f, gazeHalfWidth: 0.1f, sweepCount: 1);
+            glance.Tick(30f, 0.5f); // Sweeping 상태로 만듦
+
+            glance.ForceTrigger();
+
+            Assert.AreEqual(BossGlancePhase.Sweeping, glance.Phase);
+        }
     }
 }

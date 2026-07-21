@@ -80,7 +80,9 @@ namespace RookieToCEO.Gameplay.Enemies
         // 공포 상태가 아닐 때의 이동 방향(정규화 여부는 하위 클래스 재량 - 돌진형은 배율을 실어 반환한다).
         protected abstract Vector2 GetMoveDirection();
 
-        public void TakeDamage(int amount)
+        // virtual인 이유: CEO 최종 지시서(GDD 13번)는 "직접 공격하지 않는" 무적 보스라
+        // CeoFinalOrderBoss가 이 메서드를 오버라이드해서 데미지를 무시해야 한다.
+        public virtual void TakeDamage(int amount)
         {
             if (IsDead) return;
 

@@ -39,6 +39,16 @@ namespace RookieToCEO.Core
             _timer = TriggerIntervalSeconds - WarningSeconds; // GDD: 발동 2초 전 경고 -> t=28에 경고 시작
         }
 
+        // GDD 9번 "4층: CEO 웨이브 중 한 번 추가 발생" - 일반 30초 주기와 별개로 즉시 경고 단계를
+        // 강제로 시작시킨다. 이미 Idle이 아니면(경고/이동 중이면) 아무 효과가 없다.
+        public void ForceTrigger()
+        {
+            if (Phase != BossGlancePhase.Idle) return;
+
+            Phase = BossGlancePhase.Warning;
+            _timer = WarningSeconds;
+        }
+
         // playerNormalizedX: 화면 폭 기준 0(왼쪽 끝)~1(오른쪽 끝)로 정규화한 플레이어 위치.
         // deltaTime이 한 단계의 남은 시간보다 커도(예: 테스트에서 큰 값으로 한 번에 흘려보내는 경우)
         // 단계를 순서대로 다 소비할 때까지 반복해서 정확하게 전이시킨다.

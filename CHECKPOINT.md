@@ -99,12 +99,15 @@
   숫자로 시작하는 테스트 메서드명 실수를 세 번째로 반복 - 재발 방지용 메모리 기록함.
 
 ## M8: CEO 웨이브 & 엔딩
-- [ ] BossWaveManager (0~20/20~40/40~60초 3단계 패턴)
-- [ ] 빨간 구역 지속피해, 퇴사통보 3초 정지
-- [ ] 엔딩 트리거
-- 검증: EditMode 테스트 + 통합 실행 로그
+- [x] BossWaveState (0~20/20~40/40~60초 3단계, 순수 로직) + BossWaveManager
+      (M5 SpawnManager 재사용, floor=4 WaveSpawnTable 그대로 활용)
+- [x] CeoFinalOrderBoss (무적 소환수, EnemyBase.TakeDamage virtual화로 오버라이드)
+- [x] HazardZone (빨간 구역 지속피해), BossGlanceSystem.ForceTrigger (4층 추가 발동)
+- [x] IBossPausable로 퇴사통보 3초 정지 연결
+- [x] EndingTrigger (BossWaveManager.OnWaveSuccess 구독, 엔딩 연출은 M9 폴리싱 예정)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 78/78 통과 (누적)
 - done-when: 보스 패턴 로직 테스트 통과 + 엔딩 트리거 확인
-- 상태: pending
+- 상태: done
 
 ## M9: 밸런싱 확정 & 통합 검증
 - [ ] docs/DEVELOPMENT_PLAN.md 밸런스 표 TBD → 실수치 확정

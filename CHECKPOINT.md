@@ -13,12 +13,12 @@
 - 상태: done
 
 ## M1: Unity 설치
-- [ ] `brew install --cask unity-hub`
-- [ ] `open -a "Unity Hub"`로 GUI 실행
+- [x] `brew install --cask unity-hub`
+- [x] `open -a "Unity Hub"`로 GUI 실행
 - [ ] (사용자) Unity Hub 로그인 + Unity 6000.x LTS(또는 2022.3 LTS) Editor 설치
 - 검증: `/Applications/Unity/Hub/Editor/*/Unity.app` 존재
 - done-when: Editor 실행 파일 경로 확인됨
-- 상태: pending
+- 상태: in-progress (사용자 GUI 조작 대기 중)
 
 ## M2: 프로젝트 생성 & 자동화 파이프라인
 - [ ] `Unity -batchmode -createProject RookieToCEO -quit`

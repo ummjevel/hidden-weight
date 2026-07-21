@@ -58,6 +58,22 @@ namespace RookieToCEO.Core
             CurrentHp = Mathf.Min(MaxHp, CurrentHp + amount);
         }
 
+        // GDD 11번(밤 발각과 실패): 낮 전투의 HP0->부활 흐름을 거치지 않고 평판만 즉시 1 깎는다.
+        // 밤 탐방 발각/시간초과 페널티에 사용한다.
+        public void LoseReputationDirectly()
+        {
+            if (IsGameOver) return;
+
+            Reputation--;
+            OnDowned?.Invoke();
+
+            if (Reputation <= 0)
+            {
+                IsGameOver = true;
+                OnGameOver?.Invoke();
+            }
+        }
+
         private void Down()
         {
             Reputation--;

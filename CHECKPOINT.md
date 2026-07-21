@@ -86,13 +86,17 @@
   경계 테스트가 깨졌고, 남은 시간을 이어서 처리하는 캐스케이드 루프로 재작성.
 
 ## M7: 밤 잠입
-- [ ] NightManager (60초 제한)
-- [ ] 경비 2 + CCTV 1 시야 판정
-- [ ] 조사 상호작용 (무기 3종 순차 해금) + 출구 탈출 판정
-- [ ] 발각/시간초과 페널티 (무기 미획득 + 평판-1 + 강제 층이동)
-- 검증: EditMode 시야 판정 테스트
+- [x] NightMissionState (60초 제한, 조사/탈출/발각/타임아웃 상태머신, 순수 로직)
+- [x] VisionSensorBase(+GuardSensor/CctvSensor) - M4의 ConeTargetingUtility 재사용해 시야 판정
+- [x] InvestigationPoint(E 상호작용) + ExitPoint(트리거 탈출)
+- [x] NightManager: 발각/시간초과 -> ReputationSystem.LoseReputationDirectly() 페널티,
+      성공 -> weaponRewardComponent 활성화(무기 실보유 확정)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 71/71 통과 (누적)
 - done-when: 시야/탈출 로직 테스트 통과
-- 상태: pending
+- 상태: done
+- 비고: "다음 층으로 강제 이동"은 층 진행/씬 전환 매니저가 아직 없어 NightManager의
+  OnMissionFinished 이벤트를 훅 포인트로만 남겨둠(추후 GameFlow 매니저에서 연결).
+  숫자로 시작하는 테스트 메서드명 실수를 세 번째로 반복 - 재발 방지용 메모리 기록함.
 
 ## M8: CEO 웨이브 & 엔딩
 - [ ] BossWaveManager (0~20/20~40/40~60초 3단계 패턴)

@@ -110,5 +110,29 @@ namespace RookieToCEO.Tests.EditMode
 
             Assert.AreEqual(100, rep.CurrentHp);
         }
+
+        [Test]
+        public void LoseReputationDirectly는_HP를_건드리지_않고_평판만_깎는다()
+        {
+            var rep = new ReputationSystem(100);
+
+            rep.LoseReputationDirectly();
+
+            Assert.AreEqual(2, rep.Reputation);
+            Assert.AreEqual(100, rep.CurrentHp);
+            Assert.IsFalse(rep.IsReviving);
+        }
+
+        [Test]
+        public void LoseReputationDirectly로_평판이_0이_되면_게임오버다()
+        {
+            var rep = new ReputationSystem(100);
+
+            rep.LoseReputationDirectly();
+            rep.LoseReputationDirectly();
+            rep.LoseReputationDirectly();
+
+            Assert.IsTrue(rep.IsGameOver);
+        }
     }
 }

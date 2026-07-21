@@ -16,6 +16,16 @@
 - 씬/프리팹 구성은 `Assets/Editor/`의 자동화 스크립트가 코드로 생성 (`-batchmode -executeMethod`) → GUI 드래그 없이 재현 가능
 - 밸런스 수치는 `Assets/ScriptableObjects/`의 데이터 애셋으로 분리
 
+## 아트 파이프라인
+
+- **스타일**: 도트(픽셀 아트). 사무용품 소재(이메일 봉투, 스테이플러, 서류 등)와 탑뷰 서바이버형 디펜스 장르에 표준적으로 잘 맞는 선택.
+- **해상도 기준**: 캐릭터/적 32x32 그리드, 바닥 타일 32x32, PPU(Pixels Per Unit) 32로 통일 — 스프라이트 크기가 섞이면 콜라이더/스케일을 개별 보정해야 해서 초반에 고정.
+- **Unity 임포트 설정**: Sprite Mode = Single/Multiple(시트인 경우), Filter Mode = Point(no filter), Compression = None, Generate Mip Maps = Off (2D 탑뷰라 밉맵 불필요, 블러 방지).
+- **제작 툴**: Aseprite(유료, 인디 픽셀아트 사실상 표준 — 스프라이트시트 export가 Unity 임포트와 궁합 좋음) 또는 Piskel(무료 대안).
+- **AI 생성 보조**: nano-banana 스킬로 픽셀아트풍 초안 생성 가능하나, AI 출력은 픽셀 그리드가 정확히 안 맞으므로 Aseprite/Piskel에서 그리드 정렬·투명배경 정리 후 사용.
+- **애니메이션 프레임 최소화 (MVP 범위)**: idle 1프레임, walk 4프레임, attack 2~3프레임 기준 — 이 이상은 M9 이후 폴리싱 단계에서 검토.
+- **제작 순서**: M2~M8은 단색 사각형/원(프로그래머 아트)으로 게임플레이 로직을 먼저 검증 → M9(밸런싱 확정) 전후로 실제 도트 스프라이트로 교체. 스프라이트 교체 시 콜라이더 크기/애니메이터 파라미터 재조정 필요할 수 있음.
+
 ## 로드맵 (마일스톤은 [CHECKPOINT.md](../CHECKPOINT.md)에서 상태 추적)
 
 | # | 마일스톤 | 핵심 산출물 |

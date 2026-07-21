@@ -25,12 +25,17 @@ namespace RookieToCEO.Gameplay
 
         public StatSystem Stats { get; } = new StatSystem();
         public ReputationSystem Reputation { get; private set; }
+        public LevelSystem Level { get; } = new LevelSystem();
 
         // 마우스 조준이 없으므로(GDD 2번) 무기의 공격 방향은 "마지막으로 이동한 방향"을 기준으로 삼는다.
         public Vector2 FacingDirection => _facingDirection;
 
         // GDD 6번 "회의 요청 달력"이 가까이 있을 때 거는 공격속도 디버프. 무기 스크립트가 이 값도 곱해서 쓴다.
         public float AttackSpeedDebuffMultiplier => _attackSpeedDebuffMultiplier;
+
+        // GDD 9번(상사의 눈치)에 걸려 "일하는 척" 상태인 동안 true. 무기 스크립트가 이 값을 보고
+        // 자동 공격을 멈춘다. DayWaveManager(M6)가 매 프레임 갱신한다.
+        public bool IsPretendingToWork { get; set; }
 
         private void Awake()
         {

@@ -72,12 +72,18 @@
   테스트 메서드명이 숫자로 시작하면(예: "30초_...") CS1519 컴파일 에러가 난다는 것을 확인.
 
 ## M6: 낮 디펜스 루프
-- [ ] DayWaveManager (60초 타이머)
-- [ ] 경험치 드롭 + 레벨업 3택1 UI (시간정지)
-- [ ] 상사의 눈치 상태머신 (층별 변형)
-- 검증: 60초 시뮬레이션 테스트 정상 종료
+- [x] DayWaveManager (60초 타이머, SpawnManager/BossGlance/LevelSystem 통합)
+- [x] LevelSystem + StatChoiceGenerator (경험치 → 레벨업 → 3택1 선택지, 시간정지는 IsPaused로 구현)
+- [x] BossGlanceSystem (상사의 눈치, 층별 변형: 1층 느림/2층 넓은 시야/3층 두 번 이동)
+- [x] "일하는 척" 상태를 PlayerController.IsPretendingToWork로 무기에 실제 연결(자동공격 정지)
+- [x] 적 처치 시 경험치/게이지 즉시 지급(물리적 서류 줍기는 M9 폴리싱으로 단순화)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 62/62 통과 (누적)
 - done-when: 웨이브 사이클 시뮬레이션 통과
-- 상태: pending
+- 상태: done
+- 비고: 3택1 실제 UI(Canvas/버튼)는 아직 없음 - PendingChoices/ResolveStatChoice()로 로직은
+  완결. Random 타입이 UnityEngine/System 양쪽에 있어 모호성 에러(CS0104) 발생 → System.Random
+  으로 명시. BossGlanceSystem 최초 구현은 큰 deltaTime 한 번에 여러 단계를 못 건너뛰어서
+  경계 테스트가 깨졌고, 남은 시간을 이어서 처리하는 캐스케이드 루프로 재작성.
 
 ## M7: 밤 잠입
 - [ ] NightManager (60초 제한)

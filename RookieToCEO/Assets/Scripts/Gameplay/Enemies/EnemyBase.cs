@@ -96,9 +96,13 @@ namespace RookieToCEO.Gameplay.Enemies
             if (IsDead) return;
             IsDead = true;
 
-            // 적을 처치하면 퇴사 통보 게이지가 충전된다(GDD 3번). 충전량은 TBD(M9)라 임시값 사용.
-            var ultimate = PlayerTransform != null ? PlayerTransform.GetComponent<ResignationUltimate>() : null;
-            ultimate?.AddGaugeOnKill(10f);
+            // 적을 처치하면 퇴사 통보 게이지가 충전되고(GDD 3번) 경험치를 얻는다(GDD 4번).
+            // "경험치 서류를 드롭 -> 가까이 가서 획득"하는 물리적 줍기 단계는 M9 폴리싱에서 추가할 수
+            // 있고, 지금은 코어 루프(레벨업 -> 3택1)를 검증하기 위해 즉시 지급하는 방식으로 단순화했다.
+            // 충전량/경험치량 모두 TBD(M9)라 임시값 사용.
+            var player = PlayerTransform != null ? PlayerTransform.GetComponent<PlayerController>() : null;
+            player?.GetComponent<ResignationUltimate>()?.AddGaugeOnKill(10f);
+            player?.Level.AddXp(10f);
 
             Destroy(gameObject);
         }

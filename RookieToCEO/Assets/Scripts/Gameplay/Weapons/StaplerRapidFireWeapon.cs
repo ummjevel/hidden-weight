@@ -39,7 +39,8 @@ namespace RookieToCEO.Gameplay.Weapons
             _attackCooldown.SetDuration(interval);
             _attackCooldown.Tick(Time.deltaTime);
 
-            if (_attackCooldown.IsReady)
+            // GDD 9번: 상사의 시선에 걸려 "일하는 척" 중에는 자동 공격이 멈춘다.
+            if (_attackCooldown.IsReady && !_player.IsPretendingToWork)
             {
                 TryAttack();
             }

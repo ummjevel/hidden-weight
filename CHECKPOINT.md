@@ -21,12 +21,17 @@
 - 상태: done
 
 ## M2: 프로젝트 생성 & 자동화 파이프라인
-- [ ] `Unity -batchmode -createProject RookieToCEO -quit`
-- [ ] Assets/{Scripts,Editor,Prefabs,Scenes,ScriptableObjects} 구조
-- [ ] Editor 자동화 스크립트 골격 (SceneBuilder 등)
-- 검증: 배치모드로 프로젝트가 에러 없이 열림 (Editor.log 확인)
+- [x] `Unity -batchmode -createProject RookieToCEO -quit`
+- [x] Assets/{Scripts,Editor,Prefabs,Scenes,ScriptableObjects} 구조
+- [x] Editor 자동화 스크립트 골격 (PackageSetup, PackageQuery, SceneBuilder)
+- [x] 필수 패키지 설치 (URP 17.5.0, Input System 1.20.0, Test Framework 1.7.0, 2D Sprite 1.0.0, 2D Tilemap 1.0.0)
+- [x] Day/Night/Boss 빈 씬 3개 생성
+- 검증: 배치모드로 프로젝트가 에러 없이 열림 (m2_finalimport.log, m2_scenebuilder.log에 error CS 없음)
 - done-when: 프로젝트 폴더 + 자동화 스크립트 골격 존재, 배치모드 실행 에러 0
-- 상태: pending
+- 상태: done
+- 비고: `Client.Add`를 패키지마다 순차 호출하는 최초 방식은 도메인 리로드로 콜백 구독이 끊겨
+  무한 대기에 빠졌다. `Client.Search`로 버전만 조회 → manifest.json 직접 반영 → 순수
+  배치 실행으로 우회했고, PackageSetup.cs는 `AddAndRemove` + `[InitializeOnLoad]`로 재작성.
 
 ## M3: 코어 시스템
 - [ ] PlayerController (이동, 자동 최근접 타겟팅)

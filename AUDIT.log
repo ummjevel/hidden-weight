@@ -3,3 +3,7 @@
 [2026-07-21T15:30:42Z] [claude] MILESTONE_PROGRESS M1 Unity Hub brew 설치 완료, GUI 실행함. 로그인/Editor 설치는 사용자 대기
 [2026-07-21T15:43:46Z] [claude] MILESTONE_DONE M1 Unity 6000.5.4f1 Editor 설치 확인
 [2026-07-21T15:43:46Z] [claude] MILESTONE_START M2 프로젝트 생성 & 자동화 파이프라인 시작
+[2026-07-21T16:10:43Z] [claude] ISSUE M2 패키지 순차 Client.Add 방식이 도메인 리로드로 무한 대기에 빠짐(Input System 단계에서 정지)
+[2026-07-21T16:10:43Z] [claude] FIX M2 Client.Search로 버전 조회 후 manifest.json 직접 반영, 순수 배치 실행으로 우회. PackageSetup.cs는 AddAndRemove+InitializeOnLoad로 재작성
+[2026-07-21T16:10:43Z] [claude] MILESTONE_DONE M2 프로젝트 생성, 패키지 5종 설치, Day/Night/Boss 씬 골격 생성 완료 (에러 0)
+[2026-07-21T16:10:43Z] [claude] MILESTONE_START M3 코어 시스템 시작

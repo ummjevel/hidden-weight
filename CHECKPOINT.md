@@ -34,12 +34,17 @@
   배치 실행으로 우회했고, PackageSetup.cs는 `AddAndRemove` + `[InitializeOnLoad]`로 재작성.
 
 ## M3: 코어 시스템
-- [ ] PlayerController (이동, 자동 최근접 타겟팅)
-- [ ] StatSystem (업무처리력/손속도/눈치/멘탈관리/일머리/짬)
-- [ ] ReputationManager (HP0→평판-1→부활→3초 무적)
-- 검증: `Unity -batchmode -runTests -testPlatform EditMode`
+- [x] PlayerController (WASD 이동, HP/평판·스탯 보관)
+- [x] StatSystem (업무처리력/손속도/눈치/멘탈관리/일머리/짬)
+- [x] ReputationSystem (HP0→평판-1→부활→3초 무적)
+- [x] TargetingUtility (최근접 타겟팅 계산, M4 무기 시스템에서 재사용 예정)
+- [x] RookieToCEO.Runtime.asmdef 분리 + EditMode 테스트 asmdef 연결
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 16/16 통과
 - done-when: 관련 EditMode 테스트 전부 통과
-- 상태: pending
+- 상태: done
+- 비고: 커스텀 asmdef는 자동 생성 Assembly-CSharp을 참조할 수 없어서 처음엔
+  컴파일 에러가 났다. Assets/Scripts 아래에 RookieToCEO.Runtime.asmdef를 만들고
+  테스트 asmdef가 그걸 참조하도록 고쳐서 해결.
 
 ## M4: 무기 시스템
 - [ ] 키보드 샷건 (부채꼴 다중 타겟)

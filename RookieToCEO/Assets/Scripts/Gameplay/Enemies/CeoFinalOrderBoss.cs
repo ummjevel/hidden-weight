@@ -15,10 +15,14 @@ namespace RookieToCEO.Gameplay.Enemies
         private Cooldown _summonCooldown;
         private float _pauseTimer;
 
-        protected override void Awake()
+        protected override void ApplyBalanceOverride()
         {
             moveSpeed = 0f; // GDD: 직접 공격 대상이 아니라 제자리에서 업무를 계속 소환
             category = EnemyCategory.Boss;
+        }
+
+        protected override void Awake()
+        {
             base.Awake();
             _summonCooldown = new Cooldown(summonIntervalSeconds);
         }

@@ -7,8 +7,8 @@ namespace RookieToCEO.Gameplay.Enemies
     // GDD 6번(적 구성)의 공통 동작: HP/데미지, 넉백·공포·슬로우 반응, 접촉 데미지,
     // 사망 시 레지스트리 해제 + 퇴사 통보 게이지 충전. 각 적 타입은 이 클래스를 상속해
     // GetMoveDirection()만 다르게 구현하면 된다.
-    // 정확한 HP/이동속도/접촉 데미지 수치는 GDD에서도 TBD(M9 밸런싱)라, 기본값은 상대적 감각에
-    // 맞춘 임시값이다.
+    // HP/이동속도/접촉 데미지의 최종 수치는 M9에서 확정했고(docs/DEVELOPMENT_PLAN.md 적 수치 표),
+    // BalanceData 애셋을 통해 코드 재컴파일 없이 조정할 수 있다.
     [RequireComponent(typeof(Rigidbody2D))]
     public abstract class EnemyBase : MonoBehaviour, IDamageable, ICrowdControllable
     {
@@ -17,6 +17,9 @@ namespace RookieToCEO.Gameplay.Enemies
         [SerializeField] protected EnemyCategory category = EnemyCategory.Normal;
         [SerializeField] protected int contactDamage = 10;
         [SerializeField] private float contactDamageInterval = 1f; // 접촉 중 데미지가 매 프레임 들어가지 않도록
+
+        // M9: 배정되면 ApplyBalanceOverride()에서 하위 클래스가 자신에 맞는 수치를 꺼내 쓴다.
+        [SerializeField] protected BalanceData balanceData;
 
         protected int CurrentHp;
         protected Rigidbody2D Rigidbody;
@@ -32,9 +35,16 @@ namespace RookieToCEO.Gameplay.Enemies
 
         protected virtual void Awake()
         {
+            ApplyBalanceOverride();
             Rigidbody = GetComponent<Rigidbody2D>();
             CurrentHp = maxHp;
             _contactCooldown = new Cooldown(contactDamageInterval);
+        }
+
+        // 하위 클래스가 balanceData에서 자신에 해당하는 수치를 꺼내 maxHp/moveSpeed/contactDamage
+        // 등에 반영한다. balanceData가 비어 있으면(예: 유닛 테스트용 임시 오브젝트) 아무 것도 안 한다.
+        protected virtual void ApplyBalanceOverride()
+        {
         }
 
         protected virtual void Start()
@@ -101,9 +111,9 @@ namespace RookieToCEO.Gameplay.Enemies
             // 적을 처치하면 퇴사 통보 게이지가 충전되고(GDD 3번) 경험치를 얻는다(GDD 4번).
             // "경험치 서류를 드롭 -> 가까이 가서 획득"하는 물리적 줍기 단계는 M9 폴리싱에서 추가할 수
             // 있고, 지금은 코어 루프(레벨업 -> 3택1)를 검증하기 위해 즉시 지급하는 방식으로 단순화했다.
-            // 충전량/경험치량 모두 TBD(M9)라 임시값 사용.
+            var gaugeAmount = balanceData != null ? balanceData.ultimateGaugePerKill : 10f;
             var player = PlayerTransform != null ? PlayerTransform.GetComponent<PlayerController>() : null;
-            player?.GetComponent<ResignationUltimate>()?.AddGaugeOnKill(10f);
+            player?.GetComponent<ResignationUltimate>()?.AddGaugeOnKill(gaugeAmount);
             player?.Level.AddXp(10f);
 
             Destroy(gameObject);

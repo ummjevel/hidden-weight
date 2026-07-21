@@ -8,11 +8,14 @@ namespace RookieToCEO.Gameplay.Weapons
     // 공격속도는 느리지만(baseAttackInterval이 큼) 범위가 넓다(wideHalfAngle, 다중 타겟).
     public class KeyboardShotgunWeapon : MonoBehaviour
     {
-        [SerializeField] private int baseDamage = 10;
+        [SerializeField] private int baseDamage = 12;
         [SerializeField] private float baseAttackInterval = 1.2f; // 느린 공격속도(GDD 기준)
         [SerializeField] private float baseRange = 3f;
         [SerializeField] private float halfAngleDegrees = 60f;   // 부채꼴 절반각(총 120도)
         [SerializeField] private int maxTargets = 5;
+
+        // M9: 배정되면 이 값들로 위 기본값을 덮어써서 코드 재컴파일 없이 밸런스를 조정할 수 있다.
+        [SerializeField] private BalanceData balanceData;
 
         private PlayerController _player;
         private Cooldown _attackCooldown;
@@ -20,6 +23,14 @@ namespace RookieToCEO.Gameplay.Weapons
         private void Awake()
         {
             _player = GetComponent<PlayerController>();
+
+            if (balanceData != null)
+            {
+                baseDamage = balanceData.keyboardShotgun.baseDamage;
+                baseAttackInterval = balanceData.keyboardShotgun.baseAttackInterval;
+                baseRange = balanceData.keyboardShotgun.baseRange;
+            }
+
             _attackCooldown = new Cooldown(baseAttackInterval);
         }
 

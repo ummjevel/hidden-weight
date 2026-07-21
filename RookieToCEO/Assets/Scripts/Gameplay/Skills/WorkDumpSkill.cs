@@ -13,6 +13,9 @@ namespace RookieToCEO.Gameplay.Skills
         [SerializeField] private float radius = 2.5f;
         [SerializeField] private float knockbackForce = 8f;
 
+        // M9: 배정되면 radius/knockbackForce를 덮어쓴다. 쿨타임 12초는 GDD 고정값이라 SO로 빼지 않았다.
+        [SerializeField] private BalanceData balanceData;
+
         private PlayerController _player;
         private Cooldown _cooldown;
 
@@ -21,6 +24,13 @@ namespace RookieToCEO.Gameplay.Skills
         private void Awake()
         {
             _player = GetComponent<PlayerController>();
+
+            if (balanceData != null)
+            {
+                radius = balanceData.workDumpRadius;
+                knockbackForce = balanceData.workDumpKnockbackForce;
+            }
+
             _cooldown = new Cooldown(BaseCooldownSeconds);
         }
 

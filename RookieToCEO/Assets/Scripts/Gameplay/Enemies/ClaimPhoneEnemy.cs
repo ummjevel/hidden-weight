@@ -16,9 +16,19 @@ namespace RookieToCEO.Gameplay.Enemies
 
         protected override void Awake()
         {
-            moveSpeed = 1f;
             base.Awake();
             _attackCooldown = new Cooldown(attackInterval);
+        }
+
+        protected override void ApplyBalanceOverride()
+        {
+            moveSpeed = 1f;
+
+            if (balanceData == null) return;
+
+            maxHp = balanceData.claimPhone.maxHp;
+            moveSpeed = balanceData.claimPhone.moveSpeed;
+            attackDamage = balanceData.claimPhone.contactDamage; // 원거리 "전화 공격" 데미지로 매핑
         }
 
         protected override void Update()

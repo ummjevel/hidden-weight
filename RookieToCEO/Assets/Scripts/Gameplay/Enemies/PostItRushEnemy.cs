@@ -16,9 +16,20 @@ namespace RookieToCEO.Gameplay.Enemies
 
         protected override void Awake()
         {
-            moveSpeed = 1f;
             base.Awake();
             _dash = new DashState(windupSeconds, dashSeconds, cooldownSeconds);
+        }
+
+        protected override void ApplyBalanceOverride()
+        {
+            // M9 확정치: 기본 이동은 느리지만 돌진 시(dashSpeedMultiplier) 훨씬 빨라진다.
+            moveSpeed = 1f;
+
+            if (balanceData == null) return;
+
+            maxHp = balanceData.postItRush.maxHp;
+            moveSpeed = balanceData.postItRush.moveSpeed;
+            contactDamage = balanceData.postItRush.contactDamage;
         }
 
         protected override void Update()

@@ -15,6 +15,9 @@ namespace RookieToCEO.Gameplay.Weapons
         [SerializeField] private float halfAngleDegrees = 8f;     // 좁은 직선형 판정
         [SerializeField] private int basePierceCount = 1;         // 레벨 0: 가장 가까운 적 1명
 
+        // M9: 배정되면 이 값들로 위 기본값을 덮어써서 코드 재컴파일 없이 밸런스를 조정할 수 있다.
+        [SerializeField] private BalanceData balanceData;
+
         private PlayerController _player;
         private Cooldown _attackCooldown;
 
@@ -28,6 +31,14 @@ namespace RookieToCEO.Gameplay.Weapons
         private void Awake()
         {
             _player = GetComponent<PlayerController>();
+
+            if (balanceData != null)
+            {
+                baseDamage = balanceData.staplerRapidFire.baseDamage;
+                baseAttackInterval = balanceData.staplerRapidFire.baseAttackInterval;
+                baseRange = balanceData.staplerRapidFire.baseRange;
+            }
+
             _attackCooldown = new Cooldown(baseAttackInterval);
         }
 

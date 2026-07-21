@@ -110,10 +110,21 @@
 - 상태: done
 
 ## M9: 밸런싱 확정 & 통합 검증
-- [ ] docs/DEVELOPMENT_PLAN.md 밸런스 표 TBD → 실수치 확정
-- [ ] ScriptableObject 데이터 반영
-- [ ] 전체 EditMode 테스트 스위트 통과
-- [ ] 배치모드 빌드 성공
-- 검증: `Unity -batchmode -runTests` 전체 스위트 + `-buildTarget` 빌드
+- [x] docs/DEVELOPMENT_PLAN.md 밸런스 표 TBD → 실수치 확정 (무기/적/스폰/레벨업 전부)
+- [x] BalanceData ScriptableObject 신설 + 무기 2종/스킬 2종/적 5종에 옵션 오버라이드로 연결
+      (`Assets/ScriptableObjects/BalanceData.asset` 실제 생성, Editor 자동화로 무인 생성)
+- [x] EnemyBase.ApplyBalanceOverride() 가상 메서드 패턴으로 하위 5종 통일
+- [x] 전체 EditMode 테스트 스위트 통과 (78/78, 회귀 없음)
+- [x] 배치모드 빌드 성공 (StandaloneOSX, ~113MB, 에러 0)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` (78/78) + `-executeMethod BuildScript.BuildMac`
 - done-when: 테스트 전부 통과, 빌드 산출물 생성 확인
-- 상태: pending
+- 상태: done
+
+---
+
+## MVP 전체 완료 (M0~M9)
+
+Rookie to CEO MVP 범위(docs/GDD.md 14번) 전체가 코드 레벨로 구현·검증되었다.
+남은 것은 GUI 의존 통합 작업(씬에 실제 GameObject/프리팹 배치, 도트 스프라이트 교체,
+3택1 UI 실제 배치)이며, 이는 사용자가 Unity Editor를 직접 열어 진행하거나 별도 세션에서
+Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.

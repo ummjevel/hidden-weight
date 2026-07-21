@@ -9,10 +9,15 @@ namespace RookieToCEO.Gameplay.Enemies
         [SerializeField] private float debuffMultiplier = 0.5f;
         [SerializeField] private float debuffRefreshDuration = 0.5f; // 오라 안에 있는 동안 계속 갱신
 
-        protected override void Awake()
+        protected override void ApplyBalanceOverride()
         {
             moveSpeed = 0.9f;
-            base.Awake();
+
+            if (balanceData == null) return;
+
+            maxHp = balanceData.meetingCalendar.maxHp;
+            moveSpeed = balanceData.meetingCalendar.moveSpeed;
+            contactDamage = balanceData.meetingCalendar.contactDamage;
         }
 
         protected override void FixedUpdate()

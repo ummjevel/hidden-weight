@@ -6,12 +6,17 @@ namespace RookieToCEO.Gameplay.Enemies
     // HP/속도만 다르다(GDD에 별도 이동 패턴 언급 없음).
     public class DocumentStackEnemy : EnemyBase
     {
-        protected override void Awake()
+        protected override void ApplyBalanceOverride()
         {
-            // 정확한 수치는 M9 밸런싱에서 확정(docs/DEVELOPMENT_PLAN.md). 임시로 기본보다 HP는 높고 속도는 낮게.
+            // M9 확정치(docs/DEVELOPMENT_PLAN.md): 기본보다 HP는 높고 속도는 낮게.
             maxHp = 40;
             moveSpeed = 0.8f;
-            base.Awake();
+
+            if (balanceData == null) return;
+
+            maxHp = balanceData.documentStack.maxHp;
+            moveSpeed = balanceData.documentStack.moveSpeed;
+            contactDamage = balanceData.documentStack.contactDamage;
         }
 
         protected override Vector2 GetMoveDirection()

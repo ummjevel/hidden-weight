@@ -13,3 +13,7 @@
 [2026-07-21T16:15:29Z] [claude] MILESTONE_START M4 무기 시스템 시작
 [2026-07-21T16:20:21Z] [claude] MILESTONE_DONE M4 무기 시스템(키보드 샷건/스테이플러/업무 떠넘기기/퇴사 통보) EditMode 테스트 34/34 통과
 [2026-07-21T16:20:21Z] [claude] MILESTONE_START M5 적 & 스폰 시작
+[2026-07-21T16:26:39Z] [claude] ISSUE M5 테스트 메서드명이 숫자로 시작(예: 30초_...)해서 CS1519 발생, HashSet의 Assert.Contains ICollection 불일치로 CS1503 발생
+[2026-07-21T16:26:39Z] [claude] FIX M5 메서드명 앞에 문자 접두어 추가, Assert.Contains -> types.Contains()로 교체
+[2026-07-21T16:26:39Z] [claude] MILESTONE_DONE M5 적 5종/스폰 시스템 EditMode 테스트 47/47 통과
+[2026-07-21T16:26:39Z] [claude] MILESTONE_START M6 낮 디펜스 루프 시작

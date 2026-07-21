@@ -20,12 +20,17 @@ namespace RookieToCEO.Gameplay
         private Rigidbody2D _rigidbody;
         private Vector2 _moveInput;
         private Vector2 _facingDirection = Vector2.up;
+        private float _attackSpeedDebuffMultiplier = 1f;
+        private float _attackSpeedDebuffTimer;
 
         public StatSystem Stats { get; } = new StatSystem();
         public ReputationSystem Reputation { get; private set; }
 
         // 마우스 조준이 없으므로(GDD 2번) 무기의 공격 방향은 "마지막으로 이동한 방향"을 기준으로 삼는다.
         public Vector2 FacingDirection => _facingDirection;
+
+        // GDD 6번 "회의 요청 달력"이 가까이 있을 때 거는 공격속도 디버프. 무기 스크립트가 이 값도 곱해서 쓴다.
+        public float AttackSpeedDebuffMultiplier => _attackSpeedDebuffMultiplier;
 
         private void Awake()
         {
@@ -37,6 +42,25 @@ namespace RookieToCEO.Gameplay
         {
             ReadMoveInput();
             Reputation.Tick(Time.deltaTime);
+            TickAttackSpeedDebuff(Time.deltaTime);
+        }
+
+        private void TickAttackSpeedDebuff(float deltaTime)
+        {
+            if (_attackSpeedDebuffTimer <= 0f) return;
+
+            _attackSpeedDebuffTimer -= deltaTime;
+            if (_attackSpeedDebuffTimer <= 0f)
+            {
+                _attackSpeedDebuffMultiplier = 1f;
+            }
+        }
+
+        // 회의 요청 달력의 디버프 오라 안에 있는 동안 매 프레임 갱신해서 호출한다.
+        public void ApplyAttackSpeedDebuff(float multiplier, float refreshDuration)
+        {
+            _attackSpeedDebuffMultiplier = multiplier;
+            _attackSpeedDebuffTimer = refreshDuration;
         }
 
         private void FixedUpdate()

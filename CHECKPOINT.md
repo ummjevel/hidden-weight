@@ -58,11 +58,18 @@
 - 상태: done
 
 ## M5: 적 & 스폰
-- [ ] EnemyBase + 5종 (이메일봉투/서류더미/포스트잇/회의요청달력/클레임전화기)
-- [ ] SpawnManager (층별 시간대 스폰 테이블)
-- 검증: EditMode 스폰 타이밍 테스트
+- [x] EnemyBase(공통: HP/데미지/넉백/공포/슬로우/접촉데미지) + 5종
+      (EmailEnvelope/DocumentStack/PostItRush/MeetingCalendar/ClaimPhone)
+- [x] DashState (포스트잇 돌진형 순수 상태머신)
+- [x] WaveSpawnTable (층별 시간대 등장 규칙 + 생성속도 배율, 순수 로직)
+- [x] SpawnManager (WaveSpawnTable 결과로 실제 Instantiate)
+- [x] PlayerController에 공격속도 디버프(회의요청 달력용) 추가
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 47/47 통과 (누적)
 - done-when: 5종 적 로직 + 스폰 테이블 테스트 통과
-- 상태: pending
+- 상태: done
+- 비고: 적 프리팹(스프라이트)은 아직 없음 - docs/DEVELOPMENT_PLAN.md 아트 파이프라인 방침대로
+  M9 전까지는 프로그래머 아트로 대체 예정. SpawnManager는 프리팹이 비어있으면 조용히 스킵.
+  테스트 메서드명이 숫자로 시작하면(예: "30초_...") CS1519 컴파일 에러가 난다는 것을 확인.
 
 ## M6: 낮 디펜스 루프
 - [ ] DayWaveManager (60초 타이머)

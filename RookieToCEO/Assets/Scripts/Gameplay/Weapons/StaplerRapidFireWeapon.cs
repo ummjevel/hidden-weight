@@ -34,8 +34,8 @@ namespace RookieToCEO.Gameplay.Weapons
         private void Update()
         {
             var levelAttackSpeedBonus = 1f + Level * 0.15f;
-            var interval = WeaponMath.EffectiveAttackInterval(
-                baseAttackInterval, _player.Stats.AttackSpeedMultiplier * levelAttackSpeedBonus);
+            var attackSpeed = _player.Stats.AttackSpeedMultiplier * levelAttackSpeedBonus * _player.AttackSpeedDebuffMultiplier;
+            var interval = WeaponMath.EffectiveAttackInterval(baseAttackInterval, attackSpeed);
             _attackCooldown.SetDuration(interval);
             _attackCooldown.Tick(Time.deltaTime);
 

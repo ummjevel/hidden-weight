@@ -47,13 +47,15 @@
   테스트 asmdef가 그걸 참조하도록 고쳐서 해결.
 
 ## M4: 무기 시스템
-- [ ] 키보드 샷건 (부채꼴 다중 타겟)
-- [ ] 스테이플러 연사 (관통형 최근접)
-- [ ] 업무 떠넘기기 (액티브, 쿨타임 12초, 넉백)
-- [ ] 퇴사 통보 (궁극기, 공포/슬로우/보스정지, 게이지 충전)
-- 검증: EditMode 테스트 (쿨타임/데미지/게이지 계산)
+- [x] 키보드 샷건 (부채꼴 다중 타겟, KeyboardShotgunWeapon)
+- [x] 스테이플러 연사 (좁은 직선 관통형, StaplerRapidFireWeapon)
+- [x] 업무 떠넘기기 (액티브, 쿨타임 12초 + 짬 스탯 반영, 넉백, WorkDumpSkill)
+- [x] 퇴사 통보 (궁극기, 공포/슬로우/보스정지, 게이지 충전, ResignationUltimate)
+- [x] 공용 로직: Cooldown, Gauge, ConeTargetingUtility, WeaponMath
+- [x] EnemyRegistry (M5 적 연동을 위한 서비스 로케이터 골격)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 34/34 통과 (M3 16 + M4 18)
 - done-when: 4개 무기 로직 테스트 통과
-- 상태: pending
+- 상태: done
 
 ## M5: 적 & 스폰
 - [ ] EnemyBase + 5종 (이메일봉투/서류더미/포스트잇/회의요청달력/클레임전화기)

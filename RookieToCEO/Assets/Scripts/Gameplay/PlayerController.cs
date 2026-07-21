@@ -19,9 +19,13 @@ namespace RookieToCEO.Gameplay
 
         private Rigidbody2D _rigidbody;
         private Vector2 _moveInput;
+        private Vector2 _facingDirection = Vector2.up;
 
         public StatSystem Stats { get; } = new StatSystem();
         public ReputationSystem Reputation { get; private set; }
+
+        // 마우스 조준이 없으므로(GDD 2번) 무기의 공격 방향은 "마지막으로 이동한 방향"을 기준으로 삼는다.
+        public Vector2 FacingDirection => _facingDirection;
 
         private void Awake()
         {
@@ -53,6 +57,11 @@ namespace RookieToCEO.Gameplay
             var x = (keyboard.dKey.isPressed ? 1f : 0f) - (keyboard.aKey.isPressed ? 1f : 0f);
             var y = (keyboard.wKey.isPressed ? 1f : 0f) - (keyboard.sKey.isPressed ? 1f : 0f);
             _moveInput = new Vector2(x, y);
+
+            if (_moveInput.sqrMagnitude > 0f)
+            {
+                _facingDirection = _moveInput.normalized;
+            }
         }
 
         // 멘탈 관리 스탯을 올렸을 때 호출 (레벨업 UI는 M6에서 구현).

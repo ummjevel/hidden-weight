@@ -143,3 +143,16 @@ Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.
 - 비고: 스크립트를 재실행하면 Player/매니저가 중복 생성되는 문제가 있어
   `DestroyIfExists()`로 항상 정리 후 재생성하도록 멱등성 확보. 자동화 스크립트:
   `Assets/Editor/PrefabAndSceneBuilder.cs`.
+
+## M9 이후 폴리싱: Night 씬 프리팹 배치
+
+- [x] Guard(경비원) 프리팹 2개 배치, 서로 다른 방향(위쪽/왼쪽)을 보도록 회전
+- [x] Cctv 프리팹 1개, 넓은 시야각(55°)으로 플레이어 시작점 방향을 감시
+- [x] InvestigationPoint(조사 대상) 1개, ExitPoint(출구) 1개, DeskObstacle(책상 장애물) 3개
+- [x] Player 인스턴스 재사용(Day 씬과 동일 프리팹) - 밤에는 자동 공격이 필요 없어
+      KeyboardShotgunWeapon을 비활성화
+- [x] NightManager 배치, weaponRewardComponent를 StaplerRapidFireWeapon으로 연결
+      (GDD 12번: 1층 밤 보상 = 스테이플러 연사)
+- 검증: 배치 스크립트 실행 로그(에러 0), 프리팹 인스턴스 9개(Player+조사+출구+경비2+CCTV+책상3)
+  확인, EditMode 테스트 78/78 유지
+- 자동화 스크립트: `Assets/Editor/NightScenePrefabBuilder.cs` (Day 씬 스크립트와 같은 패턴)

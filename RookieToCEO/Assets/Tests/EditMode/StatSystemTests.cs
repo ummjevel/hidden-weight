@@ -60,5 +60,19 @@ namespace RookieToCEO.Tests.EditMode
             Assert.AreEqual(1, stats.GetLevel(StatType.WorkPower));
             Assert.AreEqual(0, stats.GetLevel(StatType.HandSpeed));
         }
+
+        [Test]
+        public void ResetAll_호출하면_모든_스탯이_0으로_돌아간다()
+        {
+            var stats = new StatSystem();
+            stats.LevelUp(StatType.WorkPower);
+            stats.LevelUp(StatType.Seniority);
+
+            stats.ResetAll();
+
+            Assert.AreEqual(0, stats.GetLevel(StatType.WorkPower));
+            Assert.AreEqual(0, stats.GetLevel(StatType.Seniority));
+            Assert.AreEqual(1f, stats.DamageMultiplier);
+        }
     }
 }

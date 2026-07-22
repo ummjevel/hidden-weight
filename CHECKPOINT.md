@@ -208,3 +208,30 @@ Unity Editor로 프로젝트를 열어 점검한 결과, 실제 수치를 계산
   지금까지 지켜온 대로 MonoBehaviour는 EditMode에서 직접 테스트하지 않고 순수 로직만
   테스트하는 원칙을 재확인하고 해당 테스트는 삭제. PlayMode 테스트가 있어야 검증 가능한
   영역이라 이번엔 보류.
+
+## M9 이후 폴리싱: 층 진행/씬 전환 (GameFlowManager)
+
+GDD 14번 최종 플레이 흐름(1층 낮→밤→2층 낮→밤→3층 낮→밤→4층 CEO 웨이브→엔딩, 실패 시
+1층으로 회귀)이 실제로 재생되도록 최상위 매니저를 만들었다. 지금까지는 Day/Night/Boss
+세 씬이 각자 자기 안에 별도의 임시 Player 인스턴스를 갖고 있어서 씬을 옮기면 스탯/무기가
+전부 리셋되는 문제가 있었다(GDD 4/7번이 요구하는 "스탯은 다음 층까지 유지"가 실제로는
+성립 안 하고 있었음).
+
+- [x] `GameFlowManager` 신설: `DontDestroyOnLoad`로 자기 자신과 지속 Player를 살려두고,
+      `SceneManager.sceneLoaded`를 구독해 새 씬이 열릴 때마다 그 씬 안의 "임시 Player"
+      인스턴스를 지우고 지속 Player로 교체, 해당 씬의 매니저(DayWaveManager/NightManager/
+      BossWaveManager)에 `SetPlayer()`/`SetFloor()`로 다시 연결한다.
+- [x] `StatSystem.ResetAll()`, `LevelSystem.ResetAll()` 추가 (GDD 7번: 회귀 시 스탯/레벨 초기화)
+- [x] `DayWaveManager.SetFloor()`(상사의 눈치 재구성), `NightManager.SetPlayer()`/
+      `SetWeaponReward()`(층별로 스테이플러/업무 떠넘기기/퇴사 통보 중 다른 보상 지급),
+      `BossWaveManager.SetPlayer()`, `SpawnManager.SetFloor()` 런타임 세터 추가 - Day/Night
+      씬을 1~3층에서 재사용할 수 있게 됨
+- [x] `Bootstrap.unity`(진입 씬: 지속 Player + GameFlowManager), `Ending.unity`(엔딩 텍스트
+      화면) 신설, Build Settings에 Bootstrap→Day→Night→Boss→Ending 순서로 5개 씬 등록
+- [x] 실패 시 처리: 밤 발각/시간초과·보스 웨이브 실패로 평판이 0이 되면
+      `RegressToFloor1()`이 스탯/레벨/평판/무기 활성화 상태를 전부 초기화하고 1층으로 되돌림
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 82/82 통과, 5개 씬 전체
+  배치모드 빌드 성공(에러 0)
+- 남은 갭: 커피(회복 아이템) 드롭 시스템 미구현(GDD 4번), 인트로 스토리 연출 텍스트 없음
+  (GDD 8번, Ending은 텍스트만 있고 인트로는 없음), PlayMode 테스트 부재로 실제 씬 전환
+  동작은 코드 리뷰로만 검증(플레이테스트 필요).

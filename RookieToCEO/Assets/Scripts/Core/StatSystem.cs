@@ -40,6 +40,12 @@ namespace RookieToCEO.Core
             _levels[(int)type]++;
         }
 
+        // GDD 7번: 평판을 모두 잃고 1층으로 회귀하면 낮에 올린 스탯이 전부 초기화된다.
+        public void ResetAll()
+        {
+            Array.Clear(_levels, 0, _levels.Length);
+        }
+
         public float DamageMultiplier => 1f + GetLevel(StatType.WorkPower) * DamagePerLevel;
         public float AttackSpeedMultiplier => 1f + GetLevel(StatType.HandSpeed) * AttackSpeedPerLevel;
         public float MoveSpeedMultiplier => 1f + GetLevel(StatType.Awareness) * MoveSpeedPerLevel;

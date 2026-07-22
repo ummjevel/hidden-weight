@@ -69,5 +69,19 @@ namespace RookieToCEO.Tests.EditMode
 
             Assert.Greater(secondRequirement, firstRequirement);
         }
+
+        [Test]
+        public void ResetAll_호출하면_레벨과_경험치가_처음으로_돌아간다()
+        {
+            var level = new LevelSystem();
+            level.AddXp(level.XpToNextLevel);
+            level.AddXp(10f);
+
+            level.ResetAll();
+
+            Assert.AreEqual(1, level.Level);
+            Assert.AreEqual(0f, level.CurrentXp);
+            Assert.AreEqual(50f, level.XpToNextLevel);
+        }
     }
 }

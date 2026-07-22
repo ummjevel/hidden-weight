@@ -10,11 +10,15 @@ namespace RookieToCEO.EditorTools
     {
         public static void BuildMac()
         {
+            // Bootstrap이 진입점(GameFlowManager가 여기서 지속되는 Player를 만들고 Day를 로드)이라
+            // 0번 씬으로 둔다. EditorBuildSettings.scenes 순서와 동일하게 맞춘다.
             var scenes = new[]
             {
+                "Assets/Scenes/Bootstrap.unity",
                 "Assets/Scenes/Day.unity",
                 "Assets/Scenes/Night.unity",
                 "Assets/Scenes/Boss.unity",
+                "Assets/Scenes/Ending.unity",
             };
 
             var report = BuildPipeline.BuildPlayer(scenes, "Builds/macOS/RookieToCEO.app", BuildTarget.StandaloneOSX, BuildOptions.None);

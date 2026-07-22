@@ -15,6 +15,10 @@
 - 게임플레이 로직(스탯 계산, 웨이브 타이머, 쿨타임, 시야 판정 등)은 MonoBehaviour와 최대한 분리된 순수 C# 클래스로 작성 → EditMode 테스트로 CLI에서 검증 가능
 - 씬/프리팹 구성은 `Assets/Editor/`의 자동화 스크립트가 코드로 생성 (`-batchmode -executeMethod`) → GUI 드래그 없이 재현 가능
 - 밸런스 수치는 `Assets/ScriptableObjects/`의 데이터 애셋으로 분리
+- 씬 흐름: `Bootstrap`(진입점, 지속 Player+`GameFlowManager` 생성) → `Day`/`Night`를 1~3층에서
+  재사용(`SetFloor()`로 층 번호만 바꿈) → `Boss`(4층) → `Ending`. `GameFlowManager`가
+  `DontDestroyOnLoad`로 Player를 살려두고 씬이 바뀔 때마다 각 씬의 매니저에 `SetPlayer()`로
+  다시 연결해, 스탯/무기가 층이 바뀌어도 유지되고(GDD 4/7번) 회귀 시에만 초기화된다.
 
 ## 아트 파이프라인
 

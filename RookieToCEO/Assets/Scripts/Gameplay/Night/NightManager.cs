@@ -21,6 +21,19 @@ namespace RookieToCEO.Gameplay.Night
 
         public event Action<NightMissionOutcome> OnMissionFinished;
 
+        // GameFlowManager가 씬 전환 후 지속되는(DontDestroyOnLoad) Player로 갈아끼울 때 호출한다.
+        public void SetPlayer(PlayerController newPlayer)
+        {
+            player = newPlayer;
+        }
+
+        // GameFlowManager가 몇 층 밤인지에 따라(1층=스테이플러/2층=업무 떠넘기기/3층=퇴사 통보)
+        // 이번 밤 조사로 얻을 무기를 지정한다(GDD 12번).
+        public void SetWeaponReward(Behaviour reward)
+        {
+            weaponRewardComponent = reward;
+        }
+
         private void Update()
         {
             if (State.IsFinished) return;
@@ -66,8 +79,8 @@ namespace RookieToCEO.Gameplay.Night
 
                 case NightMissionOutcome.FailedDetected:
                 case NightMissionOutcome.FailedTimeout:
-                    // GDD 11번: 무기 미획득 + 평판 1 감소. "다음 층으로 강제 이동"은 아직 없는
-                    // 층 진행/씬 전환 매니저가 OnMissionFinished를 구독해 처리할 몫으로 남긴다.
+                    // GDD 11번: 무기 미획득 + 평판 1 감소. "다음 층으로 강제 이동"은
+                    // GameFlowManager가 OnMissionFinished를 구독해 처리한다.
                     player?.Reputation.LoseReputationDirectly();
                     break;
             }

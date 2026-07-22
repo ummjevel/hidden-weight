@@ -41,3 +41,6 @@
 [2026-07-22T12:08:13Z] [claude] FIX WaveSpawnTable.GetBaseSpawnIntervalSeconds(floor) 신설(1층2.5s~4층1.2s), StaplerRapidFireWeapon을 PlayerController.Level.OnLevelUp에 연결
 [2026-07-22T12:08:13Z] [claude] ISSUE MonoBehaviour AddComponent 기반 EditMode 테스트 작성했으나 Awake가 전혀 호출 안 됨을 Debug.Log로 확인(EditMode는 MonoBehaviour 생명주기 미실행)
 [2026-07-22T12:08:13Z] [claude] FIX 해당 테스트 삭제, 재발 방지 메모리 기록. EditMode 테스트 80/80(WaveSpawnTable 신규 2개 포함) 통과
+[2026-07-22T12:50:31Z] [claude] POLISH GameFlowManager 신설: DontDestroyOnLoad 지속 Player + SceneManager.sceneLoaded로 씬 전환 자동화. Bootstrap/Ending 씬 신설, Build Settings에 5개 씬 등록
+[2026-07-22T12:50:31Z] [claude] POLISH StatSystem/LevelSystem에 ResetAll() 추가, DayWaveManager/NightManager/BossWaveManager/SpawnManager에 SetPlayer/SetFloor 런타임 세터 추가 - Day/Night 씬을 1~3층에서 재사용 가능해짐
+[2026-07-22T12:50:31Z] [claude] MILESTONE_DONE 1층 낮~4층 CEO 웨이브~엔딩까지 GDD 14번 전체 플레이 흐름 연결 완료. EditMode 테스트 82/82 통과, 5개 씬 배치모드 빌드 성공

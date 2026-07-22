@@ -44,6 +44,22 @@ namespace RookieToCEO.Gameplay
             if (player != null) player.Level.OnLevelUp -= HandleLevelUp;
         }
 
+        // GameFlowManager가 층을 넘길 때(Day 씬은 1~3층에서 재사용된다) 호출해서
+        // 상사의 눈치 파라미터를 그 층에 맞게 다시 만든다.
+        public void SetFloor(int newFloor)
+        {
+            floor = newFloor;
+            _bossGlance = CreateBossGlanceForFloor(floor);
+        }
+
+        // GameFlowManager가 씬 전환 후 지속되는(DontDestroyOnLoad) Player로 갈아끼울 때 호출한다.
+        public void SetPlayer(PlayerController newPlayer)
+        {
+            if (player != null) player.Level.OnLevelUp -= HandleLevelUp;
+            player = newPlayer;
+            if (player != null) player.Level.OnLevelUp += HandleLevelUp;
+        }
+
         private void Update()
         {
             if (IsPaused || IsComplete) return;

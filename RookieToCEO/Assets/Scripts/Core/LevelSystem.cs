@@ -31,5 +31,13 @@ namespace RookieToCEO.Core
             OnLevelUp?.Invoke();
             return true;
         }
+
+        // GDD 7번: 평판을 모두 잃고 1층으로 회귀하면 레벨/경험치도 처음부터 다시 시작한다.
+        public void ResetAll()
+        {
+            Level = 1;
+            CurrentXp = 0f;
+            XpToNextLevel = BaseXpToNextLevel;
+        }
     }
 }

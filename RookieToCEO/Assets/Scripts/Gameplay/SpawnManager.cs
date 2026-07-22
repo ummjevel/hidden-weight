@@ -40,6 +40,19 @@ namespace RookieToCEO.Gameplay
             var player = FindObjectOfType<PlayerController>();
             if (player != null) _playerTransform = player.transform;
 
+            RefreshFloorInterval();
+        }
+
+        // GameFlowManager가 Day/Night/Boss 씬을 오가며 같은 SpawnManager를 여러 층에 재사용할 때
+        // (Day 씬은 1~3층에서 재사용된다) 층 번호를 바꿔주기 위한 런타임 설정 메서드.
+        public void SetFloor(int newFloor)
+        {
+            floor = newFloor;
+            RefreshFloorInterval();
+        }
+
+        private void RefreshFloorInterval()
+        {
             // 층별 기준 스폰 간격(GDD 5번: 1층은 적게, 3층은 크게 증가) - WaveSpawnTable에서 가져온다.
             _baseSpawnInterval = WaveSpawnTable.GetBaseSpawnIntervalSeconds(floor);
             _spawnTimer = _baseSpawnInterval;

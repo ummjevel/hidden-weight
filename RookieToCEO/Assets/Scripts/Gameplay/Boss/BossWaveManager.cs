@@ -27,6 +27,12 @@ namespace RookieToCEO.Gameplay.Boss
         public event Action OnWaveSuccess;
         public event Action OnWaveFailure;
 
+        // GameFlowManager가 씬 전환 후 지속되는(DontDestroyOnLoad) Player로 갈아끼울 때 호출한다.
+        public void SetPlayer(PlayerController newPlayer)
+        {
+            player = newPlayer;
+        }
+
         private void Awake()
         {
             _hazardCooldown = new Cooldown(hazardSpawnInterval);

@@ -170,3 +170,21 @@ Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.
 - 자동화 스크립트: `Assets/Editor/BossScenePrefabBuilder.cs`
 - 이걸로 Day/Night/Boss 세 씬 모두 프리팹 배치 완료. 남은 폴리싱은 3택1 레벨업 UI와
   실제 도트 스프라이트 교체.
+
+## M9 이후 폴리싱: 3택1 레벨업 UI
+
+- [x] `LevelUpChoiceUI` (Assets/Scripts/UI) - DayWaveManager.IsPaused/PendingChoices를 보고
+      패널을 표시하고, 버튼 클릭 시 ResolveStatChoice() 호출. StatType별 GDD 4번 표시 명칭
+      (업무처리력/손속도/눈치/멘탈 관리/일머리/짬) 매핑 포함
+- [x] `LevelUpUIBuilder` (Editor 자동화) - Canvas/EventSystem/패널/버튼 3개를 코드로 만들어
+      Day 씬에 배치
+- [x] com.unity.ugui 패키지(2.5.0) 신규 설치 + RookieToCEO.Runtime.asmdef에 "UnityEngine.UI"
+      참조 추가
+- 검증: 배치 스크립트 실행 로그(에러 0), Day 씬에 LevelUpCanvas/EventSystem/ChoiceButton0~2
+  확인, EditMode 테스트 78/78 유지
+- 비고: `com.unity.modules.ui`(엔진 내장 모듈)만으로는 Button/Text를 못 쓴다는 걸 처음 알았다 -
+  그건 저수준 렌더링(Canvas/RectTransform)만 제공하고, 실제 UI 컴포넌트는 별도 패키지
+  `com.unity.ugui`(어셈블리명 `UnityEngine.UI`)에서 온다. 컴파일 에러로 발견해서 M2와 같은
+  방식(PackageQuery로 버전 조회 → manifest.json 직접 반영 → 순수 배치 임포트)으로 설치했다.
+  EventSystem에는 새 Input System 전용 프로젝트라 레거시 StandaloneInputModule 대신
+  InputSystemUIInputModule을 붙여야 버튼 클릭이 동작한다.

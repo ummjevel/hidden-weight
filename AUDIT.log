@@ -34,3 +34,6 @@
 [2026-07-22T10:50:19Z] [claude] POLISH Day 씬에 Player+적5종 프리팹, EnemyRegistry/SpawnManager/DayWaveManager 배치 완료. EditMode 테스트 78/78 유지
 [2026-07-22T10:55:30Z] [claude] POLISH Night 씬에 경비2/CCTV1/조사1/출구1/책상3 + Player/NightManager 배치 완료. EditMode 테스트 78/78 유지
 [2026-07-22T10:58:07Z] [claude] POLISH Boss 씬에 CeoFinalOrder/HazardZone 프리팹 + Player(전 무기 활성화)/EnemyRegistry/SpawnManager(floor4)/BossWaveManager/EndingTrigger 배치 완료. EditMode 테스트 78/78 유지. Day/Night/Boss 세 씬 배치 전부 완료
+[2026-07-22T11:13:38Z] [claude] ISSUE UnityEngine.UI(Button/Text)가 com.unity.modules.ui 내장 모듈이 아니라 별도 패키지(com.unity.ugui)라는 걸 몰라 컴파일 에러 발생
+[2026-07-22T11:13:38Z] [claude] FIX com.unity.ugui 2.5.0 설치(M2 방식: PackageQuery 조회 -> manifest.json 반영 -> 순수 배치 임포트), RookieToCEO.Runtime.asmdef에 UnityEngine.UI 참조 추가
+[2026-07-22T11:13:38Z] [claude] POLISH LevelUpChoiceUI + LevelUpUIBuilder로 Day 씬에 3택1 레벨업 UI(Canvas/EventSystem/InputSystemUIInputModule/버튼3개) 배치 완료. EditMode 테스트 78/78 유지

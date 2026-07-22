@@ -156,3 +156,17 @@ Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.
 - 검증: 배치 스크립트 실행 로그(에러 0), 프리팹 인스턴스 9개(Player+조사+출구+경비2+CCTV+책상3)
   확인, EditMode 테스트 78/78 유지
 - 자동화 스크립트: `Assets/Editor/NightScenePrefabBuilder.cs` (Day 씬 스크립트와 같은 패턴)
+
+## M9 이후 폴리싱: Boss 씬 프리팹 배치
+
+- [x] CeoFinalOrderBoss 프리팹(무적 소환수, 검은색·1.6배 크기로 구분, summonPrefab=이메일봉투)
+- [x] HazardZone 프리팹(반투명 빨간 정사각형, 트리거 콜라이더)
+- [x] Player 인스턴스 재사용 - 4층은 1~3층 밤을 전부 통과했다는 전제라 스테이플러/업무
+      떠넘기기/퇴사 통보를 전부 활성화(Day/Night와 달리 전 무기 사용 가능)
+- [x] EnemyRegistry, SpawnManager(floor=4, 이메일/서류/포스트잇/회의요청/CEO 5종 매핑),
+      BossWaveManager(hazardZonePrefab 연결), EndingTrigger(BossWaveManager와 같은 오브젝트) 배치
+- 검증: 배치 스크립트 실행 로그(에러 0), 프리팹 인스턴스 1개(Player, 나머지는 런타임 동적
+  스폰) 확인, EditMode 테스트 78/78 유지
+- 자동화 스크립트: `Assets/Editor/BossScenePrefabBuilder.cs`
+- 이걸로 Day/Night/Boss 세 씬 모두 프리팹 배치 완료. 남은 폴리싱은 3택1 레벨업 UI와
+  실제 도트 스프라이트 교체.

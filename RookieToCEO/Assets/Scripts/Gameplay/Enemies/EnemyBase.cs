@@ -21,6 +21,9 @@ namespace RookieToCEO.Gameplay.Enemies
         // M9: 배정되면 ApplyBalanceOverride()에서 하위 클래스가 자신에 맞는 수치를 꺼내 쓴다.
         [SerializeField] protected BalanceData balanceData;
 
+        // GDD 4번 "회복 아이템": 처치 시 낮은 확률로 커피(아메리카노)를 드롭한다.
+        [SerializeField] private GameObject coffeeDropPrefab;
+
         protected int CurrentHp;
         protected Rigidbody2D Rigidbody;
         protected Transform PlayerTransform;
@@ -116,7 +119,21 @@ namespace RookieToCEO.Gameplay.Enemies
             player?.GetComponent<ResignationUltimate>()?.AddGaugeOnKill(gaugeAmount);
             player?.Level.AddXp(10f);
 
+            TryDropCoffee();
+
             Destroy(gameObject);
+        }
+
+        // GDD 4번: "적이 낮은 확률로 커피를 떨어뜨립니다."
+        private void TryDropCoffee()
+        {
+            if (coffeeDropPrefab == null) return;
+
+            var dropChance = balanceData != null ? balanceData.coffeeDropChance : 0.1f;
+            if (Random.value < dropChance)
+            {
+                Instantiate(coffeeDropPrefab, transform.position, Quaternion.identity);
+            }
         }
 
         public void ApplyFear(float duration)

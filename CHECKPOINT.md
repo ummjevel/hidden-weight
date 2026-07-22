@@ -232,6 +232,21 @@ GDD 14번 최종 플레이 흐름(1층 낮→밤→2층 낮→밤→3층 낮→�
       `RegressToFloor1()`이 스탯/레벨/평판/무기 활성화 상태를 전부 초기화하고 1층으로 되돌림
 - 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 82/82 통과, 5개 씬 전체
   배치모드 빌드 성공(에러 0)
-- 남은 갭: 커피(회복 아이템) 드롭 시스템 미구현(GDD 4번), 인트로 스토리 연출 텍스트 없음
-  (GDD 8번, Ending은 텍스트만 있고 인트로는 없음), PlayMode 테스트 부재로 실제 씬 전환
-  동작은 코드 리뷰로만 검증(플레이테스트 필요).
+- 남은 갭: 인트로 스토리 연출 텍스트 없음(GDD 8번, Ending은 텍스트만 있고 인트로는 없음),
+  PlayMode 테스트 부재로 실제 씬 전환 동작은 코드 리뷰로만 검증(플레이테스트 필요).
+
+## M9 이후 폴리싱: 커피 회복 아이템
+
+- [x] `CoffeeDrop` 컴포넌트: 트리거 콜라이더 안에 플레이어가 들어오면
+      `ReputationSystem.Heal()`을 호출하고 사라짐. GDD 4번대로 아메리카노(소량 회복)만
+      구현하고 믹스커피(회복+공속 증가)는 프로토타입 범위 밖으로 보류.
+- [x] `BalanceData`에 `coffeeDropChance`(10%), `coffeeHealAmount`(15) 추가
+- [x] `EnemyBase.Die()`에 `TryDropCoffee()` 추가 - 처치 시 낮은 확률로 커피 프리팹을 그 자리에 생성
+- [x] `CoffeeItemWiring`(Editor 자동화): Coffee 프리팹(진한 갈색 작은 정사각형) 신규 생성 +
+      이미 존재하던 적 5종 프리팹을 `PrefabUtility.LoadPrefabContents`로 열어
+      `coffeeDropPrefab` 필드만 덧붙여 저장(재생성 없이 기존 프리팹을 직접 수정)
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 82/82 통과(회귀 없음),
+  배치모드 빌드 성공(에러 0)
+- 비고: 드롭 확률은 런타임 랜덤이라 EditMode에서 결정론적으로 테스트할 수 없고, MonoBehaviour
+  라 이 프로젝트 컨벤션대로 직접 단위테스트하지 않음(재사용된 `ReputationSystem.Heal()`은
+  이미 M3에서 테스트됨).

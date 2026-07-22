@@ -52,5 +52,9 @@ namespace RookieToCEO.Core
 
         [Header("스폰")]
         public float spawnRateMultiplierAfter30s = 1.5f; // GDD 5번: 30~45초 생성량 증가
+
+        [Header("커피 (회복 아이템)")]
+        public float coffeeDropChance = 0.1f; // GDD 4번: "낮은 확률로" 드롭. 프로토타입은 아메리카노만
+        public int coffeeHealAmount = 15;
     }
 }

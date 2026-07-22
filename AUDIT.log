@@ -29,3 +29,6 @@
 [2026-07-21T16:41:19Z] [claude] MILESTONE_START M9 밸런싱 확정 & 통합 검증 시작
 [2026-07-21T16:48:16Z] [claude] MILESTONE_DONE M9 밸런싱 확정(BalanceData.asset) + 전체 EditMode 테스트 78/78 통과 + 배치모드 빌드 성공(113MB)
 [2026-07-21T16:48:16Z] [claude] MVP_COMPLETE M0~M9 전체 마일스톤 완료. 남은 작업은 GUI 통합(씬 배치/스프라이트/UI)으로 사용자 또는 후속 세션 몫
+[2026-07-22T10:50:19Z] [claude] ISSUE Day 씬 프리팹 배치 스크립트 재실행 시 Player/매니저 중복 생성, 내장 Sprite 리소스 이름 추측 실패, 중첩 폴더 생성 실패
+[2026-07-22T10:50:19Z] [claude] FIX DestroyIfExists()로 멱등성 확보, 코드로 PNG 생성해 placeholder sprite 확보, EnsureFolder 재귀화
+[2026-07-22T10:50:19Z] [claude] POLISH Day 씬에 Player+적5종 프리팹, EnemyRegistry/SpawnManager/DayWaveManager 배치 완료. EditMode 테스트 78/78 유지

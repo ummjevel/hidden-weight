@@ -128,3 +128,18 @@ Rookie to CEO MVP 범위(docs/GDD.md 14번) 전체가 코드 레벨로 구현·�
 남은 것은 GUI 의존 통합 작업(씬에 실제 GameObject/프리팹 배치, 도트 스프라이트 교체,
 3택1 UI 실제 배치)이며, 이는 사용자가 Unity Editor를 직접 열어 진행하거나 별도 세션에서
 Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.
+
+## M9 이후 폴리싱: Day 씬 프리팹 배치
+
+- [x] Player 프리팹 (Rigidbody2D/Collider2D/PlayerController/무기 4종, 스테이플러·업무 떠넘기기·
+      퇴사 통보는 GDD 12번대로 처음엔 비활성 → NightManager가 조사 성공 시 활성화)
+- [x] 적 프리팹 5종 (이메일봉투/서류더미/포스트잇/회의요청달력/클레임전화기)
+- [x] 플레이스홀더 아트: 코드로 생성한 흰색 32x32 PNG(Assets/Art/Placeholder/Square.png)를
+      SpriteRenderer.color로 색만 다르게 틴트 (Unity 내장 리소스 이름을 추측하다 실패해서
+      직접 텍스처를 만드는 방식으로 전환)
+- [x] Day 씬에 Player, EnemyRegistry, SpawnManager(floor=1, 적 5종 매핑), DayWaveManager 배치,
+      메인 카메라 orthographic 전환
+- 검증: 배치 스크립트 실행 로그(에러 0) + EditMode 테스트 78/78 유지(회귀 없음)
+- 비고: 스크립트를 재실행하면 Player/매니저가 중복 생성되는 문제가 있어
+  `DestroyIfExists()`로 항상 정리 후 재생성하도록 멱등성 확보. 자동화 스크립트:
+  `Assets/Editor/PrefabAndSceneBuilder.cs`.

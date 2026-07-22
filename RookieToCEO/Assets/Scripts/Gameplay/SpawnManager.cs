@@ -19,12 +19,12 @@ namespace RookieToCEO.Gameplay
     public class SpawnManager : MonoBehaviour
     {
         [SerializeField] private int floor = 1;
-        [SerializeField] private float baseSpawnInterval = 2f; // 초당 개체 수는 TBD(M9), 임시 기준값
-        [SerializeField] private float spawnRadius = 8f;       // 플레이어 기준 스폰 반경
+        [SerializeField] private float spawnRadius = 8f; // 플레이어 기준 스폰 반경
         [SerializeField] private List<EnemyPrefabEntry> enemyPrefabs = new List<EnemyPrefabEntry>();
 
         private Transform _playerTransform;
         private float _spawnTimer;
+        private float _baseSpawnInterval;
         private readonly Dictionary<EnemyType, GameObject> _prefabLookup = new Dictionary<EnemyType, GameObject>();
 
         private void Awake()
@@ -40,7 +40,9 @@ namespace RookieToCEO.Gameplay
             var player = FindObjectOfType<PlayerController>();
             if (player != null) _playerTransform = player.transform;
 
-            _spawnTimer = baseSpawnInterval;
+            // 층별 기준 스폰 간격(GDD 5번: 1층은 적게, 3층은 크게 증가) - WaveSpawnTable에서 가져온다.
+            _baseSpawnInterval = WaveSpawnTable.GetBaseSpawnIntervalSeconds(floor);
+            _spawnTimer = _baseSpawnInterval;
         }
 
         // DayWaveManager(M6)가 매 프레임 웨이브 경과 시간을 넘겨 호출한다.
@@ -49,7 +51,7 @@ namespace RookieToCEO.Gameplay
             _spawnTimer -= deltaTime * WaveSpawnTable.GetSpawnRateMultiplier(elapsedSeconds);
             if (_spawnTimer > 0f) return;
 
-            _spawnTimer = baseSpawnInterval;
+            _spawnTimer = _baseSpawnInterval;
             SpawnOne(elapsedSeconds);
         }
 

@@ -188,3 +188,23 @@ Editor 자동화 스크립트를 추가로 작성해 이어갈 수 있다.
   방식(PackageQuery로 버전 조회 → manifest.json 직접 반영 → 순수 배치 임포트)으로 설치했다.
   EventSystem에는 새 Input System 전용 프로젝트라 레거시 StandaloneInputModule 대신
   InputSystemUIInputModule을 붙여야 버튼 클릭이 동작한다.
+
+## M9 이후 폴리싱: 밸런스 이슈 수정
+
+Unity Editor로 프로젝트를 열어 점검한 결과, 실제 수치를 계산해 발견한 문제 2가지를 고쳤다.
+
+- [x] **층별 스폰 밀도 차등 추가**: `WaveSpawnTable.GetBaseSpawnIntervalSeconds(floor)` 신설
+      (1층 2.5초 → 2층 2.0초 → 3층 1.5초 → 4층 1.2초). 이전에는 모든 층이 같은 기준 간격(2초)을
+      써서 GDD 5번이 요구하는 "1층 적음 → 3층 크게 증가" 난이도 곡선이 전혀 반영 안 되고 있었다.
+      `SpawnManager`가 이 값을 읽도록 수정.
+- [x] **스테이플러 연사 레벨업 연결**: `StaplerRapidFireWeapon`이 `PlayerController.Level.OnLevelUp`
+      을 구독해 플레이어가 레벨업할 때마다 함께 레벨업하도록 연결. 이전에는 `LevelUp()`을
+      호출하는 코드가 어디에도 없어 GDD 3번 "레벨이 오르면 연사속도와 관통 증가"가 죽은
+      기능이었다. 트리거 방식(플레이어 레벨과 연동)은 GDD에 명시가 없어 판단해 정함.
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 80/80 통과
+- 비고: 스테이플러 레벨업을 검증하려고 MonoBehaviour(`AddComponent`)로 EditMode 테스트를
+  작성했는데, **EditMode 테스트는 Awake/OnEnable/Update 같은 MonoBehaviour 생명주기를
+  전혀 실행하지 않는다는 걸 확인**(Debug.Log로 직접 검증, 한 번도 안 찍힘). 이 프로젝트가
+  지금까지 지켜온 대로 MonoBehaviour는 EditMode에서 직접 테스트하지 않고 순수 로직만
+  테스트하는 원칙을 재확인하고 해당 테스트는 삭제. PlayMode 테스트가 있어야 검증 가능한
+  영역이라 이번엔 보류.

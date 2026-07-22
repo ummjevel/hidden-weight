@@ -5,8 +5,9 @@ namespace RookieToCEO.Gameplay.Weapons
 {
     // GDD 3번 "1층 밤 보상: 스테이플러 연사". 좁은 직선 범위로 빠르게 쏘고,
     // 레벨이 오르면 연사속도와 관통 횟수가 늘어난다(GDD 원문 그대로).
-    // 무기 자체의 레벨은 GDD에 별도 획득 경로가 정의돼 있지 않아, 우선 LevelUp()을 밖에서
-    // 호출할 수 있게만 열어두고 실제 트리거(예: 특정 조건 달성)는 이후 마일스톤에서 연결한다.
+    // 무기 자체의 레벨을 언제 올릴지는 GDD에 명시가 없어서, 플레이어 전체 레벨업(3택1 선택)에
+    // 맞춰 함께 올라가는 것으로 정했다 - 별도 UI/선택지를 새로 만들지 않고도 GDD가 말한
+    // "레벨이 오르면 강화된다"를 자연스럽게 충족한다.
     public class StaplerRapidFireWeapon : MonoBehaviour
     {
         [SerializeField] private int baseDamage = 6;
@@ -40,6 +41,23 @@ namespace RookieToCEO.Gameplay.Weapons
             }
 
             _attackCooldown = new Cooldown(baseAttackInterval);
+
+            // OnEnable이 아니라 Awake에서 구독한다: 이 무기는 밤 조사를 마치기 전까지
+            // 비활성(enabled=false) 상태로 대기하는데, OnEnable에서 구독하면 비활성 기간 동안의
+            // 레벨업을 놓쳐서 실제로 활성화됐을 때 스테이플러 레벨이 뒤처진다. Awake는 활성화
+            // 여부와 무관하게 항상 한 번 실행되므로, 비활성 상태에서도 계속 레벨을 추적하다가
+            // 활성화되는 순간 이미 쌓인 레벨이 바로 반영되게 만든다.
+            _player.Level.OnLevelUp += HandlePlayerLevelUp;
+        }
+
+        private void OnDestroy()
+        {
+            if (_player != null) _player.Level.OnLevelUp -= HandlePlayerLevelUp;
+        }
+
+        private void HandlePlayerLevelUp()
+        {
+            LevelUp();
         }
 
         private void Update()

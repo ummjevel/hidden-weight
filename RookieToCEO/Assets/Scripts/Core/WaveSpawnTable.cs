@@ -15,6 +15,25 @@ namespace RookieToCEO.Core
             return elapsedSeconds >= 30f ? 1.5f : 1f;
         }
 
+        // GDD 5번 "1층: 적 생성량이 적음" ~ "3층: 생성량이 크게 증가"의 층별 기준 스폰 간격(초).
+        // 값이 작을수록 더 자주 스폰된다. M9 밸런싱에서 처음 확정한 값이며, 플레이테스트로
+        // 더 조정될 수 있다(docs/DEVELOPMENT_PLAN.md 스폰 테이블 참고).
+        // 이전에는 모든 층이 같은 기준 간격(2초)을 썼는데, 그러면 GDD가 요구하는 층별 난이도
+        // 곡선이 전혀 반영되지 않고 1층에서부터 과도하게 많은 적이 나와 레벨업이 목표(층당
+        // 2~3회)보다 훨씬 자주 발생하는 문제가 있었다.
+        public static float GetBaseSpawnIntervalSeconds(int floor)
+        {
+            switch (floor)
+            {
+                case 1: return 2.5f;
+                case 2: return 2.0f;
+                case 3: return 1.5f;
+                case 4: return 1.2f; // 보스 웨이브 - 가장 밀집
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(floor), floor, "층은 1~4만 유효하다");
+            }
+        }
+
         public static HashSet<EnemyType> GetActiveEnemyTypes(int floor, float elapsedSeconds)
         {
             var types = new HashSet<EnemyType>();

@@ -37,3 +37,7 @@
 [2026-07-22T11:13:38Z] [claude] ISSUE UnityEngine.UI(Button/Text)가 com.unity.modules.ui 내장 모듈이 아니라 별도 패키지(com.unity.ugui)라는 걸 몰라 컴파일 에러 발생
 [2026-07-22T11:13:38Z] [claude] FIX com.unity.ugui 2.5.0 설치(M2 방식: PackageQuery 조회 -> manifest.json 반영 -> 순수 배치 임포트), RookieToCEO.Runtime.asmdef에 UnityEngine.UI 참조 추가
 [2026-07-22T11:13:38Z] [claude] POLISH LevelUpChoiceUI + LevelUpUIBuilder로 Day 씬에 3택1 레벨업 UI(Canvas/EventSystem/InputSystemUIInputModule/버튼3개) 배치 완료. EditMode 테스트 78/78 유지
+[2026-07-22T12:08:13Z] [claude] ISSUE 실제 수치 계산 결과 발견: 층별 스폰 밀도 차등 없음(GDD 5번 위반), 스테이플러 레벨업 트리거 누락(GDD 3번 위반, 죽은 기능)
+[2026-07-22T12:08:13Z] [claude] FIX WaveSpawnTable.GetBaseSpawnIntervalSeconds(floor) 신설(1층2.5s~4층1.2s), StaplerRapidFireWeapon을 PlayerController.Level.OnLevelUp에 연결
+[2026-07-22T12:08:13Z] [claude] ISSUE MonoBehaviour AddComponent 기반 EditMode 테스트 작성했으나 Awake가 전혀 호출 안 됨을 Debug.Log로 확인(EditMode는 MonoBehaviour 생명주기 미실행)
+[2026-07-22T12:08:13Z] [claude] FIX 해당 테스트 삭제, 재발 방지 메모리 기록. EditMode 테스트 80/80(WaveSpawnTable 신규 2개 포함) 통과

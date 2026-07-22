@@ -68,5 +68,25 @@ namespace RookieToCEO.Tests.EditMode
             Assert.Throws<System.ArgumentOutOfRangeException>(() =>
                 WaveSpawnTable.GetActiveEnemyTypes(5, 10f));
         }
+
+        [Test]
+        public void 층이_올라갈수록_기준_스폰_간격이_짧아진다()
+        {
+            var floor1 = WaveSpawnTable.GetBaseSpawnIntervalSeconds(1);
+            var floor2 = WaveSpawnTable.GetBaseSpawnIntervalSeconds(2);
+            var floor3 = WaveSpawnTable.GetBaseSpawnIntervalSeconds(3);
+            var floor4 = WaveSpawnTable.GetBaseSpawnIntervalSeconds(4);
+
+            Assert.Greater(floor1, floor2);
+            Assert.Greater(floor2, floor3);
+            Assert.Greater(floor3, floor4);
+        }
+
+        [Test]
+        public void 유효하지_않은_층으로_기준_스폰_간격을_요청하면_예외가_발생한다()
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                WaveSpawnTable.GetBaseSpawnIntervalSeconds(0));
+        }
     }
 }

@@ -119,7 +119,70 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &122861366
+--- !u!1 &11988010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 11988013}
+  - component: {fileID: 11988012}
+  - component: {fileID: 11988011}
+  m_Layer: 0
+  m_Name: BossWaveManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &11988011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11988010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3b228aa4f6654549aff2faf27f041b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.EndingTrigger
+--- !u!114 &11988012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11988010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd323bb0075724af88b9a346efb9248c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.BossWaveManager
+  spawnManager: {fileID: 1914019731}
+  player: {fileID: 257363507}
+  hazardZonePrefab: {fileID: 2478288366272361254, guid: c47c0593ce4eb44edaec27801300bb45, type: 3}
+  hazardSpawnInterval: 5
+  hazardSpawnRadius: 6
+  screenHalfWidth: 8
+--- !u!4 &11988013
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11988010}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &257363506
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -127,71 +190,71 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1347160756154535634, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 413358540463555210, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1492256345330980327, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 665997006923687303, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 1606560215692032228, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 1213878605281398719, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 1292636026798038663, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_Name
+      value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalRotation.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8815138723068558017, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_Name
-      value: Player
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
---- !u!114 &122861367 stripped
+--- !u!114 &257363507 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4004236358778671679, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-  m_PrefabInstance: {fileID: 122861366}
+  m_CorrespondingSourceObject: {fileID: 4819466425021333671, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+  m_PrefabInstance: {fileID: 257363506}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -296,63 +359,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &941279100
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 941279102}
-  - component: {fileID: 941279101}
-  m_Layer: 0
-  m_Name: SpawnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &941279101
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 941279100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
-  floor: 4
-  spawnRadius: 8
-  enemyPrefabs:
-  - Type: 0
-    Prefab: {fileID: 3095745771035107266, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
-  - Type: 1
-    Prefab: {fileID: 6779276319664351033, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
-  - Type: 2
-    Prefab: {fileID: 4642621238507850145, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
-  - Type: 3
-    Prefab: {fileID: 810216457434624449, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
-  - Type: 5
-    Prefab: {fileID: 295170035049778387, guid: dcf19996b04d2433f8c8d0dbffaed124, type: 3}
---- !u!4 &941279102
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 941279100}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1173175807
 GameObject:
   m_ObjectHideFlags: 0
@@ -445,7 +451,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1202692363
+--- !u!1 &1421998804
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -453,8 +459,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1202692365}
-  - component: {fileID: 1202692364}
+  - component: {fileID: 1421998806}
+  - component: {fileID: 1421998805}
   m_Layer: 0
   m_Name: EnemyRegistry
   m_TagString: Untagged
@@ -462,25 +468,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1202692364
+--- !u!114 &1421998805
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1202692363}
+  m_GameObject: {fileID: 1421998804}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 26591c83fa10643b7b4273019a227c81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.EnemyRegistry
---- !u!4 &1202692365
+--- !u!4 &1421998806
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1202692363}
+  m_GameObject: {fileID: 1421998804}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -489,7 +495,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1280079067
+--- !u!1 &1914019730
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -497,53 +503,47 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1280079070}
-  - component: {fileID: 1280079069}
-  - component: {fileID: 1280079068}
+  - component: {fileID: 1914019732}
+  - component: {fileID: 1914019731}
   m_Layer: 0
-  m_Name: BossWaveManager
+  m_Name: SpawnManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1280079068
+--- !u!114 &1914019731
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1280079067}
+  m_GameObject: {fileID: 1914019730}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f3b228aa4f6654549aff2faf27f041b1, type: 3}
+  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.EndingTrigger
---- !u!114 &1280079069
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1280079067}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd323bb0075724af88b9a346efb9248c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.BossWaveManager
-  spawnManager: {fileID: 941279101}
-  player: {fileID: 122861367}
-  hazardZonePrefab: {fileID: 2553758398922191284, guid: 0b0160a838a7e4cc18623c81e01f9da2, type: 3}
-  hazardSpawnInterval: 5
-  hazardSpawnRadius: 6
-  screenHalfWidth: 8
---- !u!4 &1280079070
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
+  floor: 4
+  spawnRadius: 8
+  enemyPrefabs:
+  - Type: 0
+    Prefab: {fileID: 6753651581934298411, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
+  - Type: 1
+    Prefab: {fileID: 3455255082678556414, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
+  - Type: 2
+    Prefab: {fileID: 1574811202644841926, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
+  - Type: 3
+    Prefab: {fileID: 8162821756141954384, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
+  - Type: 5
+    Prefab: {fileID: 5364586812026459629, guid: 7b225baeffd5e4c38a3d5c75b6fc7cbc, type: 3}
+--- !u!4 &1914019732
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1280079067}
+  m_GameObject: {fileID: 1914019730}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -558,7 +558,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 1173175810}
   - {fileID: 408983466}
-  - {fileID: 122861366}
-  - {fileID: 1202692365}
-  - {fileID: 941279102}
-  - {fileID: 1280079070}
+  - {fileID: 257363506}
+  - {fileID: 1421998806}
+  - {fileID: 1914019732}
+  - {fileID: 11988013}

@@ -119,74 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &126631081
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5527977871524070693, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8815138723068558017, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-      propertyPath: m_Name
-      value: Player
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
---- !u!114 &126631082 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4004236358778671679, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-  m_PrefabInstance: {fileID: 126631081}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81065058f50a14a4ca329f27b9373644, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.PlayerController
 --- !u!1 &577426764
 GameObject:
   m_ObjectHideFlags: 0
@@ -376,7 +308,75 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1045199769
+--- !u!1001 &827071453
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1292636026798038663, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_Name
+      value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3592717049798374433, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+--- !u!114 &827071454 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4819466425021333671, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
+  m_PrefabInstance: {fileID: 827071453}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81065058f50a14a4ca329f27b9373644, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.PlayerController
+--- !u!1 &1263544864
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -384,8 +384,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1045199771}
-  - component: {fileID: 1045199770}
+  - component: {fileID: 1263544866}
+  - component: {fileID: 1263544865}
   m_Layer: 0
   m_Name: GameFlowManager
   m_TagString: Untagged
@@ -393,26 +393,26 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1045199770
+--- !u!114 &1263544865
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1045199769}
+  m_GameObject: {fileID: 1263544864}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b940c753b6d2a4d5b8e4e6c78476c1dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.GameFlowManager
-  player: {fileID: 126631082}
---- !u!4 &1045199771
+  player: {fileID: 827071454}
+--- !u!4 &1263544866
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1045199769}
+  m_GameObject: {fileID: 1263544864}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -427,5 +427,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 577426767}
   - {fileID: 646929366}
-  - {fileID: 126631081}
-  - {fileID: 1045199771}
+  - {fileID: 827071453}
+  - {fileID: 1263544866}

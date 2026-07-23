@@ -270,3 +270,34 @@ GDD 14번 최종 플레이 흐름(1층 낮→밤→2층 낮→밤→3층 낮→�
   + 배치모드 빌드 성공, 실제 실행 로그(Player.log)에서 예외 없음을 직접 확인
 - 비고: 이런 종류의 버그(런타임 전용 예외, 시각적 렌더링 문제)는 EditMode 테스트로는
   절대 못 잡는다 - 실제로 빌드해서 실행하고 로그를 보는 과정이 꼭 필요했다.
+
+## M9 이후 폴리싱: "화면이 검게만 나옴" 실제 원인 (플레이스홀더 스프라이트 Import 버그)
+
+위 카메라/NRE 수정 후에도 사용자가 실행해보니 창은 뜨지만 화면이 완전히 검고 플레이어
+흰 사각형조차 안 보였다. 화면 캡처 권한이 없어 `GameFlowManager`에 임시 진단 로그를 넣고
+`Player.log`를 직접 읽어 원인을 확정했다.
+
+- **진짜 원인**: `Assets/Art/Placeholder/Square.png`를 코드로 생성할 때 `TextureImporter.
+  spriteImportMode`를 명시하지 않아 프로젝트 기본값인 `Multiple`로 잡혔다. Multiple 모드는
+  수동 슬라이싱 데이터(`spriteSheet.sprites`)가 있어야 실제 Sprite 서브에셋이 생기는데,
+  슬라이싱을 한 적이 없어 `sprites: []`(빈 배열) 상태였다 - 즉 그 텍스처엔 로드할 수 있는
+  Sprite 오브젝트가 애초에 하나도 없었다. `AssetDatabase.LoadAssetAtPath<Sprite>()`가
+  항상 null을 반환했고, Player/적 5종/커피/보스 등 모든 프리팹의 `m_Sprite`가
+  `{fileID: 0}`으로 저장돼 있었다(진단 로그의 `sprite-null=True`로 확정).
+- **수정**: `PrefabAndSceneBuilder.GetOrCreatePlaceholderSprite()`에 `importer.
+  spriteImportMode = SpriteImportMode.Single;`을 명시적으로 추가. 이미 잘못 만들어진
+  Square.png와 그걸 참조하던 모든 프리팹(Player, 적 5종, Guard/Cctv/Investigation/Exit/
+  Desk, HazardZone/CeoFinalOrder, Coffee)을 삭제하고, 6단계 파이프라인(PrefabAndSceneBuilder
+  → NightScenePrefabBuilder → BossScenePrefabBuilder → CoffeeItemWiring →
+  GameFlowSceneBuilder → LevelUpUIBuilder)을 순서대로 재실행해 전부 다시 생성했다.
+- **디버깅 보조**: 창모드(1280x720, `PlayerSettingsFixer.UseWindowedMode`)로 전환해 테두리
+  없는 전체화면 상태에서 창이 실제로 떴는지조차 구분 안 되던 문제를 해결. 문제 확정 후
+  `GameFlowManager`의 임시 진단 로그는 제거.
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 82/82 통과, 재빌드 성공,
+  `Player.log`에서 `sprite-null=False` + 예외 없음 확인, **사용자가 실제 화면에서 플레이어가
+  보이는 것을 최종 확인**("잘된다").
+- 비고: 화면 캡처 권한이 없는 환경에서는 MonoBehaviour에 임시 진단 로그를 넣고
+  `~/Library/Logs/<Company>/<Product>/Player.log`를 읽는 방식으로 시각적 버그도 원인을
+  좁혀갈 수 있었다. Import 설정처럼 "코드는 맞는데 에셋 파이프라인 설정이 틀린" 종류의
+  버그는 프리팹 파일을 직접 grep해서 실제 직렬화된 값(`m_Sprite: {fileID: 0}`)을 확인하는
+  게 가장 확실했다.

@@ -138,6 +138,10 @@ namespace RookieToCEO.EditorTools
 
             var importer = (TextureImporter)AssetImporter.GetAtPath(PlaceholderSquarePath);
             importer.textureType = TextureImporterType.Sprite;
+            // 프로젝트 기본값이 Multiple로 잡혀서 명시하지 않으면 슬라이스된 서브스프라이트가
+            // 없어(sprites: [] 빈 배열) 실제 Sprite 오브젝트가 하나도 생성되지 않는 문제가 있었다.
+            // 반드시 Single로 명시해야 AssetDatabase.LoadAssetAtPath<Sprite>가 뭔가를 찾는다.
+            importer.spriteImportMode = SpriteImportMode.Single;
             importer.spritePixelsPerUnit = 32;
             importer.filterMode = FilterMode.Point;
             importer.textureCompression = TextureImporterCompression.Uncompressed;

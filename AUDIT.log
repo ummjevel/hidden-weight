@@ -49,3 +49,7 @@
 [2026-07-23T12:08:03Z] [claude] DIAG Player.log에서 KeyboardShotgunWeapon NullReferenceException 발견(EnemyRegistry.Instance가 Bootstrap 씬에서 null)
 [2026-07-23T12:08:03Z] [claude] FIX 무기/스킬 4개 스크립트에 EnemyRegistry.Instance null 가드 추가. 카메라 Clear Flags를 SolidColor로 변경(기본 스카이박스가 orthographic에서 사막색으로 보이던 문제), Bootstrap 씬 카메라 설정 누락도 발견해 채움
 [2026-07-23T12:08:03Z] [claude] MILESTONE_DONE 4개 씬 재빌드+배치모드 빌드 성공, 실행 로그에서 예외 없음 확인. EditMode 테스트 82/82 통과
+[2026-07-23T12:26:20Z] [claude] ISSUE 카메라/NRE 수정 후에도 화면이 완전히 검게만 나옴, 화면 캡처 권한 없어 임시 진단 로그로 원인 추적
+[2026-07-23T12:26:20Z] [claude] DIAG Player.log에서 sprite-null=True 확인, 프리팹 grep으로 m_Sprite:{fileID:0} 확정 - Square.png의 spriteImportMode가 Multiple로 잡혀 실제 Sprite가 하나도 안 생성됨
+[2026-07-23T12:26:20Z] [claude] FIX spriteImportMode=Single 명시, 관련 프리팹 전부 삭제 후 6단계 파이프라인 재실행으로 재생성. 창모드 전환(PlayerSettingsFixer)으로 디버깅 용이하게 함
+[2026-07-23T12:26:20Z] [claude] MILESTONE_DONE 사용자가 실제 화면에서 플레이어 렌더링 확인("잘된다"). EditMode 82/82 통과, 진단 로그 정리 완료

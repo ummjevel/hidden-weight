@@ -50,6 +50,10 @@ namespace RookieToCEO.Gameplay.Weapons
 
         private void TryAttack()
         {
+            // 지속되는(DontDestroyOnLoad) Player는 EnemyRegistry가 아직 없는 씬(예: Bootstrap)에서도
+            // Update가 계속 돌기 때문에, EnemyRegistry.Instance가 비어 있을 수 있다.
+            if (EnemyRegistry.Instance == null) return;
+
             var facing = _player.FacingDirection;
             var range = WeaponMath.EffectiveRange(baseRange, _player.Stats.RangeMultiplier);
             var candidates = EnemyRegistry.Instance.Positions;

@@ -47,6 +47,7 @@ namespace RookieToCEO.Gameplay.Skills
 
         private void TryActivate()
         {
+            if (EnemyRegistry.Instance == null) return;
             if (!Gauge.TryConsume()) return;
 
             var registry = EnemyRegistry.Instance;

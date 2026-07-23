@@ -198,112 +198,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &279354801
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 279354803}
-  - component: {fileID: 279354802}
-  m_Layer: 0
-  m_Name: DayWaveManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &279354802
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 279354801}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 285e4febfb9204998b5df5a13910853d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.DayWaveManager
-  floor: 1
-  spawnManager: {fileID: 637197873}
-  player: {fileID: 2040682033}
-  screenHalfWidth: 8
---- !u!4 &279354803
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 279354801}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &637197872
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 637197874}
-  - component: {fileID: 637197873}
-  m_Layer: 0
-  m_Name: SpawnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &637197873
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 637197872}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
-  floor: 1
-  baseSpawnInterval: 2
-  spawnRadius: 8
-  enemyPrefabs:
-  - Type: 0
-    Prefab: {fileID: 3095745771035107266, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
-  - Type: 1
-    Prefab: {fileID: 6779276319664351033, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
-  - Type: 2
-    Prefab: {fileID: 4642621238507850145, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
-  - Type: 3
-    Prefab: {fileID: 810216457434624449, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
-  - Type: 4
-    Prefab: {fileID: 4121478782780974261, guid: ef16754434e50445aa1f3905f623be38, type: 3}
---- !u!4 &637197874
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 637197872}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &686233576
 GameObject:
   m_ObjectHideFlags: 0
@@ -425,6 +319,63 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &708183482
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 708183484}
+  - component: {fileID: 708183483}
+  m_Layer: 0
+  m_Name: SpawnManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &708183483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708183482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
+  floor: 1
+  spawnRadius: 8
+  enemyPrefabs:
+  - Type: 0
+    Prefab: {fileID: 3095745771035107266, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
+  - Type: 1
+    Prefab: {fileID: 6779276319664351033, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
+  - Type: 2
+    Prefab: {fileID: 4642621238507850145, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
+  - Type: 3
+    Prefab: {fileID: 810216457434624449, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
+  - Type: 4
+    Prefab: {fileID: 4121478782780974261, guid: ef16754434e50445aa1f3905f623be38, type: 3}
+--- !u!4 &708183484
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708183482}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &866132515
 GameObject:
   m_ObjectHideFlags: 0
@@ -583,6 +534,54 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: 
+--- !u!1 &979535968
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 979535970}
+  - component: {fileID: 979535969}
+  m_Layer: 0
+  m_Name: DayWaveManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &979535969
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 979535968}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 285e4febfb9204998b5df5a13910853d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.DayWaveManager
+  floor: 1
+  spawnManager: {fileID: 708183483}
+  player: {fileID: 1567276806}
+  screenHalfWidth: 8
+--- !u!4 &979535970
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 979535968}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1152888696
 GameObject:
   m_ObjectHideFlags: 0
@@ -680,6 +679,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &1270506829
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1270506831}
+  - component: {fileID: 1270506830}
+  m_Layer: 0
+  m_Name: EnemyRegistry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1270506830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1270506829}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26591c83fa10643b7b4273019a227c81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.EnemyRegistry
+--- !u!4 &1270506831
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1270506829}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1275047275
 GameObject:
   m_ObjectHideFlags: 0
@@ -712,7 +755,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c011ac5f7780c437ca6bae9bcf8c39bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.UI.LevelUpChoiceUI
-  dayWaveManager: {fileID: 279354802}
+  dayWaveManager: {fileID: 0}
   panelRoot: {fileID: 1410977021}
   choiceButtons:
   - {fileID: 2139166730}
@@ -920,8 +963,8 @@ Camera:
   m_GameObject: {fileID: 1315912440}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -1055,51 +1098,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1410977021}
   m_CullTransparentMesh: 1
---- !u!1 &1414521840
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1414521842}
-  - component: {fileID: 1414521841}
-  m_Layer: 0
-  m_Name: EnemyRegistry
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1414521841
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1414521840}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26591c83fa10643b7b4273019a227c81, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.EnemyRegistry
---- !u!4 &1414521842
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1414521840}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &2040682032
+--- !u!1001 &1567276805
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1156,10 +1155,10 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
---- !u!114 &2040682033 stripped
+--- !u!114 &1567276806 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4004236358778671679, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-  m_PrefabInstance: {fileID: 2040682032}
+  m_PrefabInstance: {fileID: 1567276805}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -1415,9 +1414,9 @@ SceneRoots:
   m_Roots:
   - {fileID: 1315912443}
   - {fileID: 1152888698}
-  - {fileID: 2040682032}
-  - {fileID: 1414521842}
-  - {fileID: 637197874}
-  - {fileID: 279354803}
   - {fileID: 219640630}
   - {fileID: 1275047280}
+  - {fileID: 1567276805}
+  - {fileID: 1270506831}
+  - {fileID: 708183484}
+  - {fileID: 979535970}

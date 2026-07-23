@@ -180,6 +180,9 @@ namespace RookieToCEO.EditorTools
                 mainCamera.orthographicSize = 6f;
                 mainCamera.transform.position = new Vector3(0f, 0f, -10f);
                 mainCamera.transform.rotation = Quaternion.identity;
+                // 기본 Skybox를 그대로 두면 orthographic 카메라에서 사막색처럼 이상하게 보인다.
+                mainCamera.clearFlags = CameraClearFlags.SolidColor;
+                mainCamera.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
             }
 
             var playerInstance = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);

@@ -250,3 +250,23 @@ GDD 14번 최종 플레이 흐름(1층 낮→밤→2층 낮→밤→3층 낮→�
 - 비고: 드롭 확률은 런타임 랜덤이라 EditMode에서 결정론적으로 테스트할 수 없고, MonoBehaviour
   라 이 프로젝트 컨벤션대로 직접 단위테스트하지 않음(재사용된 `ReputationSystem.Heal()`은
   이미 M3에서 테스트됨).
+
+## M9 이후 폴리싱: 첫 실행 버그 수정 (플레이 중 발견)
+
+빌드된 앱을 실제로 실행해서 처음 발견한 런타임 버그 2가지를 고쳤다. 배치모드 테스트만으로는
+못 잡는, 실제로 실행해봐야 드러나는 종류의 문제였다.
+
+- [x] **NullReferenceException (KeyboardShotgunWeapon 등)**: `~/Library/Logs/DefaultCompany/
+      RookieToCEO/Player.log`에서 발견. 지속되는(DontDestroyOnLoad) Player의 무기 스크립트가
+      `EnemyRegistry`가 아직 없는 씬(Bootstrap)에서도 Update마다 `EnemyRegistry.Instance`를
+      참조하다 터짐. `KeyboardShotgunWeapon`/`StaplerRapidFireWeapon`/`WorkDumpSkill`/
+      `ResignationUltimate`의 공격/스킬 진입점에 `EnemyRegistry.Instance == null` 가드 추가.
+- [x] **카메라가 기본 Skybox를 그대로 써서 배경이 이상하게 보임("사막 같은 화면")**: 씬을
+      orthographic으로 바꾸면서 Clear Flags는 안 건드려서 기본 절차적 스카이박스가 그대로
+      노출되고 있었다. Day/Night/Boss/Bootstrap 4개 씬의 카메라 설정 스크립트에
+      `clearFlags = SolidColor` + 어두운 배경색 추가. Bootstrap 씬은 카메라 설정 자체가
+      아예 빠져 있던 것도 같이 발견해서 채움.
+- 검증: `Unity -batchmode -runTests -testPlatform EditMode` → 82/82 통과, 4개 씬 재빌드
+  + 배치모드 빌드 성공, 실제 실행 로그(Player.log)에서 예외 없음을 직접 확인
+- 비고: 이런 종류의 버그(런타임 전용 예외, 시각적 렌더링 문제)는 EditMode 테스트로는
+  절대 못 잡는다 - 실제로 빌드해서 실행하고 로그를 보는 과정이 꼭 필요했다.

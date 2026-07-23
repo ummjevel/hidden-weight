@@ -47,6 +47,7 @@ namespace RookieToCEO.Gameplay.Skills
 
         private void TryUse()
         {
+            if (EnemyRegistry.Instance == null) return;
             if (!_cooldown.TryUse()) return;
 
             var origin = (Vector2)transform.position;

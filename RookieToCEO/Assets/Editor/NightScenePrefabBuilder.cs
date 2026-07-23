@@ -147,6 +147,8 @@ namespace RookieToCEO.EditorTools
                 mainCamera.orthographicSize = 7f;
                 mainCamera.transform.position = new Vector3(0f, 0f, -10f);
                 mainCamera.transform.rotation = Quaternion.identity;
+                mainCamera.clearFlags = CameraClearFlags.SolidColor;
+                mainCamera.backgroundColor = new Color(0.05f, 0.05f, 0.08f); // 밤 잠입 - 더 어둡게
             }
 
             var playerStart = new Vector3(0f, -6f, 0f);

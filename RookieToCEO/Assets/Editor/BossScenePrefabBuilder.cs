@@ -122,6 +122,8 @@ namespace RookieToCEO.EditorTools
                 mainCamera.orthographicSize = 7f;
                 mainCamera.transform.position = new Vector3(0f, 0f, -10f);
                 mainCamera.transform.rotation = Quaternion.identity;
+                mainCamera.clearFlags = CameraClearFlags.SolidColor;
+                mainCamera.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
             }
 
             var playerInstance = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);

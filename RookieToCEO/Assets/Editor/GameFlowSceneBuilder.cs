@@ -45,6 +45,17 @@ namespace RookieToCEO.EditorTools
             DestroyIfExists("Player");
             DestroyIfExists("GameFlowManager");
 
+            var mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                mainCamera.orthographic = true;
+                mainCamera.orthographicSize = 6f;
+                mainCamera.transform.position = new Vector3(0f, 0f, -10f);
+                mainCamera.transform.rotation = Quaternion.identity;
+                mainCamera.clearFlags = CameraClearFlags.SolidColor;
+                mainCamera.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
+            }
+
             var playerInstance = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
             playerInstance.transform.position = Vector3.zero;
 
@@ -75,6 +86,8 @@ namespace RookieToCEO.EditorTools
                 mainCamera.orthographicSize = 6f;
                 mainCamera.transform.position = new Vector3(0f, 0f, -10f);
                 mainCamera.transform.rotation = Quaternion.identity;
+                mainCamera.clearFlags = CameraClearFlags.SolidColor;
+                mainCamera.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
             }
 
             if (Object.FindObjectOfType<EventSystem>() == null)

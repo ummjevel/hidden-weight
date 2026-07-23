@@ -119,65 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &46435996
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 46435998}
-  - component: {fileID: 46435997}
-  m_Layer: 0
-  m_Name: SpawnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &46435997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 46435996}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
-  floor: 4
-  baseSpawnInterval: 2
-  spawnRadius: 8
-  enemyPrefabs:
-  - Type: 0
-    Prefab: {fileID: 3095745771035107266, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
-  - Type: 1
-    Prefab: {fileID: 6779276319664351033, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
-  - Type: 2
-    Prefab: {fileID: 4642621238507850145, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
-  - Type: 3
-    Prefab: {fileID: 810216457434624449, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
-  - Type: 5
-    Prefab: {fileID: 295170035049778387, guid: dcf19996b04d2433f8c8d0dbffaed124, type: 3}
---- !u!4 &46435998
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 46435996}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &276021730
+--- !u!1001 &122861366
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -246,10 +188,10 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
---- !u!114 &276021731 stripped
+--- !u!114 &122861367 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4004236358778671679, guid: 149f09de8330848dcbc3bcab5e5c00fb, type: 3}
-  m_PrefabInstance: {fileID: 276021730}
+  m_PrefabInstance: {fileID: 122861366}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -354,7 +296,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &529719710
+--- !u!1 &941279100
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -362,34 +304,47 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 529719712}
-  - component: {fileID: 529719711}
+  - component: {fileID: 941279102}
+  - component: {fileID: 941279101}
   m_Layer: 0
-  m_Name: EnemyRegistry
+  m_Name: SpawnManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &529719711
+--- !u!114 &941279101
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 529719710}
+  m_GameObject: {fileID: 941279100}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 26591c83fa10643b7b4273019a227c81, type: 3}
+  m_Script: {fileID: 11500000, guid: 4d9e7ea6235194ff095c83249a86dcfb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.EnemyRegistry
---- !u!4 &529719712
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.SpawnManager
+  floor: 4
+  spawnRadius: 8
+  enemyPrefabs:
+  - Type: 0
+    Prefab: {fileID: 3095745771035107266, guid: f73b01f6f443a4e578213dd807d797aa, type: 3}
+  - Type: 1
+    Prefab: {fileID: 6779276319664351033, guid: 8b4a47a8fd36b48ccaaebfbcbbcfcb82, type: 3}
+  - Type: 2
+    Prefab: {fileID: 4642621238507850145, guid: bda610d5090ee468094fa35e6ab15f55, type: 3}
+  - Type: 3
+    Prefab: {fileID: 810216457434624449, guid: 4dc31a9b667b7445daeabf26ce5b7e32, type: 3}
+  - Type: 5
+    Prefab: {fileID: 295170035049778387, guid: dcf19996b04d2433f8c8d0dbffaed124, type: 3}
+--- !u!4 &941279102
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 529719710}
+  m_GameObject: {fileID: 941279100}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -433,8 +388,8 @@ Camera:
   m_GameObject: {fileID: 1173175807}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -490,7 +445,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2000317605
+--- !u!1 &1202692363
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -498,9 +453,53 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2000317608}
-  - component: {fileID: 2000317607}
-  - component: {fileID: 2000317606}
+  - component: {fileID: 1202692365}
+  - component: {fileID: 1202692364}
+  m_Layer: 0
+  m_Name: EnemyRegistry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1202692364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1202692363}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26591c83fa10643b7b4273019a227c81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.EnemyRegistry
+--- !u!4 &1202692365
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1202692363}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1280079067
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1280079070}
+  - component: {fileID: 1280079069}
+  - component: {fileID: 1280079068}
   m_Layer: 0
   m_Name: BossWaveManager
   m_TagString: Untagged
@@ -508,43 +507,43 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2000317606
+--- !u!114 &1280079068
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000317605}
+  m_GameObject: {fileID: 1280079067}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3b228aa4f6654549aff2faf27f041b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.EndingTrigger
---- !u!114 &2000317607
+--- !u!114 &1280079069
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000317605}
+  m_GameObject: {fileID: 1280079067}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dd323bb0075724af88b9a346efb9248c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: RookieToCEO.Runtime::RookieToCEO.Gameplay.Boss.BossWaveManager
-  spawnManager: {fileID: 46435997}
-  player: {fileID: 276021731}
+  spawnManager: {fileID: 941279101}
+  player: {fileID: 122861367}
   hazardZonePrefab: {fileID: 2553758398922191284, guid: 0b0160a838a7e4cc18623c81e01f9da2, type: 3}
   hazardSpawnInterval: 5
   hazardSpawnRadius: 6
   screenHalfWidth: 8
---- !u!4 &2000317608
+--- !u!4 &1280079070
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000317605}
+  m_GameObject: {fileID: 1280079067}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -559,7 +558,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 1173175810}
   - {fileID: 408983466}
-  - {fileID: 276021730}
-  - {fileID: 529719712}
-  - {fileID: 46435998}
-  - {fileID: 2000317608}
+  - {fileID: 122861366}
+  - {fileID: 1202692365}
+  - {fileID: 941279102}
+  - {fileID: 1280079070}

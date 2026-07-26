@@ -108,8 +108,16 @@ Core ──▶ Data
 `Emotions`에 묻지 않고 플레이어의 레이어(`PlayerHushed`)로만 판단한다.
 
 반대로 `Emotions`는 `World`의 구체 클래스를 알 필요가 없다. 상호작용은
-`IRewindable` / `IAwarenessReactive` / `IForeseeable` 인터페이스로만 연결하며,
-인터페이스 정의는 `World/Interactions.cs`에 두고 `Emotions`가 소비한다.
+`IRewindable` / `IAwarenessReactive` / `IForeseeable` / `IDamageable` 인터페이스로만 연결하며,
+인터페이스 정의는 `World/Interactions.cs`에 두고 다른 모듈이 소비한다.
+
+**예외 한 가지**: `World/Interactions.cs`는 어떤 모듈에도 의존하지 않는 순수 계약 파일이므로,
+의존표에 없는 모듈이 이 파일만 참조하는 것은 허용한다. `PlayerAttack`이 `Enemy` 대신
+`IDamageable`을 참조하는 것이 그 경우다.
+
+역방향 호출이 필요한 자리는 정적 훅으로 뒤집는다. `SceneFlow.FadeLoader`(`UI`가 등록)와
+`GameManager.FragmentPresenter`(`UI`가 등록), `AwarenessRegistry`(`World`에 두고 `Emotions`가 읽음)
+세 곳이다.
 
 ---
 
@@ -328,7 +336,11 @@ Vector3 lastCheckpoint;
 
 ## 9. 검증 방법
 
-Unity 테스트 프레임워크를 도입하지 않는다. 대신 두 가지로 확인한다.
+테스트는 `ProgressState`에만 붙인다. 게이팅 규칙(특히 백트래킹 최종 게이트의 3중 조건)이
+전부 여기 모여 있고 순수 C#이라 EditMode 테스트가 싸게 먹힌다. MonoBehaviour와 물리·연출은
+테스트하지 않는다 — 비용 대비 얻는 것이 없다.
+
+나머지는 두 가지로 확인한다.
 
 1. **컴파일 검증** — `Unity -batchmode -quit -projectPath HiddenWeight
    -executeMethod HiddenWeight.EditorTools.BuildScript.Compile`. 에러 0건이어야 한다

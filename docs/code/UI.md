@@ -42,6 +42,13 @@
   - `IEnumerator FadeAndLoadRoutine(string sceneName, float seconds)` — `FadeTo(1f, seconds)` → `SceneManager.LoadScene(sceneName)` → `FadeTo(0f, seconds)`.
 - **동작**: `Awake()`에서 싱글턴 중복이면 파괴, 아니면 `Instance = this` + `DontDestroyOnLoad` + `BuildHierarchy()`(전체 화면을 덮는 검은 `Image`, 알파 0, `raycastTarget = false`, `Canvas.sortingOrder = 999`를 코드로 생성) 실행 후, 마지막 줄에서 `SceneFlow.FadeLoader = FadeAndLoad;`로 자신의 인스턴스 메서드를 Core의 정적 훅(`Action<string, float>`)에 등록한다. Core의 `SceneFlow.LoadWithFade(sceneName, fadeSeconds = 0.5f)`는 `FadeLoader != null`이면 이 메서드로 위임하고, 씬에 `ScreenFader`가 없어 훅이 비어 있으면 페이드 없이 즉시 `SceneManager.LoadScene`으로 폴백한다.
 
+## TutorialHint.cs (2026-07-26 신규)
+
+- **역할**: 조작 안내(기획서 WORLD_MAP 1.3절 튜토리얼 UI — "텍스트 방식" 채택). 캔버스 없이 월드 공간 `TextMesh` 하나로, 플레이어가 가까이 오면 서서히 떠오르고 멀어지면 사라진다.
+- **상속/의존**: `MonoBehaviour`. `HiddenWeight.Player`(`PlayerController.Instance` 거리 판정)에 의존. `ZoneSceneBuilder.BuildTutorialHint`가 배치하고 `message`만 채워 준다.
+- **주요 멤버**: `[SerializeField, TextArea] string message`, `showRadius = 5f`, `fadeSpeed = 4f`.
+- **동작**: `Start`에서 자식 `HintText` GameObject에 `TextMesh`(LegacyRuntime.ttf, `characterSize 0.06`, `sortingOrder = 40`)를 코드로 생성. `Update`에서 `PlayerController.Instance`와의 거리가 `showRadius` 이내면 알파를 1로, 아니면 0으로 `MoveTowards` 페이드(최대 0.9). 배치 지점: 프롤로그 3곳(이동/점프·대시/벽점프) + 잔재 "K 홀드 되감기" + 응시 "K 홀드 숨죽이기"·"L 홀드 자각" + 균열 "K 탭 예지". 균열에서 자각이 무력하다는 사실은 힌트로 알려주지 않는다 — 직접 겪게 한다(WORLD_MAP 4.1절).
+
 ## TitleScreen.cs
 - **역할**: 게임 시작 지점인 타이틀 화면. 제목/부제 텍스트와 "시작하기"/"종료" 버튼을 표시한다.
 - **상속/의존**: `MonoBehaviour`. `HiddenWeight.Core`(`GameManager`, `GameState`, `SceneFlow`)에 의존.

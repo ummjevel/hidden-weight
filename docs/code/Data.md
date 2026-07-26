@@ -80,7 +80,7 @@
   - 이동: `walkSpeed = 6f`, `runSpeed = 9f`, `jumpVelocity = 14f`, `gravityScale = 3.5f`,
     `fallGravityMultiplier = 1.6f`, `coyoteTime = 0.1f`, `jumpBufferTime = 0.1f`, `variableJumpCut = 0.5f`
   - 대시: `dashDistance = 4f`, `dashDuration = 0.15f`, `dashCooldown = 0.8f`
-  - 벽: `wallSlideSpeed = 2f`, `wallJumpVelocity = new Vector2(9f, 13f)`, `wallJumpLockTime = 0.15f`
+  - 벽: `wallSlideSpeed = 2f`, `wallJumpVelocity = new Vector2(9f, 13f)`, `wallJumpLockTime = 0.15f`, `wallCoyoteTime = 0.1f`(2026-07-26 추가 — 벽에서 떨어진 뒤에도 벽점프를 허용하는 유예 시간. 기존 `PlayerData.asset`에는 이 필드가 직렬화되어 있지 않아 C# 필드 초기값 0.1이 그대로 쓰인다)
   - 생존: `maxHealth = 3`, `invulnerableTime = 0.8f`, `blinkInterval = 0.1f`(무적 시간 중 스프라이트
     점멸 간격), `knockbackForce = 8f`
   - 공격: `attackRadius = 1.2f`, `attackAngle = 90f`(부채꼴 각도, 도), `attackActiveTime = 0.1f`,

@@ -8,11 +8,14 @@
 | 파일 | 역할 | 기획서 대응 |
 |---|---|---|
 | `Interactions.cs` | `IRewindable`/`IForeseeable`/`IAwarenessReactive`/`IDamageable` 인터페이스와 `AwarenessRegistry` 정적 등록소를 선언하는 의존성 없는 계약 파일 | 3.1 의존 방향, 4.2 되감기/예지/자각 |
-| `Rewindable.cs` | `IRewindable`의 기본 구현. 초기 Transform·활성 상태·스프라이트를 저장했다가 복원 | 4.2 되감기 |
+| `Rewindable.cs` | `IRewindable`의 기본 구현. 초기 Transform·활성 상태·스프라이트를 저장했다가 복원. 복원 사실을 `ProgressState`에 `persistentId`로 기록해 씬 재로드에도 유지(영구 되감기), 복원 시 Static 고정 | 4.2 되감기, EMOTION_SYSTEM 1.2 |
+| `RewindHighlight.cs` | 되감기 가능(`CanRewind`)한 오브젝트에 골드빛 맥동 아웃라인을 표시하는 부착형 컴포넌트 | EMOTION_SYSTEM 1.3 |
 | `CrumblingPlatform.cs` | 밟으면 무너지는 발판. `IRewindable`(되감기로 복구) + `IForeseeable`(예지로 무너진 뒤 사라진 모습을 미리 표시) | 5.5 월드, 4.2 되감기/예지 |
 | `MovingPlatform.cs` | 왕복 이동 발판. 위치를 시간 기반 순수 함수로 계산해 `IForeseeable`이 미래 위치를 정확히 예측하게 함 | 5.5 월드, 4.2 예지 |
 | `Gate.cs` | 필요 스킬(`EmotionId`)을 지정하고 `GameManager.Progress`로 통과 가능 여부를 매 프레임 확인, 미보유 시 차단+힌트 표시 | 5.5 월드, 5.6 진행 상태 |
-| `GazeHazard.cs` | 응시 지역의 원뿔 시야 기믹. 시야 안에 플레이어가 있으면 주기적으로 피해 | 5.5 월드 |
+| `GazeHazard.cs` | 응시 지역의 원뿔 시야 기믹. 감지되면 경보(눈 확대·적색화) 0.5초 뒤부터 주기적으로 피해 — 경보 중 벗어나면 무사 | 5.5 월드, EMOTION_SYSTEM 2.3 |
+| `GazeRotator.cs` | 회전형 "시선". Z축 회전만 담당해 `GazeHazard`의 시야(`transform.right`)가 통로를 훑게 함. 고정형/회전형 두 종류 구분 | EMOTION_SYSTEM 2.3 |
+| `AwarenessUnlockMoment.cs` | 응시 후반부 거대 눈 앞 자각 해금 지점. 입력을 잠그고 눈이 커졌다 가라앉는 무언 연출 뒤 자각 부여 | EMOTION_SYSTEM 2.4 |
 | `HiddenFragment.cs` | `StoryFragment`를 상속하고 `IAwarenessReactive`를 구현. 자각(L 홀드) 중에만 보이고 수집 가능 | 5.5 월드, 5.6 진행 상태(자각) |
 | `StoryFragment.cs` | 이야기 파편 수집 오브젝트. 스킬 해금·자각 해금 지점으로도 쓰인다 | 5.5 월드 |
 | `ZoneTrigger.cs` | 지역 클리어 지점. 다음 씬으로 전환하고, 균열 클리어/백트래킹 엔딩 분기를 처리 | 5.5 월드, 5.3 백트래킹 |
@@ -22,6 +25,7 @@
 ## 핵심 규칙 구현
 
 - **되감기(`IRewindable`)**: `CaptureInitial()`로 초기 상태를 저장하고 `Rewind()`로 되돌린다. `Rewindable`은 위치/회전/활성/스프라이트를, `CrumblingPlatform`은 `HasCrumbled` 플래그 하나만 되돌린다(위치를 바꾸지 않는 발판이라 `CaptureInitial()`은 빈 구현). `CanRewind`는 "이미 초기 상태면 false"를 보장해 불필요한 되감기를 막는다.
+- **되감기 영구 유지(2026-07-26 추가)**: `Rewindable.Rewind()`는 `Progress.MarkRewound(persistentId)`로 기록하고 Rigidbody를 Static으로 고정하며(복원된 다리가 중력으로 다시 무너지는 것 방지), `Start`에서 `Progress.IsRewound()`면 복원 상태 그대로 시작한다 — 재방문(씬 재로드) 시에도 복원이 유지된다(기획서 EMOTION_SYSTEM 1.2절). `persistentId`는 비워두면 씬 이름+초기 좌표로 자동 생성. `CrumblingPlatform`은 반복 기믹이 의도라 이 규칙을 적용하지 않는다. 표시는 `RewindHighlight`가 담당 — `CanRewind`일 때만 본체 뒤에 골드 아웃라인을 맥동시키며, 무너져 스프라이트가 꺼진 발판에서도 자리를 표시한다.
 - **예지(`IForeseeable`)**: `PredictPosition(leadSeconds)`/`PredictActive(leadSeconds)`/`CurrentSprite`로 `leadSeconds` 뒤의 위치·존재 여부·고스트 스프라이트를 알려준다. `MovingPlatform`은 시간 기반 순수 함수(`PositionAt`)라 미래 위치를 그대로 계산하면 되고, `CrumblingPlatform`은 무너지는 타이머가 `leadSeconds` 안에 끝나면 `PredictActive`가 `false`를 돌려준다.
 - **자각(`IAwarenessReactive`)**: `OnAwarenessChanged(bool active)` 한 메서드뿐이다. 구현체는 `OnEnable`/`OnDisable`에서 스스로 `AwarenessRegistry.Register`/`Unregister`로 등록/해제한다(예: `HiddenFragment`). World는 누가 이 목록을 순회해서 호출하는지 몰라도 되며, 실제 호출자는 Emotions의 AwarenessSystem이다.
 - **게이트 규칙**: 일반 게이트는 `ProgressState.CanOpenGate(requiredSkill)`(요구 스킬이 `None`이면 무조건 통과, 아니면 보유 여부만 확인)로 열리고, `requiresFinalCondition = true`인 게이트(잔재 백트래킹 최종 파편용)만 `ProgressState.CanOpenFinalGate()`(되감기 보유 && 자각 && 균열 클리어)를 대신 확인한다. 두 조건은 배타적으로, `Gate` 하나가 둘 다 검사하지는 않는다.

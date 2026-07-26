@@ -36,7 +36,7 @@
 - **상속/의존**: `MonoBehaviour`, `[RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]`. `HiddenWeight.Data`(`PlayerData`), `HiddenWeight.Core`(`GameManager`) 사용. 같은 GameObject의 `PlayerAttack`을 참조해 `Attacked` 이벤트를 구독한다.
 - **주요 멤버**:
   - 인스펙터 필드: `Transform groundCheck`, `Transform wallCheck`, `LayerMask groundLayer`, `LayerMask wallLayer`, `Vector2 groundCheckSize = new Vector2(0.6f, 0.15f)`, `Vector2 wallCheckSize = new Vector2(0.15f, 0.8f)` — 마지막 두 개는 밸런스 수치가 아니라 판정 상자 지오메트리라 `PlayerData`가 아닌 이 컴포넌트의 인스펙터 필드로 둔다는 주석이 있음.
-  - private 필드: `Rigidbody2D _rb`, `PlayerData _data`, `PlayerAttack _attack`, 타이머 7종 — `_coyoteTimer`, `_jumpBufferTimer`, `_dashTimer`, `_dashCooldownTimer`, `_wallJumpLockTimer`, `_knockbackLockTimer`(하드코딩 0.2s), `_landTimer`(하드코딩 0.12s), `_attackTimer`.
+  - private 필드: `Rigidbody2D _rb`, `PlayerData _data`, `PlayerAttack _attack`, 타이머 — `_coyoteTimer`, `_wallCoyoteTimer`(2026-07-26 추가, 벽에서 떨어진 직후 벽점프 유예), `_jumpBufferTimer`, `_dashTimer`, `_dashCooldownTimer`, `_wallJumpLockTimer`, `_knockbackLockTimer`(하드코딩 0.2s), `_landTimer`(하드코딩 0.12s), `_attackTimer`. 벽 상태 — `int _wallDir`(지금 닿아 있는 벽 방향 +1/-1/0), `int _lastWallDir`(벽 코요테용 마지막 벽 방향).
   - `static PlayerController Instance { get; private set; }` — 전역 접근점(`Awake`에서 설정, 중복 파괴 처리 없음 — 씬에 하나만 존재한다고 가정).
   - `PlayerState State { get; private set; }`, `bool IsGrounded { get; private set; }`, `bool IsOnWall { get; private set; }`, `int Facing { get; private set; } = 1`.
   - `float ExternalSpeedMultiplier { get; set; } = 1f` — Emotions의 `EmotionSkill`/`AwarenessSystem`이 Hush/Awareness 중 이동 속도를 늦추는 데 사용.
@@ -55,11 +55,11 @@
     5. 벽점프 잠금(`wallJumpLocked = _wallJumpLockTimer > 0f`, 참이면 타이머 감소).
     6. `!dashing`일 때만: `!wallJumpLocked && _knockbackLockTimer <= 0f`이면 `ApplyHorizontalMovement()`(대시/벽점프 직후/넉백 직후에는 좌우 입력 무시) → `ApplyWallCling()`(결과를 `wallClinging`에 저장) → `TryJump(wallClinging)` → `ApplyVariableJumpCut()` → `ApplyFallGravity()`.
     7. `DetermineState(wallClinging)` 호출로 `PlayerState` 결정 및 `StateChanged` 발행.
-  - `UpdateGroundAndWallChecks`: `Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, groundLayer)`로 `IsGrounded` 갱신. `wallCheck`는 로컬 x좌표를 `Mathf.Abs(local.x) * Facing`으로 매 프레임 재계산해 하나의 체크포인트로 좌우 벽을 모두 판정한 뒤 `Physics2D.OverlapBox`로 `IsOnWall` 갱신. 방금 착지했으면(`!wasGrounded && IsGrounded`) `_landTimer = 0.12f`(하드코딩 리터럴, `PlayerData`에 없음).
+  - `UpdateGroundAndWallChecks` (2026-07-26 재작업): `Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, groundLayer)`로 `IsGrounded` 갱신. 벽은 `wallCheck` 로컬 오프셋을 좌우로 뒤집은 두 위치에서 **양쪽을 동시에** `OverlapBox`로 판정해 `_wallDir`(+1/-1/0)을 얻고 `IsOnWall = _wallDir != 0`. (예전에는 `Facing` 방향 한쪽만 판정해서, 벽점프로 반대편 벽에 날아가도 방향키를 다시 누르기 전까지 벽에 닿은 것으로 치지 않았다 — 핑퐁이 안 되던 핵심 원인.) 방금 착지했으면(`!wasGrounded && IsGrounded`) `_landTimer = 0.12f`(하드코딩 리터럴, `PlayerData`에 없음).
   - `UpdateDash`: 대시 중이 아니고 `PlayerInput.DashPressed`이고 쿨다운이 끝났으면 `_dashTimer = _data.dashDuration`(0.15s), `_dashCooldownTimer = _data.dashCooldown`(0.8s)로 시작. 대시 중이면 `_rb.linearVelocity = (Facing * dashDistance/dashDuration, 0)`(등속, 약 26.7유닛/초)로 고정하고 `gravityScale = 0`, 타이머 감소.
-  - `ApplyHorizontalMovement`: `PlayerInput.Horizontal`이 0이 아니면 `Facing`을 부호로 갱신. 속도는 `(PlayerInput.RunHeld ? runSpeed(9) : walkSpeed(6)) * ExternalSpeedMultiplier`.
-  - `ApplyWallCling`: 접지 중이거나 벽에 붙어있지 않으면 `false`. 수평 입력이 없거나 입력 방향이 `Facing`과 다르면(벽에서 밀어내는 입력) `false`. 그 외엔 수직 속도를 `-_data.wallSlideSpeed`(2)로 고정하고 `true` 반환.
-  - `TryJump`: 점프 버퍼가 소진됐거나(`_jumpBufferTimer <= 0f`) (코요테 타임도 끝났고 벽클링도 아니면) 리턴. 벽클링 중이면 `(-Facing * wallJumpVelocity.x(9), wallJumpVelocity.y(13))`로 반대편으로 튕겨나가고 `_wallJumpLockTimer = _data.wallJumpLockTime`(0.15s) 설정. 아니면 수직 속도만 `jumpVelocity`(14)로 설정. 어느 경우든 점프 버퍼·코요테 타이머를 0으로 소진.
+  - `ApplyHorizontalMovement` (2026-07-26 수정): `PlayerInput.Horizontal`이 0이 아니면 `Facing`을 부호로 갱신. **공중에서 입력이 없으면 수평 관성을 유지하고 리턴한다** (예전에는 매 프레임 0으로 덮어써서 벽점프 잠금이 풀리는 0.15초 시점에 비행이 뚝 끊겼다). 지상 또는 입력이 있으면 속도는 `(PlayerInput.RunHeld ? runSpeed(9) : walkSpeed(6)) * ExternalSpeedMultiplier`.
+  - `ApplyWallCling` (2026-07-26 재작업, Celeste·Hollow Knight식 자동 벽잡기): 접지 중이거나 `_wallDir == 0`이거나 상승 중(`vy > 0`)이면 `false`. 벽 반대 방향을 밀고 있을 때만 놓아주고, **그 외에는 입력 없이도 자동으로 붙는다**. 붙으면 `Facing = _wallDir`(벽을 향해 봄), 수직 속도를 `-_data.wallSlideSpeed`(2)로 고정, `_wallCoyoteTimer = _data.wallCoyoteTime`(0.1)과 `_lastWallDir`을 갱신하고 `true` 반환.
+  - `TryJump` (2026-07-26 재작업): `canWallJump = wallClinging || _wallCoyoteTimer > 0f`(벽 코요테). 점프 버퍼가 소진됐거나 (코요테 타임도 끝났고 `canWallJump`도 아니면) 리턴. 지상(코요테 포함) 점프가 우선이고, 공중에서 `canWallJump`면 `dir`(벽 코요테 시 `_lastWallDir`) 기준 `(-dir * wallJumpVelocity.x(9), wallJumpVelocity.y(13))`로 튕겨나가며 **`Facing = -dir`로 몸을 벽 반대편으로 돌리고** `_wallJumpLockTimer = _data.wallJumpLockTime`(0.15s) 설정. 어느 경우든 점프 버퍼·코요테 타이머를 0으로 소진.
   - `ApplyVariableJumpCut`: 상승 중(`vy > 0`)에 점프 키를 뗀 상태(`!JumpHeld`)면 수직 속도에 `_data.variableJumpCut`(0.5)를 곱해 짧게 끊는다.
   - `ApplyFallGravity`: 하강 중(`vy < 0`)이면 `gravityScale = gravityScale(3.5) * fallGravityMultiplier(1.6)`, 아니면 기본 `gravityScale`.
   - `DetermineState`: 우선순위대로 분기 — `_attackTimer > 0` → Attack, `_dashTimer > 0` → Dash, `_wallJumpLockTimer > 0` → WallJump, `!IsGrounded && wallClinging` → WallCling, `_landTimer > 0` → Land, `!IsGrounded && vy > 0 && 수평입력있음` → AirMove, `!IsGrounded && vy > 0` → Jump, `!IsGrounded && vy <= 0` → Fall, `IsGrounded && 수평입력 && RunHeld` → Run, `IsGrounded && 수평입력` → Walk, 그 외 → Idle. `SetState`는 값이 바뀔 때만 이벤트를 발행(no-op 가드).
@@ -77,6 +77,8 @@
   - `int Max => _maxHealth`.
   - `bool IsInvulnerable { get; private set; }`.
   - `event System.Action<int, int> HealthChanged` — `(현재체력, 최대체력)`로 발행.
+  - `event System.Action Damaged` (2026-07-26 추가) — 실제로 피해가 들어간 순간 발행(무적으로 흡수된 피격 제외). Emotions의 `RewindSkill`이 구독해 채널링 중 피격 캔슬(기획서 EMOTION_SYSTEM 1.2절)에 쓴다.
+  - `void GrantInvulnerability(float seconds)` (2026-07-26 추가) — 피격 외의 이유로 짧은 무적을 거는 공개 API. 이미 더 긴 무적이 돌고 있으면 남은 시간을 줄이지 않는다(`_invulnRemaining = max(...)`). `HushSkill`이 숨죽이기 해제 무적 0.2초(2.2절)에 쓴다.
   - `void TakeDamage(int amount, Vector2 sourcePosition)` — 외부(적, 함정 등)에서 호출하는 피해 진입점.
   - `void RestoreFull()` — 체력을 최대치로 회복하고 이벤트 발행.
 - **동작**:
@@ -86,8 +88,15 @@
   - `TakeDamage`: `IsInvulnerable`이면 즉시 리턴(무적 중 피해 무효). 아니면 `Current`를 `amount`만큼 깎되 0 미만으로 내려가지 않게(`Mathf.Max(0, ...)`), `HealthChanged` 발행. `sourcePosition` 반대 방향으로 `PlayerController.Instance.ApplyKnockback(direction, _knockbackForce)` 호출. 이어서 `StartInvulnerability()` 시작. `Current <= 0`이면 게임오버 화면 없이 **`GameManager.Instance.RespawnPlayer()`를 호출**한다(플레이어→Core 방향 호출). `GameManager.RespawnPlayer()`는 내부적으로 `RespawnRequested?.Invoke(Progress.LastCheckpoint)`를 발행하고, 그것을 이 클래스의 `HandleRespawn`이 구독해서 받는다 — 즉 "피격 사망 통지"는 Player→Core로 직접 호출하지만, "리스폰 좌표 결정과 실제 이동 지시"는 Core→Player 이벤트로 되돌아오는 왕복 구조다.
   - `RestoreFull`: `Current = _maxHealth` 후 `HealthChanged` 발행.
   - `HandleRespawn(Vector3 position)`: `PlayerController.Instance.TeleportTo(position)` 호출 후 `RestoreFull()` — 위치 이동과 체력 회복을 함께 처리.
-  - `StartInvulnerability`: 기존 `_blinkRoutine`이 있으면 `StopCoroutine` 후 새로 `InvulnerabilityRoutine` 시작(중복 무적 갱신 시 코루틴 누적 방지).
-  - `InvulnerabilityRoutine`: `IsInvulnerable = true`로 진입, `_invulnerableTime`(0.8s)이 지날 때까지 `_blinkInterval`(0.1s)마다 `_sprite.enabled`를 토글(점멸)하며 `elapsed`를 누적. 종료 시 `_sprite.enabled = true`로 강제 복구, `IsInvulnerable = false`, `_blinkRoutine = null`.
+  - `StartInvulnerability(duration)` (2026-07-26 재작업): `_invulnRemaining = Mathf.Max(_invulnRemaining, duration)`로 남은 시간만 갱신하고, 코루틴이 없을 때만 새로 시작 — 피격 무적(0.8s)과 숨죽이기 해제 무적(0.2s)이 겹쳐도 긴 쪽이 유지된다.
+  - `InvulnerabilityRoutine`: `IsInvulnerable = true`로 진입, `_invulnRemaining`이 소진될 때까지 `_blinkInterval`(0.1s)마다 `_sprite.enabled`를 토글(점멸)하며 차감. 종료 시 `_sprite.enabled = true`로 강제 복구, `IsInvulnerable = false`, `_blinkRoutine = null`.
+
+## VoidRespawn.cs (2026-07-26 신규)
+
+- **역할**: 맵 경계 밖 허공으로 떨어졌을 때의 소프트락 방지. 일정 깊이 아래로 내려가면 마지막 체크포인트로 리스폰시킨다.
+- **상속/의존**: `MonoBehaviour`. `HiddenWeight.Core`(`GameManager`)에 의존. `PrefabBuilder`가 Player 프리팹에 부착한다.
+- **주요 멤버**: `[SerializeField] float voidY = -15f` — 지역의 "추락 시 안전 바닥"들이 y -8 부근이므로 그보다 훨씬 아래로 잡아 정상 플레이와 겹치지 않는다.
+- **동작**: `Update`에서 `transform.position.y < voidY`이고 `GameManager.Instance`가 있으면 `GameManager.Instance.RespawnPlayer()` 호출 — 리스폰 좌표 결정·이동은 기존 `RespawnRequested` 이벤트 왕복 구조(위 `PlayerHealth` 참고)를 그대로 탄다. 씬 좌우의 보이지 않는 경계벽(`ZoneSceneBuilder.BuildBoundary`)이 1차 방어선이고 이 컴포넌트는 안전망이다.
 
 ## PlayerInput.cs
 

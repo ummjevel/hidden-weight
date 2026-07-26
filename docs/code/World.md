@@ -2,6 +2,13 @@
 
 `HiddenWeight.World`는 룸/카메라, 발판, 게이트, 시선 기믹, 파편, 지역 전환 트리거 등 지역 배치물을 담당한다. `Interactions.cs`는 이 모듈이 다른 모듈에 내주는 계약(`IRewindable`/`IForeseeable`/`IAwarenessReactive`/`IDamageable`/`AwarenessRegistry`)만 모아둔, `HiddenWeight.*`를 전혀 참조하지 않는 의존성 없는 파일이다. World는 `Core`/`Data`/`Player`를 참조하며, `StoryFragment.cs` 한 곳만 예외적으로 `Emotions`를 참조한다.
 
+## AwarenessUnlockMoment.cs (2026-07-26 신규)
+
+- **역할**: 자각 해금 지점(기획서 EMOTION_SYSTEM 2.4절 — 응시 지역 후반부, 가장 큰 "눈" 오브제 앞). 대사 없이 입력을 잠그고 거대 눈이 플레이어를 향해 커졌다가 가라앉는 연출 뒤 자각을 부여한다. (이전에는 응시 Room2의 `StoryFragment`가 숨죽이기와 자각을 동시에 부여했다 — 이 컴포넌트로 해금 위치가 기획대로 후반부로 이동했다.)
+- **상속/의존**: `MonoBehaviour`, `[RequireComponent(typeof(Collider2D))]`. `HiddenWeight.Core`(`GameManager`), `HiddenWeight.Data`(`PlayerLayers`), `HiddenWeight.Player`(`PlayerInput`).
+- **주요 멤버**: `[SerializeField] SpriteRenderer eyeVisual`(거대 눈 오브제), `buildUpSeconds = 1.5f`, `holdSeconds = 1f`, `fragmentText`(해금 순간 화면에 띄울 한 줄), `fragmentId = "gaze_awareness"`.
+- **동작**: `OnTriggerEnter2D`에서 플레이어 최초 1회만 `UnlockRoutine` 시작. 코루틴은 `PlayerInput.Enabled = false`로 잠근 뒤 눈을 1.35배로 키우며 밝히고(1.5초) → 유지(1초) → 다시 가라앉힌다(1.5초, "정면으로 마주본 뒤에야 눈이 가라앉는다" 연출). 끝나면 `Progress.GrantAwareness()` + `CollectFragment(fragmentId)` + `GameManager.FragmentPresenter?.Invoke(fragmentText)` 후 입력 복구. `OnDestroy`에서 연출 도중 씬이 내려가도 입력이 잠긴 채 남지 않도록 방어적으로 복구한다.
+
 ## CrumblingPlatform.cs
 
 - **역할**: 플레이어가 위에서 밟으면 잠시 흔들리다 무너져 사라지는 발판. 되감기로 원상 복구되고, 예지로 무너진 뒤(사라진) 미래 모습을 미리 볼 수 있다.
@@ -34,18 +41,27 @@
 
 ## GazeHazard.cs
 
-- **역할**: 응시 지역의 "시선" 기믹. 원뿔형 시야 안에 플레이어가 있고 시야가 지형에 가려지지 않으면 주기적으로 피해를 준다.
+- **역할**: 응시 지역의 "시선" 기믹. 원뿔형 시야 안에 플레이어가 있고 시야가 지형에 가려지지 않으면 **경보 단계(눈 확대·적색화) 0.5초 뒤부터** 주기적으로 피해를 준다 (2026-07-26 추가 — 기획서 EMOTION_SYSTEM 2.3절 "경보 이펙트 → 0.5초 후 위협 활성화", 즉사 대신 데미지 방식은 2.6절 권장안).
 - **상속/의존**: `MonoBehaviour`. `HiddenWeight.Player`(`PlayerHealth`)에 의존.
 - **주요 멤버**:
   - `[SerializeField] float viewRadius = 6f`, `[SerializeField] float viewAngle = 60f` — 시야 반경과 각도.
   - `[SerializeField] float damageInterval = 1f` — 피해 사이 간격.
+  - `[SerializeField] float alarmDelay = 0.5f`, `[SerializeField] float alarmScale = 1.4f` (2026-07-26 추가) — 경보 유지 시간과 경보 시 눈 확대 배율.
   - `[SerializeField] LayerMask playerMask` — 인스펙터에서 `Player` 레이어만 지정하고 `PlayerHushed`는 넣지 않는다(아래 참고).
   - `[SerializeField] LayerMask groundMask` — 시야 차단(가림) 판정용 레이어.
   - `bool IsPlayerSeen { get; private set; }` — 현재 프레임에 플레이어가 보이는지.
+  - `bool IsAlarmed => _seenTime >= alarmDelay` (2026-07-26 추가) — 연속 감지 시간이 경보 시간을 넘어 피해 단계에 들어갔는지.
 - **동작**:
   - `Update`에서 `Physics2D.OverlapCircle(transform.position, viewRadius, playerMask)`로 원 안의 대상을 찾고, `Vector2.Angle(transform.right, toPlayer)`가 `viewAngle * 0.5f` 이내인지 확인한 뒤, `Physics2D.Linecast(transform.position, target.transform.position, groundMask)`로 지형에 가려졌는지 확인해 가려지지 않았을 때만 `IsPlayerSeen = true`로 만든다.
-  - 안 보이면 데미지 타이머를 0으로 리셋하고 리턴. 보이면 `damageInterval`마다 `target.GetComponent<PlayerHealth>().TakeDamage(1, transform.position)`을 호출한다.
+  - 안 보이면 데미지 타이머·`_seenTime`을 리셋하고 시각도 원상 복구. 보이면 `_seenTime`을 누적하며 `UpdateAlarmVisual()`로 경보 진행도에 따라 눈을 `alarmScale`배까지 키우고 붉게 물들인다 — 별도 UI 없이 "들켰다"를 몸으로 알린다. `IsAlarmed` 전에는 피해가 없어 벗어날 기회가 있고, 이후에는 `damageInterval`마다 `target.GetComponent<PlayerHealth>().TakeDamage(1, transform.position)`을 호출한다.
   - **`PlayerHushed` 레이어 처리**: 코드 주석에 명시된 대로, 인스펙터의 `playerMask`에는 `Player` 레이어만 넣고 `PlayerHushed`는 넣지 않는다. 숨죽이기 스킬이 활성화되면 플레이어 게임오브젝트의 레이어 자체가 `PlayerHushed`로 바뀌므로(Emotions의 `HushSkill`), `GazeHazard`의 `OverlapCircle`이 애초에 그 오브젝트를 감지하지 못한다 — World가 Emotions를 코드로 참조하지 않고도 숨죽이기와 시선 기믹이 맞물리는 이유다. `OnDrawGizmosSelected`로 씬 뷰에 시야 반경(빨간 원)과 좌우 시야각 경계선을 그려 배치를 돕는다.
+
+## GazeRotator.cs (2026-07-26 신규)
+
+- **역할**: 회전형 "시선"(기획서 EMOTION_SYSTEM 2.3절 — 고정형/회전형 두 종류로 난이도 조절). `GazeHazard`가 `transform.right`를 시야 방향으로 쓰는 구조를 그대로 이용해, Z축 회전만 시켜 감지 로직 수정 없이 시야각이 통로를 훑게 한다.
+- **상속/의존**: `MonoBehaviour`. 다른 모듈 참조 없음(같은 GameObject의 `GazeHazard`와 조합될 뿐 코드로는 서로 모른다).
+- **주요 멤버**: `[SerializeField] float degreesPerSecond = 60f`.
+- **동작**: `Update`에서 `transform.Rotate(0, 0, degreesPerSecond * Time.deltaTime)`. 응시 Room3(감시자의 회랑)의 눈 3개가 위상차(초기 회전 0/120/240도)를 두고 회전하도록 `ZoneSceneBuilder`가 배치한다.
 
 ## HiddenFragment.cs
 
@@ -106,16 +122,26 @@
 
 ## Rewindable.cs
 
-- **역할**: `IRewindable`의 범용 기본 구현. 부서지거나 옮겨진 오브젝트를 원래 자리로 되돌린다(기획서 4.2절).
-- **상속/의존**: `MonoBehaviour`, `IRewindable`.
+- **역할**: `IRewindable`의 범용 기본 구현. 부서지거나 옮겨진 오브젝트를 원래 자리로 되돌린다(기획서 4.2절). **(2026-07-26 추가)** 되감기는 영구다(EMOTION_SYSTEM 1.2절) — 되돌린 사실을 `ProgressState`에 `persistentId`로 기록하고, 씬이 다시 로드되면 `Start`에서 곧바로 복원 상태로 시작한다.
+- **상속/의존**: `MonoBehaviour`, `IRewindable`. `HiddenWeight.Core`(`GameManager.Progress`)에 의존(2026-07-26 추가).
 - **주요 멤버**:
+  - `[SerializeField] string persistentId` (2026-07-26 추가) — 비워두면 `Start`에서 `"{씬이름}:{이름}:{초기좌표}"`로 자동 생성(같은 이름의 블록 여러 개도 좌표로 구분됨).
   - `Transform Transform => transform`.
   - `bool CanRewind` — `Vector3.SqrMagnitude(transform.position - _initialPosition) > 0.0001f`, 즉 초기 위치와 위치 차이가 있을 때만 `true`(위치 변화만 비교하며 회전/활성 상태는 비교하지 않음).
   - `void CaptureInitial()` — 현재 위치/회전/활성 상태/스프라이트(있으면)를 저장.
-  - `void Rewind()` — 저장된 값으로 위치/회전/활성 상태/스프라이트를 복원하고, `Rigidbody2D`가 있으면 `linearVelocity`를 0으로 리셋한 뒤 `BounceRoutine`을 재생.
+  - `void Rewind()` — 저장된 값으로 위치/회전/활성 상태/스프라이트를 복원하고 `Freeze()` + `Progress.MarkRewound(persistentId)` 기록 후 `BounceRoutine`을 재생.
 - **동작**:
-  - `Start`에서 `SpriteRenderer`/`Rigidbody2D`를 캐시하고 `CaptureInitial()`을 1회 호출한다.
+  - `Start`에서 `SpriteRenderer`/`Rigidbody2D`를 캐시하고 `CaptureInitial()`을 1회 호출한 뒤, `Progress.IsRewound(persistentId)`면 `Freeze()`로 복원 상태 그대로 시작한다(2026-07-26 추가).
+  - `Freeze()` (2026-07-26 추가): `Rigidbody2D`가 있으면 속도 0 + `bodyType = Static`으로 고정 — 복원된 다리 블록이 중력으로 **다시 무너지면 "영구"가 아니게 되는** 기존 잠재 버그도 함께 잡는다.
   - `Rewind()`가 값 복원 후 진행 중이던 바운스 코루틴이 있으면 멈추고 `BounceRoutine`을 새로 시작한다. `BounceRoutine`은 0.3초에 걸쳐 `localScale`을 0.8에서 1.0으로 `Mathf.Lerp`로 튕겨 보이는 되감기 연출이다.
+  - `CrumblingPlatform`에는 이 영구 규칙을 적용하지 않는다 — 밟으면 다시 무너지는 반복 기믹이 의도이기 때문.
+
+## RewindHighlight.cs (2026-07-26 신규)
+
+- **역할**: 되감기 가능한 오브젝트의 골드빛 아웃라인(기획서 EMOTION_SYSTEM 1.3절 — 자각 없이도 식별 가능해야 진행이 막히지 않는다). 같은 GameObject의 `IRewindable`을 관찰만 하고, 되감을 것이 있을 때(`CanRewind`)만 표시한다.
+- **상속/의존**: `MonoBehaviour`. World 내부 계약(`IRewindable`)만 사용. `PrefabBuilder`가 `RewindableBlock`/`CrumblingPlatform` 프리팹에 부착한다.
+- **주요 멤버**: `[SerializeField] Color outlineColor`(옅은 골드~앰버 `(1, 0.82, 0.35)`), `outlineScale = 1.2f`, `pulseSpeed = 2.5f`.
+- **동작**: `Start`에서 자식 `RewindOutline` GameObject를 만들어 본체보다 1.2배 큰 `SpriteRenderer`를 `sortingOrder - 1`(본체 바로 뒤)로 깐다. `Update`에서 `CanRewind`일 때만 켜고, 본체 스프라이트를 복사하되 `enabled`는 따라가지 않는다 — 무너져 스프라이트가 꺼진 발판에서도 아웃라인은 자리를 표시해야 하기 때문. 알파를 0.35~0.8로 `PingPong` 맥동시켜 눈에 띄게 한다.
 
 ## Room.cs
 

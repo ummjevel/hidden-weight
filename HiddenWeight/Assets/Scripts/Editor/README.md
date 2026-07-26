@@ -13,8 +13,8 @@
 | `ProjectSetup.cs` | 레이어 7종(Ground/Wall/Player/PlayerHushed/Enemy/Hazard/Interactable) 등록, 레이어 충돌 행렬, URP 2D 파이프라인 생성, 지역별 Volume 프로파일 4종 + 자각 전용 Volume 1종, PlayerSettings | 2.1 레이어, 8.1 프로젝트 생성 |
 | `DataAssetBuilder.cs` | ScriptableObject 데이터 에셋 12종(PlayerData 1 + EmotionData 3 + EnemyData 3 + ZoneData 4 + BalanceData 1) 생성. 이미 있는 에셋은 값을 덮어쓰지 않고 그대로 반환 | 8.2 Data 단계, 밸런스 수치 |
 | `PlaceholderArtBuilder.cs` | 단색 PNG 스프라이트 10종을 코드로 생성하고 Sprite/PPU 32/Point 필터로 임포트 설정 | 2절 PPU 기준, 8.10 플레이스홀더 |
-| `PrefabBuilder.cs` | 프리팹 13종(GameManager 포함) 생성, 다른 모듈의 컴포넌트를 `AddComponent`로 조립 | 8.10 프리팹 자동 생성 |
-| `ZoneSceneBuilder.cs` | 씬 7개(Bootstrap/Title/Zone_Prologue/Zone_Residue/Zone_Gaze/Zone_Fracture/Ending) 생성, 룸·타일맵·프리팹 배치, `EditorBuildSettings.scenes` 등록 | 4장 씬 구성, 5.3 백트래킹, 8.10 씬 자동 생성 |
+| `PrefabBuilder.cs` | 프리팹 13종(GameManager 포함) 생성, 다른 모듈의 컴포넌트를 `AddComponent`로 조립. 2026-07-26: Player에 `VoidRespawn`, RewindableBlock·CrumblingPlatform에 `RewindHighlight` 추가 | 8.10 프리팹 자동 생성 |
+| `ZoneSceneBuilder.cs` | 씬 7개(Bootstrap/Title/Zone_Prologue/Zone_Residue/Zone_Gaze/Zone_Fracture/Ending) 생성, 룸·타일맵·프리팹 배치, `EditorBuildSettings.scenes` 등록. 2026-07-26: 좌우 경계벽(`BuildBoundary`, 낙하 소프트락 방지)·프롤로그 굴뚝 공중 부양 벽(입구 개방)·회전형 눈 3개(위상차 0/120/240도)·자각 해금 지점(`BuildAwarenessUnlock`, 응시 Room3 끝)·연출 데코(`BuildDecor` — 새장/무너진 탑/거울 방)·튜토리얼 힌트 7곳(`BuildTutorialHint`)·균열 파편을 보이는 `StoryFragment`로 교체(자각 무력화 대응) | 4장 씬 구성, 5.3 백트래킹, 8.10 씬 자동 생성 |
 | `BuildScript.cs` | 배치모드 컴파일 게이트(`Compile`) + macOS 스탠드얼론 빌드(`BuildMac`) | 8.11, 9.1~9.2 검증 방법 |
 
 ## 핵심 규칙 구현

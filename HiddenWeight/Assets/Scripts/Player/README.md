@@ -15,14 +15,15 @@
 | PlayerState.cs | `PlayerController`가 갖는 상태 enum 정의 | 5.1 |
 | PlayerAnimator.cs | `StateChanged` 이벤트 → Animator 정수 파라미터, 스프라이트 좌우 반전 | 5.1 |
 | PlayerAttack.cs | 근접 공격 판정(부채꼴 OverlapCircle), `IDamageable`에 피해 적용 | 5.4 |
-| PlayerHealth.cs | HP, 무적 시간, 피격 넉백·점멸, 리스폰 수신 | 5.4 |
+| PlayerHealth.cs | HP, 무적 시간, 피격 넉백·점멸, 리스폰 수신. `Damaged` 이벤트(되감기 피격 캔슬용)와 `GrantInvulnerability(초)`(숨죽이기 해제 무적용) 공개 | 5.4 |
+| VoidRespawn.cs | 맵 경계 밖 낙하(y < -15) 시 마지막 체크포인트로 리스폰 — 무한 낙하 소프트락 방지 | (2026-07-26 추가) |
 
 ## 핵심 규칙 구현
 
 - **이동**: 걷기 6, 달리기(Shift) 9 (`walkSpeed`/`runSpeed`), 여기에 `ExternalSpeedMultiplier`(기본 1)가 곱해진다.
 - **점프**: `jumpVelocity` 14, 중력 `gravityScale` 3.5, 하강 시 `fallGravityMultiplier` 1.6배 가중. 코요테 타임 `coyoteTime` 0.1s, 점프 버퍼 `jumpBufferTime` 0.1s — 기획서 5.1 수치와 일치. 가변 점프는 상승 중 점프 키를 떼면 `variableJumpCut` 0.5배로 수직 속도를 잘라낸다.
 - **대시**: `dashDuration` 0.15s 동안 `dashDistance / dashDuration`(≈26.7 유닛/초)의 등속 이동, 중력 0, 쿨다운 `dashCooldown` 0.8s.
-- **벽**: 벽 슬라이드 `wallSlideSpeed` 2, 벽점프 속도 `wallJumpVelocity` (9, 13), 벽점프 후 좌우 입력 잠금 `wallJumpLockTime` 0.15s — 기획서의 "~0.15s 입력 잠금"과 일치.
+- **벽 (2026-07-26 표준 방식으로 재작업 — Celeste·Hollow Knight식)**: 양쪽 벽을 동시에 판정(`_wallDir` +1/-1/0)하고, **낙하 중 벽에 닿으면 방향키 없이 자동으로 붙는다**(벽 반대 방향을 밀 때만 떼짐, 붙으면 벽을 향해 봄). 벽 슬라이드 `wallSlideSpeed` 2, 벽점프 속도 `wallJumpVelocity` (9, 13) — 점프 시 몸이 자동으로 벽 반대편을 향하고 좌우 입력 잠금 `wallJumpLockTime` 0.15s. 벽에서 떨어진 직후에도 `wallCoyoteTime` 0.1s 안에는 벽점프 허용. 공중에서 입력이 없으면 수평 관성을 유지한다(예전에는 0으로 덮어써서 벽점프 비행이 뚝 끊겼음). 결과적으로 굴뚝 구간은 Space만 번갈아 눌러도 오를 수 있다.
 - **그 외 하드코딩 리터럴** (PlayerData에 없고 코드에 상수로 박혀 있음, 기획서엔 명시 안 됨): 착지 직후 Land 상태 유지 0.12초, 피격 넉백 후 좌우 입력 무시 0.2초.
 - **공격**(5.4): 반경 `attackRadius` 1.2, 부채꼴 각도 `attackAngle` 90도, 피해 `attackDamage` 1, 쿨다운 `attackCooldown` 0.35s, 판정(Attack 상태 유지) 시간 `attackActiveTime` 0.1s.
 - **생존**: 최대 체력 `maxHealth` 3, 무적 시간 `invulnerableTime` 0.8s(그 사이 `blinkInterval` 0.1s 간격으로 점멸), 피격 넉백 `knockbackForce` 8.

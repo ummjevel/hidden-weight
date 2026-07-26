@@ -9,7 +9,7 @@
 |---|---|---|
 | `GameManager.cs` | 씬 영속 싱글턴. `ProgressState`/`GameState`/`CurrentZoneData`를 들고 다니며 씬 로드마다 지역을 자동 동기화 | 3.1 의존 방향, 5.6 진행 상태 |
 | `GameState.cs` | 게임 전체 흐름 상태 열거형 (`Boot/Title/Playing/Paused/Ending`) | 3장 모듈 구조 |
-| `ProgressState.cs` | 스킬 해금·자각·파편·현재 지역·체크포인트를 들고 다니는 순수 C# 진행도 객체 | 5.6 진행 상태 |
+| `ProgressState.cs` | 스킬 해금·자각·파편·현재 지역·체크포인트·영구 되감기 기록(`MarkRewound`/`IsRewound`, 2026-07-26 추가)을 들고 다니는 순수 C# 진행도 객체 | 5.6 진행 상태, EMOTION_SYSTEM 1.2 |
 | `Checkpoint.cs` | 플레이어 통과 시 리스폰 지점을 갱신 | 5.5 월드(체크포인트) |
 | `SceneFlow.cs` | 씬 이름 상수 + 씬 전환 진입점(페이드 훅 포함) | 4장 씬 구성, 3.1 역방향 훅 |
 | `AudioManager.cs` | BGM 크로스페이드 재생 + SFX 원샷 재생 싱글턴 | 2장 사운드 에셋 자리만 확보 |

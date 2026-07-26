@@ -12,6 +12,7 @@
 | PauseMenu.cs | `PlayerInput.PausePressed`로 토글되는 일시정지 화면, `GameManager.SetState`/`PlayerInput.Enabled` 제어 | HUD·연출 UI 전반 |
 | ScreenFader.cs | 씬 전환 시 화면을 검게 덮는 페이드. `SceneFlow.FadeLoader`에 자신을 등록 | 4장 씬 구성 |
 | TitleScreen.cs | 타이틀 화면(제목/부제/시작·종료 버튼), `SceneFlow.LoadWithFade`로 첫 지역 진입 | 4장 씬 구성 |
+| TutorialHint.cs | 월드 공간 `TextMesh` 조작 안내 — 플레이어가 `showRadius`(5유닛) 안에 오면 페이드 인. 프롤로그 3곳(이동/점프·대시/벽점프) + 스킬 획득 지점 4곳에 `ZoneSceneBuilder`가 배치 (2026-07-26 추가) | WORLD_MAP 1.3 튜토리얼 UI |
 
 ## 핵심 규칙 구현
 

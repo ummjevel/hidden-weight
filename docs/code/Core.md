@@ -71,6 +71,7 @@
 - **주요 멤버**:
   - `HashSet<EmotionId> _skills` (private, readonly) — 해금된 감정 스킬 집합.
   - `HashSet<string> _fragments` (private, readonly) — 수집한 파편 id 집합.
+  - `HashSet<string> _rewound` (private, readonly, 2026-07-26 추가) — 영구 되감기가 완료된 오브젝트의 `persistentId` 집합.
   - `bool HasAwareness { get; private set; }` — 기본값 `false`.
   - `bool HasClearedFracture { get; private set; }` — 기본값 `false`.
   - `ZoneId CurrentZone { get; set; } = ZoneId.Prologue` — 기본값 `ZoneId.Prologue`.
@@ -82,9 +83,10 @@
   - `void MarkFractureCleared() => HasClearedFracture = true`.
   - `bool CollectFragment(string id) => _fragments.Add(id)` — `HashSet.Add`의 반환값을 그대로 넘겨 신규 수집 여부(중복이면 `false`)를 알 수 있다.
   - `bool HasFragment(string id) => _fragments.Contains(id)`.
+  - `void MarkRewound(string id)` / `bool IsRewound(string id)` (2026-07-26 추가) — 되감기 영구 유지(기획서 EMOTION_SYSTEM 1.2절: 한 번 되돌리면 재방문 시에도 유지). World의 `Rewindable`이 `Rewind()` 시 기록하고 `Start`에서 조회해 복원 상태로 시작한다. 빈/`null` id는 무시.
   - `bool CanOpenGate(EmotionId required) => required == EmotionId.None || _skills.Contains(required)` — 요구 스킬이 `None`이면 조건 없이 열린다.
   - `bool CanOpenFinalGate() => _skills.Contains(EmotionId.Rewind) && HasAwareness && HasClearedFracture` — 기획서 5.3절: 균열 클리어 후 자각을 갖춘 채 잔재로 백트래킹해야 열리는 최종 파편.
-  - `void ResetAll()` — `_skills`/`_fragments`를 `Clear()`, `HasAwareness`/`HasClearedFracture`를 `false`, `CurrentZone`을 `ZoneId.Prologue`, `LastCheckpoint`를 `Vector3.zero`로 초기화.
+  - `void ResetAll()` — `_skills`/`_fragments`/`_rewound`를 `Clear()`, `HasAwareness`/`HasClearedFracture`를 `false`, `CurrentZone`을 `ZoneId.Prologue`, `LastCheckpoint`를 `Vector3.zero`로 초기화.
 - **동작**:
   - 모든 변경 메서드는 단순 위임이며 이벤트 발행이나 검증 로직은 없다(스킬 해금 시 `EmotionId.None` 방어 외에는 무조건 반영).
   - `CanOpenFinalGate`는 세 조건을 모두 `&&`로 요구하는 단일 식이며, 세 조건 중 하나라도 어긋나면 최종 게이트는 열리지 않는다.

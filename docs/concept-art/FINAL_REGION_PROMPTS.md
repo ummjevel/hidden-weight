@@ -5,8 +5,10 @@
 | 지역 | 최종 이미지 |
 | --- | --- |
 | 잔재 | `docs/concept-art/02-residue-cloud-face-v6.png` |
-| 응시 | `docs/concept-art/03-gaze-eye-swarm-v3.png` |
+| 응시 | `docs/concept-art/03-gaze-sky-observer-v2.png` |
 | 균열 | `docs/concept-art/04-fracture-liminal-paradise-v3.png` |
+
+최종 3장 외 중간 버전 이미지(프롤로그, 잔재 V1~V5, 응시 V1/V3, 균열 V1/V2, 엔딩)는 삭제했다. 아래 프롬프트의 입력 이미지 중 삭제된 파일은 `(삭제됨)`으로 표시했다.
 
 ---
 
@@ -14,7 +16,7 @@
 
 **결과 이미지:** `docs/concept-art/02-residue-cloud-face-v6.png`
 
-**입력 이미지:** `docs/concept-art/02-residue-crouching-presence-v5.png`
+**입력 이미지:** `docs/concept-art/02-residue-crouching-presence-v5.png` (삭제됨)
 
 ```text
 Use case: precise-object-edit
@@ -31,33 +33,30 @@ Constraints: no explicit skull, no normal human portrait, no clean facial outlin
 
 ---
 
-## 2. 응시 — Eye Swarm V3
+## 2. 응시 — Sky Observer V2
 
-**결과 이미지:** `docs/concept-art/03-gaze-eye-swarm-v3.png`
+**결과 이미지:** `docs/concept-art/03-gaze-sky-observer-v2.png`
 
 **입력 이미지**
 
-1. `docs/concept-art/03-gaze-sky-observer-v2.png`
-2. 사용자 제공 눈 군집 참고 이미지
-3. 사용자 제공 구름형 시각기관 참고 이미지
-4. `docs/character_sprite_ref.png`
+1. 응시 사용자 참고 이미지 4장
+2. `docs/character_sprite_ref.png`
 
 ```text
 Use case: stylized-concept
-Asset type: rough early-stage 16:9 game environment concept art, Gaze zone V3 for an original 2D side-scrolling metroidvania
-Input images: Image 1 is the current Gaze V2 concept and defines the composition, purple-teal city-cathedral, giant sky eye, hanging cages, crowds, playable foreground route and tiny protagonist. Images 2-3 are mood references only for oppressive irregular eye clusters and cloud-scale ocular forms; do not copy their exact arrangement, creature, composition, text, signature or watermark. Image 4 defines only the small white-haired girl.
-Primary request: intensify Gaze into overwhelming clustered-eye horror. The viewer should feel surrounded by countless incompatible gazes, while the image remains readable as a game level and retains one clear visual hierarchy.
-Hierarchy layer 1 — central eye: preserve one enormous partially obscured eye-like void in the upper sky as the dominant landmark. Its eyelids remain storm fronts, iris made from cloud strata and distant lights, pupil almost perfectly black. Do not turn it into a clean floating eyeball.
-Hierarchy layer 2 — medium eye colonies: transform the large cloud-and-bridge optic-nerve arcs into irregular colonies containing dozens of medium eyes of different sizes and shapes. Some eyes squeeze against each other, some share a single pupil, some have horizontal or sideways eyelids, some are incomplete recesses, and a few contain smaller eyes inside the iris. Avoid even spacing or decorative symmetry.
-Hierarchy layer 3 — tiny embedded eyes: integrate hundreds of very small half-hidden eyes into peripheral architecture and texture: apartment windows, cracked masonry, drain holes, railings, wet pavement, cathedral carvings, cables and fog. At first they should read as city texture; on closer inspection they become eyes. Concentrate them around the top and left/right frame edges, not across the playable path.
-Eye states: mix roughly 30 percent closed, 25 percent barely open, 20 percent looking directly at the protagonist, 15 percent looking in conflicting directions, 10 percent pupil-like holes without visible eyelids. Do not make every eye fully open.
-Psychological meaning: inside a few larger irises, place extremely faint repeated silhouettes of the same white-haired protagonist, suggesting self-judgment multiplied into countless observers. Balcony crowds remain faceless, but their empty head openings subtly resemble closed eyelids.
-Gameplay space: preserve a clear continuous foreground path across the lower third, left hiding tunnel, stair route, central suspended platform and right landing. Keep eye density lower immediately around these traversable surfaces. A broad cone of missing light crosses one route as a gaze hazard. Puddles reflect eyes absent from the sky.
-Subject: the same tiny white-haired girl in a pale dress near lower center-left, less than 4 percent of frame height, isolated by a cold pale rim light. Her shadow points upward toward the central eye.
-Style/medium: rough painterly environment block-in, broad visible brushwork, simplified early concept shapes, original cosmic surveillance horror with dense organic patterning, not polished final illustration, not photorealistic, not pixel art.
-Color palette: bruised violet, charcoal and low-contrast gray-purple; cold teal reflections #5BA7AF; pale lavender highlights #B6A4D9; nearly black pupils. Keep it colder and slightly brighter than Residue.
-Mood: silent, damp, exposed, visually suffocating, intense clustered-eye unease without explicit gore.
-Constraints: maintain clear focal hierarchy and protagonist readability; no uniform wallpaper pattern, no identical repeated eye stamps, no simple giant floating eyeball, no recognizable copied monster or city; no text, signature, watermark, logo, UI or border; no blood, exposed organs or graphic gore.
+Asset type: rough early-stage 16:9 game environment concept art for the Gaze zone of an original 2D side-scrolling metroidvania
+Input images: Images 1-4 are mood and scale references only for an enormous eye-like presence in the sky, oppressive surveillance, tiny human scale, ocular forms hidden in darkness and cloud structures. Do not reproduce any exact creature, eye arrangement, city layout, signature, watermark, text or recognizable composition. Image 5 defines only the small white-haired girl protagonist.
+Primary request: create an original city-cathedral surveillance world where the entire sky behaves like one incomprehensible visual organ and the ruined architecture forms its nervous system. It should feel more disturbing and cosmic than decorative fantasy.
+Scene/backdrop: a deep urban canyon fused with a cathedral and prison, purple-gray dusk, low-contrast violet fog, teal reflections on wet stone, leaning apartment towers and narrow bridges. The lower third contains a clear side-scrolling route with broken stairs, a narrow hiding passage and a gap crossed by a suspended platform.
+Main presence: high in the cloud ceiling, one enormous partially obscured eye-like void watches downward. Do not draw a clean floating eyeball. Its eyelids are formed by two vast storm fronts; its iris is made from rotating cloud strata, distant city lights and a faint galaxy ring; its pupil is a lightless circular absence. Only part of it is visible beyond the top edge, making its total scale unknowable.
+Secondary structure: three or four gigantic cloud-and-cable arcs extend from the sky eye across the city like optic nerves or tentacles, but each arc is built from storm clouds, balconies, hanging cages, electrical wires and rows of windows. Embed only a limited number of half-formed eye recesses in these arcs; many should remain closed or uncertain rather than a field of obvious eyeballs.
+Surveillance environment: apartment windows and cathedral apertures subtly turn toward the protagonist; hanging cages contain faceless standing silhouettes; balcony crowds have bodies facing forward but empty heads angled toward her; wet puddles reflect open eyes that do not exist above them. A broad cone of missing light sweeps one section of the playable path, implying the gaze hazard without a laser beam.
+Subject: the same tiny white-haired girl in a pale dress stands alone near the lower center-left, less than 4 percent of frame height, exposed under a small cold rim light. Her shadow points upward toward the sky eye instead of away from it.
+Style/medium: rough painterly environment block-in, visible broad brushwork and simplified shapes, original architectural cosmic horror, early concept exploration rather than polished final illustration, not photorealistic, not pixel art.
+Composition/framing: wide 16:9 side-scrolling establishing view; foreground ruined railings and silhouettes, continuous traversable ground across the lower third, midground cages and crowds, enormous sky-organ occupying the upper half. Maintain strong scale hierarchy and playable surfaces.
+Color palette: desaturated violet and bruised purple, charcoal, cold teal #5BA7AF reflections, pale lavender eye glow #B6A4D9, nearly black pupil. Less fiery and hellish than Residue; colder, quieter and more exposed.
+Lighting/mood: suffocating stillness, damp haze, no direct sunlight, the feeling that every surface is watching. Frightening through surveillance and impossible scale, not gore.
+Constraints: no simple giant floating eyeball with a clean outline, no excessive carpet of identical eyes, no recognizable copied monster or city, no text, signature, watermark, logo, UI or border; no explicit blood, organs or graphic gore; preserve clear side-scrolling gameplay readability.
 ```
 
 ---
@@ -70,7 +69,7 @@ Constraints: maintain clear focal hierarchy and protagonist readability; no unif
 
 1. `docs/mood_img.png`
 2. `docs/character_sprite_ref.png`
-3. `docs/concept-art/04-fracture-living-paradise-v2.png`
+3. `docs/concept-art/04-fracture-living-paradise-v2.png` (삭제됨)
 
 ```text
 Use case: stylized-concept
@@ -88,4 +87,3 @@ Composition/framing: wide 16:9 side-scrolling view, clear continuous foreground 
 Mood: silent, safe, warm, immaculate and empty at first; gradually uncomfortable because the space repeats, perspective fails and nothing has a purpose. Horror must come from spatial logic rather than monsters or grotesque imagery.
 Constraints: no visible eyes except no eyes at all, no sky face, no humanoid plants, no obvious monster, no explicit biological building, no blood, flesh, organs or gore; no yellow-office Backrooms imitation; no text, signature, watermark, logo, UI or border; no copied film scene, artist composition or recognizable architecture.
 ```
-

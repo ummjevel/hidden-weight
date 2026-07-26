@@ -490,15 +490,20 @@ namespace HiddenWeight.EditorTools
             BuildTutorialHint(root.transform, new Vector2(29, 3.5f), "Space  점프  ·  LeftCtrl  대시");
             BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
 
-            // Room3 [48,72]: 높이8 수직 벽 2개, 벽점프로 올라가야 출구.
+            // Room3 [48,72]: 높이8 수직 벽 2개 사이 굴뚝을 좌우 벽점프 핑퐁으로 올라간다.
+            // 굴뚝 위는 뚫려 있고 출구 트리거가 그 바로 위에 떠 있다 — 꼭대기까지 오르면 닿는다.
+            // 예전 버전은 굴뚝 위가 착지 발판(타일)으로 막혀 있어서, 바깥 벽면을 같은 벽
+            // 반복 홉으로 오르는 고난도 루트만 남아 사실상 진행 불가에 가까웠다. 튜토리얼
+            // 난이도에 맞게 천장을 열고 안쪽 핑퐁 루트를 정식 경로로 만든다.
             Floor(tilemap, 48, 72, 0);
             BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 4), new Vector2(1, 8), "Wall");
             BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 4), new Vector2(1, 8), "Wall");
-            PlaceTiles(tilemap, GroundTile(), 57, 63, 8, 9); // 벽 위 착지 발판
-            BuildTutorialHint(root.transform, new Vector2(55, 3), "벽에 붙어  Space  벽점프");
+            BuildTutorialHint(root.transform, new Vector2(55, 3),
+                "벽 쪽 방향키를 누른 채  벽에 붙고\nSpace  로 반대 벽에 옮겨 붙으며 오르기");
             BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
 
-            BuildZoneTrigger(root.transform, new Vector2(60, 9.5f), new Vector2(4, 2), false);
+            // 굴뚝 입구(x 58.5~60.5) 바로 위를 넉넉히 덮는다 — 착지 없이 닿기만 하면 클리어.
+            BuildZoneTrigger(root.transform, new Vector2(59.5f, 9.5f), new Vector2(3, 3), false);
 
             SaveScene(scene, "Zone_Prologue");
         }

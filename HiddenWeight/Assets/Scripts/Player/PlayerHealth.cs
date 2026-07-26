@@ -11,6 +11,7 @@ namespace HiddenWeight.Player
     {
         int _maxHealth;
         float _invulnerableTime;
+        float _blinkInterval;
         float _knockbackForce;
 
         SpriteRenderer _sprite;
@@ -27,6 +28,7 @@ namespace HiddenWeight.Player
             var data = GameManager.Instance.Balance.player;
             _maxHealth = data.maxHealth;
             _invulnerableTime = data.invulnerableTime;
+            _blinkInterval = data.blinkInterval;
             _knockbackForce = data.knockbackForce;
             _sprite = GetComponentInChildren<SpriteRenderer>();
             Current = _maxHealth;
@@ -39,7 +41,8 @@ namespace HiddenWeight.Player
 
         void OnDisable()
         {
-            GameManager.Instance.RespawnRequested -= HandleRespawn;
+            // 종료/파괴 순서에 따라 GameManager가 먼저 사라져 있을 수 있으므로 널 체크 후 해제한다.
+            if (GameManager.Instance != null) GameManager.Instance.RespawnRequested -= HandleRespawn;
         }
 
         public void TakeDamage(int amount, Vector2 sourcePosition)
@@ -83,13 +86,12 @@ namespace HiddenWeight.Player
         {
             IsInvulnerable = true;
             float elapsed = 0f;
-            const float blinkInterval = 0.1f; // 브리핑 Step 4 명시 리터럴: 점멸 간격
 
             while (elapsed < _invulnerableTime)
             {
                 if (_sprite != null) _sprite.enabled = !_sprite.enabled;
-                yield return new WaitForSeconds(blinkInterval);
-                elapsed += blinkInterval;
+                yield return new WaitForSeconds(_blinkInterval);
+                elapsed += _blinkInterval;
             }
 
             if (_sprite != null) _sprite.enabled = true;

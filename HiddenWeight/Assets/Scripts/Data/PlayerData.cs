@@ -30,6 +30,7 @@ namespace HiddenWeight.Data
         [Header("생존")]
         public int maxHealth = 3;
         public float invulnerableTime = 0.8f;
+        public float blinkInterval = 0.1f; // 무적 시간 중 스프라이트 점멸 간격
         public float knockbackForce = 8f; // 피격 넉백
 
         [Header("공격")]

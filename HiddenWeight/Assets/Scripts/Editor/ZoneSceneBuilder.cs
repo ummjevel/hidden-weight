@@ -107,7 +107,16 @@ namespace HiddenWeight.EditorTools
         static void Floor(Tilemap tilemap, int xMin, int xMax, int topY, int depth = 6)
             => PlaceTiles(tilemap, GroundTile(), xMin, xMax, topY - depth, topY);
 
-        // Grid + Tilemap(Ground, TilemapCollider2D+CompositeCollider2D) 생성.
+        // Grid + Tilemap(Ground, TilemapCollider2D) 생성.
+        //
+        // CompositeCollider2D는 쓰지 않는다. 붙여 보면 씬에 저장된 컴포짓이 런타임에 형상을
+        // 하나도 만들지 못해(pathCount=0) 지역 전체에 바닥 충돌이 사라지고, 플레이어가 시작과
+        // 동시에 무한 낙하한다. 부착 순서를 바꿔도, 저장 직전 GenerateGeometry()를 불러도,
+        // 로드 후 다시 불러도 0이었다 — 런타임에 컴포짓을 새로 붙였을 때만 살아난다.
+        // TilemapCollider2D 단독은 타일 444개에 대해 형상을 정상 생성하므로(레이캐스트가 바닥
+        // 표면 y를 정확히 맞춘다) 컴포짓 없이 간다. 대가는 타일 경계가 병합되지 않는다는 것뿐이고,
+        // 플레이어가 CapsuleCollider2D라 이음새에 걸릴 위험은 낮다.
+        // 검증: Assets/Tests/PlayMode/ZonePlayableTests.cs
         static Tilemap BuildGroundGrid(out GameObject gridGO)
         {
             gridGO = new GameObject("Grid");
@@ -120,13 +129,10 @@ namespace HiddenWeight.EditorTools
             var tilemap = tilemapGO.AddComponent<Tilemap>();
             tilemapGO.AddComponent<TilemapRenderer>();
 
-            var tmCollider = tilemapGO.AddComponent<TilemapCollider2D>();
-            tmCollider.usedByComposite = true;
+            tilemapGO.AddComponent<TilemapCollider2D>();
 
             var rb = tilemapGO.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Static;
-
-            tilemapGO.AddComponent<CompositeCollider2D>();
 
             return tilemap;
         }
@@ -317,11 +323,24 @@ namespace HiddenWeight.EditorTools
         // 공통 지역 킷 1단계: GameManager(가장 먼저 - Awake 순서 보장) + Grid/Tilemap(Ground) +
         // 지역 Volume. Player/Camera는 아직 두지 않는다 — Room1 바닥 타일을 놓아 실제 표면
         // 높이를 알아낸 다음에야(PlacePlayerAndCamera) 스폰 위치를 그로부터 계산할 수 있다.
+        //
+        // GameManager는 Zone 루트의 자식으로 붙이지 않고 씬 루트 오브젝트로 남긴다(Bootstrap/Title과
+        // 동일하게). GameManager 프리팹에는 ScreenFader/AudioManager도 함께 있고 셋 다 Awake에서
+        // DontDestroyOnLoad(gameObject)를 호출하는데, 이 호출은 루트 오브젝트에서만 동작한다 — Zone
+        // 루트의 자식으로 붙이면 (예전 HUD/FragmentLog와 같은 이유로) "DontDestroyOnLoad only works
+        // for root GameObjects" 에러가 난다. 평소 플레이 흐름에서는 Bootstrap의 인스턴스가 이미
+        // 살아있어 지역 씬의 중복 인스턴스가 Awake 즉시 자기 자신을 Destroy하고 DontDestroyOnLoad까지
+        // 가지 않아 조용히 넘어가지만, Play Mode 테스트처럼 지역 씬을 단독으로 로드하면(Instance가
+        // 아직 없으면) 바로 이 에러가 재현된다 — 뿌리 원인은 지역 씬마다 GameManager가 씬 루트가
+        // 아니었다는 것이므로 여기서 고친다.
         static Tilemap BuildZoneRoot(string zoneAssetName, out GameObject root)
         {
             root = new GameObject($"Zone_{zoneAssetName}");
 
-            Spawn("GameManager", Vector3.zero).transform.SetParent(root.transform, true);
+            // Awake 순서는 씬 루트 순서로 보장되지 않는다(SetAsFirstSibling으로 루트를 맨 앞에
+            // 옮겨도 Player 쪽 Awake가 먼저 돌았다). GameManager 클래스 쪽의
+            // [DefaultExecutionOrder]로 보장한다 — GameManager.cs 참고.
+            Spawn("GameManager", Vector3.zero);
 
             var tilemap = BuildGroundGrid(out var gridGO);
             gridGO.transform.SetParent(root.transform, true);
@@ -593,7 +612,9 @@ namespace HiddenWeight.EditorTools
             var scene = NewScene();
             var root = new GameObject("Ending");
 
-            Spawn("GameManager", Vector3.zero).transform.SetParent(root.transform, true);
+            // GameManager는 여기서도 Ending 루트의 자식으로 붙이지 않는다 — 위 BuildZoneRoot의
+            // DontDestroyOnLoad 관련 주석과 동일한 이유.
+            Spawn("GameManager", Vector3.zero);
 
             var camGO = new GameObject("MainCamera");
             camGO.tag = "MainCamera";

@@ -314,23 +314,14 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
-        // 공통 지역 킷: GameManager(가장 먼저 - Awake 순서 보장) + MainCamera + Player + HUD +
-        // PauseMenu + EventSystem + Grid/Tilemap(Ground) + 지역 Volume.
-        static Tilemap BuildZoneCommon(string zoneAssetName, Vector3 playerSpawn, out GameObject root)
+        // 공통 지역 킷 1단계: GameManager(가장 먼저 - Awake 순서 보장) + Grid/Tilemap(Ground) +
+        // 지역 Volume. Player/Camera는 아직 두지 않는다 — Room1 바닥 타일을 놓아 실제 표면
+        // 높이를 알아낸 다음에야(PlacePlayerAndCamera) 스폰 위치를 그로부터 계산할 수 있다.
+        static Tilemap BuildZoneRoot(string zoneAssetName, out GameObject root)
         {
             root = new GameObject($"Zone_{zoneAssetName}");
 
             Spawn("GameManager", Vector3.zero).transform.SetParent(root.transform, true);
-
-            var camGO = Spawn("MainCamera", new Vector3(playerSpawn.x, playerSpawn.y, -10f));
-            camGO.transform.SetParent(root.transform, true);
-
-            Spawn("Player", playerSpawn).transform.SetParent(root.transform, true);
-
-            Spawn("HUD", Vector3.zero).transform.SetParent(root.transform, true);
-
-            BuildPauseMenu(root.transform);
-            BuildEventSystem(root.transform);
 
             var tilemap = BuildGroundGrid(out var gridGO);
             gridGO.transform.SetParent(root.transform, true);
@@ -338,6 +329,22 @@ namespace HiddenWeight.EditorTools
             BuildZoneVolume(root.transform, zoneAssetName);
 
             return tilemap;
+        }
+
+        // 공통 지역 킷 2단계: MainCamera + Player + HUD + PauseMenu + EventSystem.
+        // spawn은 항상 "Room1 바닥의 실제 topY + 여유값"에서 호출부가 직접 계산해 넘긴다 —
+        // 별도로 하드코딩한 스폰 좌표가 바닥 배치와 따로 놀다 어긋나는 것을 막기 위함이다
+        // (Task 13 최초 버전의 버그: 플레이어 스프라이트 정렬 순서가 타일맵과 동률이라 안 보이던 문제 +
+        // 스폰 좌표가 바닥 레이아웃과 독립적으로 하드코딩되어 있던 문제, 둘 다 여기서 고친다).
+        // 카메라는 스폰과 정확히 같은 X/Y(Z만 -10)에 둬서 첫 프레임에 엉뚱한 위치에서 보간해오지 않게 한다.
+        static void PlacePlayerAndCamera(GameObject root, Vector3 spawn)
+        {
+            Spawn("MainCamera", new Vector3(spawn.x, spawn.y, -10f)).transform.SetParent(root.transform, true);
+            Spawn("Player", spawn).transform.SetParent(root.transform, true);
+            Spawn("HUD", Vector3.zero).transform.SetParent(root.transform, true);
+
+            BuildPauseMenu(root.transform);
+            BuildEventSystem(root.transform);
         }
 
         // ============================================================
@@ -375,11 +382,15 @@ namespace HiddenWeight.EditorTools
         static void BuildZonePrologue()
         {
             var scene = NewScene();
-            var tilemap = BuildZoneCommon("Prologue", new Vector3(2f, 1f, 0f), out var root);
+            var tilemap = BuildZoneRoot("Prologue", out var root);
             var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
 
             // Room1 [0,24]: 평평한 바닥, 좌우 이동만.
-            Floor(tilemap, -1, 25, 0);
+            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
+            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
+            // 스폰은 항상 이 바닥의 실제 topY에서 계산한다 — 하드코딩된 좌표가 레이아웃과
+            // 따로 놀다 바닥 밑/뒤에 파묻히는 일(Task 13 버그)을 막는다.
+            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
 
             // Room2 [24,48]: 3단 계단 + 폭4 구덩이(점프·대시). 착지 실패 시 낮은 통로로 떨어져
@@ -412,11 +423,13 @@ namespace HiddenWeight.EditorTools
         static void BuildZoneResidue()
         {
             var scene = NewScene();
-            var tilemap = BuildZoneCommon("Residue", new Vector3(2f, 1f, 0f), out var root);
+            var tilemap = BuildZoneRoot("Residue", out var root);
             var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
 
             // Room1 [0,24]: 입구. Checkpoint. StoryFragment(grantsSkill=Rewind).
-            Floor(tilemap, -1, 25, 0);
+            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
+            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
+            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
             BuildCheckpoint(root.transform, new Vector2(4, 1));
             BuildStoryFragment(root.transform, new Vector2(12, 1), "residue_skill",
                 "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
@@ -467,11 +480,13 @@ namespace HiddenWeight.EditorTools
         static void BuildZoneGaze()
         {
             var scene = NewScene();
-            var tilemap = BuildZoneCommon("Gaze", new Vector3(2f, 1f, 0f), out var root);
+            var tilemap = BuildZoneRoot("Gaze", out var root);
             var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
 
             // Room1 [0,24]: 입구 + Checkpoint. GazeHazard 1개를 멀리 배치해 위험을 미리 보여준다.
-            Floor(tilemap, -1, 25, 0);
+            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
+            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
+            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
             BuildCheckpoint(root.transform, new Vector2(4, 1));
             BuildGazeHazard(root.transform, new Vector2(20, 1.5f), 180f);
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
@@ -513,11 +528,13 @@ namespace HiddenWeight.EditorTools
         static void BuildZoneFracture()
         {
             var scene = NewScene();
-            var tilemap = BuildZoneCommon("Fracture", new Vector3(2f, 1f, 0f), out var root);
+            var tilemap = BuildZoneRoot("Fracture", out var root);
             var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
 
             // Room1 [0,24]: 입구 + Checkpoint + StoryFragment(grantsSkill=Foresight).
-            Floor(tilemap, -1, 25, 0);
+            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
+            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
+            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
             BuildCheckpoint(root.transform, new Vector2(4, 1));
             BuildStoryFragment(root.transform, new Vector2(12, 1), "fracture_skill",
                 "아직 오지 않은 것들이, 이미 나를 흔든다.", EmotionId.Foresight, false);

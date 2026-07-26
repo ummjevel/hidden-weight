@@ -98,6 +98,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Player");
+            sr.sortingOrder = 10; // 타일맵(기본 0)과의 정렬 동률을 피한다 — 플레이어가 항상 위에 그려진다.
 
             var rb = root.AddComponent<Rigidbody2D>();
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
@@ -148,6 +149,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Enemy");
+            sr.sortingOrder = 8; // 타일맵(0)보다 위, 플레이어(10)보다 아래.
 
             var rb = root.AddComponent<Rigidbody2D>();
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
@@ -184,6 +186,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Platform");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
 
             var rb = root.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;
@@ -204,6 +207,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Platform");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
 
             var rb = root.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;
@@ -224,6 +228,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Tile");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
 
             root.AddComponent<Rigidbody2D>(); // 되감기로 밀린 위치를 되돌려야 하므로 Dynamic 그대로 둔다
 
@@ -243,6 +248,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Eye");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
 
             var hazard = root.AddComponent<GazeHazard>();
             var so = new SerializedObject(hazard);
@@ -263,12 +269,14 @@ namespace HiddenWeight.EditorTools
             blocker.layer = LayerMask.NameToLayer("Ground");
             var blockerSr = blocker.AddComponent<SpriteRenderer>();
             blockerSr.sprite = LoadSprite("Gate");
+            blockerSr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
             var blockerCol = blocker.AddComponent<BoxCollider2D>();
             blockerCol.size = new Vector2(1f, 3f); // Gate.png 32x96px / 32ppu
 
             var hint = NewChild(root.transform, "Hint");
             hint.transform.localPosition = new Vector3(0f, 2f, 0f);
             var hintSr = hint.AddComponent<SpriteRenderer>();
+            hintSr.sortingOrder = 5;
 
             var gate = root.AddComponent<Gate>();
             var so = new SerializedObject(gate);
@@ -287,6 +295,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Fragment");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
 
             var col = root.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
@@ -305,6 +314,7 @@ namespace HiddenWeight.EditorTools
 
             var sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = LoadSprite("Fragment");
+            sr.sortingOrder = 5; // 타일맵(0)과의 정렬 동률을 피한다.
             sr.enabled = false; // 자각(L 홀드)으로 드러나기 전에는 보이지 않는다
 
             var col = root.AddComponent<CircleCollider2D>();

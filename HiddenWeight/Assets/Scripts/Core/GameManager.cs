@@ -5,6 +5,14 @@ using HiddenWeight.Data;
 namespace HiddenWeight.Core
 {
     // 게임 전역 싱글턴. 진행도(ProgressState)와 현재 지역 데이터, 게임 상태를 들고 있다.
+    //
+    // Awake가 반드시 다른 모든 컴포넌트보다 먼저 돌아야 한다. PlayerController·PlayerHealth·
+    // PlayerAttack·EmotionSkillController·AwarenessSystem이 자기 Awake에서 GameManager.Instance를
+    // 읽기 때문이다. 씬 안의 오브젝트 순서로는 이 순서가 보장되지 않으므로(씬 루트를 맨 앞으로
+    // 옮겨도 Player 쪽 Awake가 먼저 돌았다) Unity가 이 목적으로 제공하는 실행 순서 지정을 쓴다.
+    // 평소 플레이(Bootstrap→Title→지역)에서는 Bootstrap 인스턴스가 이미 살아있어 문제가 가려지지만,
+    // 지역 씬을 에디터에서 직접 열거나 단독 로드하면 NullReference 5개가 그대로 터진다.
+    [DefaultExecutionOrder(-1000)]
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }

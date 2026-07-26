@@ -45,16 +45,31 @@ namespace HiddenWeight.Tests
         [Test]
         public void 최종게이트는_세_조건이_전부_충족돼야_열린다()
         {
-            Assert.IsFalse(_p.CanOpenFinalGate());
+            Assert.IsFalse(_p.CanOpenFinalGate(), "세 조건이 전부 없으면 닫혀 있어야 한다");
+
+            // 세 조건 중 정확히 하나씩만 빠진 상태를 각각 검증한다.
+            // 단조 증가 경로(하나씩 채워가기)만 쓰면 && 체인에서 조건 하나가
+            // 통째로 빠지는 회귀를 잡아내지 못하므로, 매번 나머지 둘은 채운 채
+            // 나머지 하나만 비운 별도의 ProgressState로 확인한다.
+            var missingRewind = new ProgressState();
+            missingRewind.GrantAwareness();
+            missingRewind.MarkFractureCleared();
+            Assert.IsFalse(missingRewind.CanOpenFinalGate(), "Rewind 스킬만 빠졌는데 열리면 안 된다");
+
+            var missingAwareness = new ProgressState();
+            missingAwareness.UnlockSkill(EmotionId.Rewind);
+            missingAwareness.MarkFractureCleared();
+            Assert.IsFalse(missingAwareness.CanOpenFinalGate(), "자각만 빠졌는데 열리면 안 된다");
+
+            var missingFractureCleared = new ProgressState();
+            missingFractureCleared.UnlockSkill(EmotionId.Rewind);
+            missingFractureCleared.GrantAwareness();
+            Assert.IsFalse(missingFractureCleared.CanOpenFinalGate(), "균열 클리어만 빠졌는데 열리면 안 된다");
 
             _p.UnlockSkill(EmotionId.Rewind);
-            Assert.IsFalse(_p.CanOpenFinalGate(), "자각과 균열 클리어가 아직 없다");
-
             _p.GrantAwareness();
-            Assert.IsFalse(_p.CanOpenFinalGate(), "균열 클리어가 아직 없다");
-
             _p.MarkFractureCleared();
-            Assert.IsTrue(_p.CanOpenFinalGate());
+            Assert.IsTrue(_p.CanOpenFinalGate(), "세 조건이 전부 충족되면 열려야 한다");
         }
 
         [Test]

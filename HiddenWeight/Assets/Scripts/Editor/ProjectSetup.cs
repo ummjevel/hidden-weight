@@ -64,25 +64,51 @@ namespace HiddenWeight.EditorTools
 
         // 3. URP 에셋 생성: Renderer2DData + UniversalRenderPipelineAsset을 만들고
         //    GraphicsSettings와 모든 Quality 레벨에 연결한다.
+        //
+        //    재실행 대비: Run()을 다시 실행하면 이전 실행이 만든 에셋이 같은 경로에 이미 있고,
+        //    그 에셋이 여전히 "현재 활성 파이프라인"으로 GraphicsSettings/QualitySettings에 걸려 있다.
+        //    이 상태에서 곧바로 CreateAsset으로 렌더러 데이터 파일을 덮어쓰면, 활성 파이프라인이
+        //    한순간 렌더러를 잃어 "Default Renderer is missing" 에러가 찍힌다. 그래서 지우기 전에
+        //    참조부터 전부 비우고, 그다음 이전 에셋을 지우고, 마지막에 새로 만들어 다시 연결한다.
         private static void SetupUniversalRenderPipeline()
         {
             EnsureSettingsFolder();
 
+            const string rendererPath = "Assets/Settings/HiddenWeight_Renderer2D.asset";
+            const string pipelinePath = "Assets/Settings/HiddenWeight_URP.asset";
+
+            GraphicsSettings.defaultRenderPipeline = null;
+            int originalLevel = QualitySettings.GetQualityLevel();
+            for (int i = 0; i < QualitySettings.names.Length; i++)
+            {
+                QualitySettings.SetQualityLevel(i, applyExpensiveChanges: false);
+                QualitySettings.renderPipeline = null;
+            }
+
+            DeleteAssetIfExists(pipelinePath);
+            DeleteAssetIfExists(rendererPath);
+
             var rendererData = ScriptableObject.CreateInstance<Renderer2DData>();
-            AssetDatabase.CreateAsset(rendererData, "Assets/Settings/HiddenWeight_Renderer2D.asset");
+            AssetDatabase.CreateAsset(rendererData, rendererPath);
 
             var pipelineAsset = UniversalRenderPipelineAsset.Create(rendererData);
-            AssetDatabase.CreateAsset(pipelineAsset, "Assets/Settings/HiddenWeight_URP.asset");
+            AssetDatabase.CreateAsset(pipelineAsset, pipelinePath);
 
             GraphicsSettings.defaultRenderPipeline = pipelineAsset;
-
-            int originalLevel = QualitySettings.GetQualityLevel();
             for (int i = 0; i < QualitySettings.names.Length; i++)
             {
                 QualitySettings.SetQualityLevel(i, applyExpensiveChanges: false);
                 QualitySettings.renderPipeline = pipelineAsset;
             }
             QualitySettings.SetQualityLevel(originalLevel, applyExpensiveChanges: false);
+        }
+
+        private static void DeleteAssetIfExists(string path)
+        {
+            if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) != null)
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
         }
 
         // 4. Volume 프로파일: 지역 4종 + 자각 전용 1종.

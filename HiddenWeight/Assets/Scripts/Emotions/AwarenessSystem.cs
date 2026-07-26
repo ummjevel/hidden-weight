@@ -55,6 +55,14 @@ namespace HiddenWeight.Emotions
                 IsActive = wanted;
                 if (IsActive) Activate();
                 else Deactivate();
+                return;
+            }
+
+            // 자각을 유지한 채로 안정 지역 -> 균열 지역으로 넘어간 경우.
+            // 반대 방향(균열 -> 안정)은 UnstableFlicker의 while 조건이 스스로 끝내준다.
+            if (IsActive && !IsStable && _flickerRoutine == null)
+            {
+                _flickerRoutine = StartCoroutine(UnstableFlicker());
             }
         }
 

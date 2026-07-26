@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden Weight — 캐릭터 팔레트 비교</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-past:#262A38;
+    --bg-present:#423A5C;
+    --bg-future:#E8F5EC;
+    --tint-past:#3D4A66;
+    --tint-present:#4A3F63;
+    --tint-future:#B7ABD1;
+    --ink:#EDEFF5;
+    --ink-dim:#9AA0B4;
+    --accent:#73D8D4;
+    --panel:#1B1D27;
+    --panel-line:#33364A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Noto Sans KR',sans-serif;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(115,216,212,.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(141,116,184,.14), transparent 55%),
+      #101119;
+    color:var(--ink);
+    padding:56px 24px 90px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:14px;
+  }
+  h1{
+    font-size:clamp(28px,4vw,44px);
+    font-weight:900;margin:0 0 10px;letter-spacing:-.02em;
+  }
+  .sub{color:var(--ink-dim);font-size:15px;line-height:1.7;max-width:660px;margin-bottom:36px;}
+
+  .insight, .refnote{
+    border:1px solid var(--panel-line);
+    background:linear-gradient(135deg, rgba(115,216,212,.08), rgba(115,216,212,0) 60%), var(--panel);
+    border-radius:14px;padding:20px 24px;margin-bottom:36px;
+    display:flex;gap:16px;align-items:flex-start;
+  }
+  .insight .dot, .refnote .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px 3px rgba(115,216,212,.6);margin-top:6px;flex:none;}
+  .insight p, .refnote p{margin:0;font-size:14px;line-height:1.75;color:#D9DCE8;}
+  .insight b, .refnote b{color:var(--accent);font-weight:700;}
+  .refnote{margin-bottom:52px;}
+
+  section{margin-bottom:64px;}
+  .sec-title{
+    font-size:20px;font-weight:700;margin-bottom:6px;
+    display:flex;align-items:baseline;gap:10px;
+  }
+  .sec-title span.num{font-family:'JetBrains Mono',monospace;color:var(--ink-dim);font-size:14px;}
+  .sec-desc{color:var(--ink-dim);font-size:13.5px;margin-bottom:26px;line-height:1.6;}
+
+  /* ---- mood swatch reference ---- */
+  .mood-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:820px){.mood-grid{grid-template-columns:1fr;}}
+  .mood-card{border:1px solid var(--panel-line);border-radius:14px;padding:18px;}
+  .mood-card.mp{background:linear-gradient(180deg,#1B1E2A,#171923);}
+  .mood-card.mc{background:linear-gradient(180deg,#231D2C,#1D1826);}
+  .mood-card.mf{background:linear-gradient(180deg,#1D2621,#19211D);}
+  .mood-card h4{margin:0 0 3px;font-size:14px;}
+  .mood-card span{font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
+  .mood-chips{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;}
+  .mood-chip{flex:1;min-width:56px;text-align:center;border-radius:8px;padding:7px 3px 5px;border:1px solid rgba(255,255,255,.08);}
+  .mood-chip .sw{width:100%;height:24px;border-radius:6px;margin-bottom:4px;border:1px solid rgba(255,255,255,.14);}
+  .mood-chip code{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:#C7CBDA;}
+  .mood-tint-label{font-size:10.5px;color:var(--ink-dim);margin-top:12px;}
+
+  /* ---- type cards ---- */
+  .types{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  @media (max-width:820px){.types{grid-template-columns:1fr;}}
+  .card{
+    background:var(--panel);border:1px solid var(--panel-line);border-radius:16px;
+    padding:22px;position:relative;overflow:hidden;
+  }
+  .card.best{border-color:rgba(115,216,212,.55);box-shadow:0 0 0 1px rgba(115,216,212,.15), 0 20px 40px -20px rgba(115,216,212,.25);}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .card-head h3{margin:0;font-size:16px;font-weight:700;}
+  .stars{font-size:12px;color:var(--accent);letter-spacing:1px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:#0F1A19;
+    background:var(--accent);padding:3px 8px;border-radius:20px;font-weight:700;
+    position:absolute;top:18px;right:18px;
+  }
+  .card-note{font-size:12px;color:var(--ink-dim);margin-bottom:18px;}
+
+  .bgrow{display:flex;gap:10px;margin-bottom:20px;}
+  .bgcell{
+    flex:1;border-radius:10px;height:132px;position:relative;
+    display:flex;align-items:flex-end;justify-content:center;overflow:hidden;
+  }
+  .bgcell .label{
+    position:absolute;top:8px;left:9px;font-family:'JetBrains Mono',monospace;
+    font-size:9px;letter-spacing:.06em;opacity:.7;
+  }
+  .bg-past{background:var(--bg-past);}
+  .bg-present{background:var(--bg-present);}
+  .bg-future{background:var(--bg-future);}
+  .bg-future .label{color:#3A5140;}
+  .bg-past .label, .bg-present .label{color:#fff;}
+
+  /* character */
+  .character{position:relative;width:74px;height:104px;margin-bottom:6px;transform:scale(.92);}
+  .character.shadowed::before{
+    content:'';position:absolute;left:-6px;right:-6px;top:6px;bottom:0;
+    background:rgba(20,22,30,.30);filter:blur(9px);border-radius:45% 45% 35% 35%;z-index:0;
+  }
+  .tint{position:absolute;inset:-2px;z-index:5;mix-blend-mode:multiply;border-radius:inherit;pointer-events:none;}
+  .tint-past{background:var(--tint-past);opacity:.40;}
+  .tint-present{background:var(--tint-present);opacity:.38;}
+  .tint-future{background:var(--tint-future);opacity:.22;}
+  .hair{position:absolute;top:-4px;left:9px;width:56px;height:32px;border-radius:50% 50% 40% 40%;
+    background:linear-gradient(155deg,var(--hair-hi),var(--hair-base) 45%,var(--hair-shadow));
+    z-index:3;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
+  .head{position:absolute;top:10px;left:12px;width:50px;height:50px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--skin-hi), var(--skin-base) 55%, var(--skin-shadow) 100%);
+    z-index:2;box-shadow:0 3px 6px rgba(0,0,0,.18);}
+  .eye{position:absolute;top:32px;width:7px;height:9px;border-radius:50%;background:var(--eye-base);
+    box-shadow:0 0 8px 2px var(--eye-glow);z-index:4;}
+  .eye::after{content:'';position:absolute;top:1px;left:1px;width:2.5px;height:2.5px;border-radius:50%;background:var(--eye-hi);}
+  .eye-l{left:23px;} .eye-r{left:41px;}
+  .body{position:absolute;top:54px;left:9px;width:56px;height:34px;background:var(--tunic);
+    clip-path:polygon(22% 0%,78% 0%,100% 100%,0% 100%);z-index:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.18));}
+  .bottom{position:absolute;top:83px;left:17px;width:40px;height:16px;background:var(--bottom);
+    border-radius:5px 5px 0 0;z-index:1;}
+  .shoe{position:absolute;top:96px;width:14px;height:8px;border-radius:6px;background:var(--shoe);z-index:1;}
+  .shoe-l{left:16px;} .shoe-r{left:44px;}
+
+  .swatch-groups{display:flex;flex-direction:column;gap:10px;}
+  .swatch-group{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;}
+  .swatch-group .glabel{font-size:11px;color:var(--ink-dim);font-weight:500;}
+  .chips{display:flex;gap:6px;}
+  .chip{flex:1;text-align:center;border-radius:8px;padding:6px 2px 5px;border:1px solid rgba(255,255,255,.08);}
+  .chip .sw{width:100%;height:18px;border-radius:5px;margin-bottom:4px;border:1px solid rgba(255,255,255,.12);}
+  .chip code{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:#C7CBDA;}
+
+  /* readability callout */
+  .callout{
+    background:var(--panel);border:1px solid var(--panel-line);border-radius:16px;
+    padding:24px;display:grid;grid-template-columns:1fr 1.3fr;gap:28px;align-items:center;
+  }
+  @media (max-width:700px){.callout{grid-template-columns:1fr;}}
+  .callout h4{margin:0 0 10px;font-size:15px;}
+  .callout p{margin:0;font-size:13.5px;color:#CBCFDD;line-height:1.75;}
+  .compare-row{display:flex;gap:18px;justify-content:center;}
+  .compare-box{text-align:center;}
+  .compare-box .bgcell{width:120px;height:150px;}
+  .compare-box .cap{font-size:11px;color:var(--ink-dim);margin-top:8px;}
+
+  /* emotion palettes */
+  .emo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:820px){.emo-grid{grid-template-columns:1fr;}}
+  .emo-card{background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;padding:18px;}
+  .emo-head{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .emo-icon{width:9px;height:9px;border-radius:50%;}
+  .emo-head h4{margin:0;font-size:14px;font-weight:700;}
+  .emo-head span{font-size:11px;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;}
+  .emo-chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .emo-chip{flex:1;min-width:60px;text-align:center;border-radius:8px;padding:8px 4px 6px;border:1px solid rgba(255,255,255,.08);}
+  .emo-chip .sw{width:100%;height:26px;border-radius:6px;margin-bottom:5px;border:1px solid rgba(255,255,255,.12);}
+  .emo-chip code{font-family:'JetBrains Mono',monospace;font-size:9px;color:#C7CBDA;}
+
+  /* outfit section */
+  .outfit-wrap{
+    background:var(--panel);border:1px solid var(--panel-line);border-radius:16px;
+    padding:28px;display:flex;gap:40px;align-items:center;
+  }
+  @media (max-width:640px){.outfit-wrap{flex-direction:column;align-items:flex-start;}}
+  .outfit-demo{transform:scale(1.7);margin:20px 30px 20px 10px;flex:none;}
+  .outfit-legend{display:flex;flex-direction:column;gap:14px;}
+  .outfit-row{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:#CBCFDD;line-height:1.6;}
+  .outfit-row b{color:var(--ink);font-size:13.5px;}
+  .outfit-row .dot{width:14px;height:14px;border-radius:4px;flex:none;margin-top:2px;}
+  .outfit-row.no-cape{padding-top:8px;border-top:1px dashed var(--panel-line);}
+  .outfit-row .dot.x{
+    width:14px;height:14px;border-radius:4px;background:transparent;border:1px solid #E88;
+    color:#E88;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;
+  }
+
+  /* final rec */
+  .final{
+    border:1px solid rgba(115,216,212,.4);border-radius:16px;padding:26px 28px;
+    background:linear-gradient(135deg, rgba(115,216,212,.09), rgba(141,116,184,.06));
+  }
+  .final h3{margin:0 0 14px;font-size:16px;display:flex;align-items:center;gap:8px;}
+  .final ul{margin:0;padding-left:18px;color:#DCDEEA;font-size:13.5px;line-height:2;}
+  .final li b{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Hidden Weight · Character Art Direction · v2</div>
+  <h1>캐릭터 팔레트 비교</h1>
+  <p class="sub">공유해주신 무드보드(잔재·응시·균열 3지역 컨셉아트)를 기준으로, 캐릭터 그림자를 각 지역의 주변광 색에 맞춰 재조정했어요.</p>
+
+  <div class="refnote">
+    <div class="dot"></div>
+    <p><b>참고:</b> 아래 무드보드 스와치 값은 업로드하신 이미지를 육안으로 읽어 근사치로 뽑은 값이에요. 픽셀 단위 정확한 색이 필요하면 원본 파일을 포토샵 등에서 스포이드로 직접 추출하는 걸 권장해요.</p>
+  </div>
+
+  <section>
+    <div class="sec-title"><span class="num">00</span> 무드보드 기준 지역 스와치 (참고용 근사치)</div>
+    <div class="sec-desc">업로드해주신 컨셉아트에서 읽은 대표 색상이에요. 이 중 어두운 톤을 그림자 틴트로, 밝은 톤을 림 라이트로 사용했어요.</div>
+    <div class="mood-grid">
+      <div class="mood-card mp">
+        <h4>과거 · 잔재 (죄책감)</h4><span>남색 · 회갈색 · 저채도</span>
+        <div class="mood-chips">
+          <div class="mood-chip"><div class="sw" style="background:#3D4A66"></div><code>3D4A66</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#7C8CA3"></div><code>7C8CA3</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#4A4136"></div><code>4A4136</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#8B7C69"></div><code>8B7C69</code></div>
+        </div>
+        <div class="mood-tint-label">→ 그림자 틴트로 채택: <code style="color:#8AA0D8">#3D4A66</code></div>
+      </div>
+      <div class="mood-card mc">
+        <h4>현재 · 응시 (수치심)</h4><span>보라 · 청록 · 중채도</span>
+        <div class="mood-chips">
+          <div class="mood-chip"><div class="sw" style="background:#9C8FC0"></div><code>9C8FC0</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#3F9C93"></div><code>3F9C93</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#8B8894"></div><code>8B8894</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#2C6764"></div><code>2C6764</code></div>
+        </div>
+        <div class="mood-tint-label">→ 그림자 틴트로 채택: <code style="color:#B7ABD8">#4A3F63</code> (보라 계열 혼합)</div>
+      </div>
+      <div class="mood-card mf">
+        <h4>미래 · 균열 (불안)</h4><span>민트 · 라벤더 · 고채도 파스텔 + 형광</span>
+        <div class="mood-chips">
+          <div class="mood-chip"><div class="sw" style="background:#8FE3B8"></div><code>8FE3B8</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#CDBFF0"></div><code>CDBFF0</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#F0E6A0"></div><code>F0E6A0</code></div>
+          <div class="mood-chip"><div class="sw" style="background:#F5B5CC"></div><code>F5B5CC</code></div>
+        </div>
+        <div class="mood-tint-label">→ 그림자 틴트로 채택: <code style="color:#C7BAE3">#B7ABD1</code> (저농도, 22%만 적용)</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="insight">
+    <div class="dot"></div>
+    <p><b>재조정 원칙:</b> 캐릭터 본체(헤어·스킨·눈·의상) 베이스 컬러는 Draft v1 그대로 유지해요. 대신 각 지역에 들어갈 때 캐릭터 위에 그 지역 그림자 틴트를 <b>곱하기(multiply) 블렌드</b>로 살짝 얹어서, 같은 캐릭터라도 지역마다 주변광에 물든 것처럼 보이게 했어요. 무드보드 속 흰 캐릭터가 배경색에 은은히 스며있는 것과 같은 원리예요.</p>
+  </div>
+
+  <section>
+    <div class="sec-title"><span class="num">01</span> 타입 비교 — 지역별 그림자 틴트 적용</div>
+    <div class="sec-desc">이제 배경마다 캐릭터에 해당 지역의 그림자 톤이 곱해져 있어요. (이전 버전은 배경만 바뀌고 캐릭터 톤은 고정이었어요)</div>
+
+    <div class="types">
+
+      <!-- TYPE A -->
+      <div class="card best">
+        <span class="tag">추천</span>
+        <div class="card-head"><h3>타입 A</h3><span class="stars">★★★★★</span></div>
+        <div class="card-note">차갑고 몽환적인 분위기 · 가장 안정적인 팔레트</div>
+        <div class="bgrow">
+          <div class="bgcell bg-past"><span class="label">잔재</span>
+            <div class="character" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+              <div class="tint tint-past"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-present"><span class="label">응시</span>
+            <div class="character" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+              <div class="tint tint-present"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-future"><span class="label">균열</span>
+            <div class="character shadowed" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+              <div class="tint tint-future"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+        </div>
+        <div class="swatch-groups">
+          <div class="swatch-group"><div class="glabel">Hair</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#E7EAF0"></div><code>E7EAF0</code></div>
+            <div class="chip"><div class="sw" style="background:#C9D0DB"></div><code>C9D0DB</code></div>
+            <div class="chip"><div class="sw" style="background:#FDFDFD"></div><code>FDFDFD</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Skin</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#EEE7E2"></div><code>EEE7E2</code></div>
+            <div class="chip"><div class="sw" style="background:#D8CEC8"></div><code>D8CEC8</code></div>
+            <div class="chip"><div class="sw" style="background:#FAF6F2"></div><code>FAF6F2</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Eyes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#73D8D4"></div><code>73D8D4</code></div>
+            <div class="chip"><div class="sw" style="background:#BDF8F2"></div><code>BDF8F2</code></div>
+            <div class="chip"><div class="sw" style="background:#8BFFF2"></div><code>8BFFF2</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Clothes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#F5F3EF"></div><code>F5F3EF</code></div>
+            <div class="chip"><div class="sw" style="background:#C9CDD6"></div><code>C9CDD6</code></div>
+            <div class="chip"><div class="sw" style="background:#676F80"></div><code>676F80</code></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- TYPE B -->
+      <div class="card">
+        <div class="card-head"><h3>타입 B</h3><span class="stars">★★★★☆</span></div>
+        <div class="card-note">따뜻한 감성 · 사람다운 느낌이 살아있음</div>
+        <div class="bgrow">
+          <div class="bgcell bg-past"><span class="label">잔재</span>
+            <div class="character" style="--hair-base:#F4F5F6;--hair-shadow:#D9DDE3;--hair-hi:#FFFFFF;--skin-base:#F3EDE7;--skin-shadow:#DDD2CA;--skin-hi:#FFF8F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F4F2EC;--bottom:#D7D3CC;--shoe:#6A6F78;">
+              <div class="tint tint-past"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-present"><span class="label">응시</span>
+            <div class="character" style="--hair-base:#F4F5F6;--hair-shadow:#D9DDE3;--hair-hi:#FFFFFF;--skin-base:#F3EDE7;--skin-shadow:#DDD2CA;--skin-hi:#FFF8F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F4F2EC;--bottom:#D7D3CC;--shoe:#6A6F78;">
+              <div class="tint tint-present"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-future"><span class="label">균열</span>
+            <div class="character shadowed" style="--hair-base:#F4F5F6;--hair-shadow:#D9DDE3;--hair-hi:#FFFFFF;--skin-base:#F3EDE7;--skin-shadow:#DDD2CA;--skin-hi:#FFF8F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F4F2EC;--bottom:#D7D3CC;--shoe:#6A6F78;">
+              <div class="tint tint-future"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+        </div>
+        <div class="swatch-groups">
+          <div class="swatch-group"><div class="glabel">Hair</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#F4F5F6"></div><code>F4F5F6</code></div>
+            <div class="chip"><div class="sw" style="background:#D9DDE3"></div><code>D9DDE3</code></div>
+            <div class="chip"><div class="sw" style="background:#FFFFFF;border:1px solid #444"></div><code>FFFFFF</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Skin</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#F3EDE7"></div><code>F3EDE7</code></div>
+            <div class="chip"><div class="sw" style="background:#DDD2CA"></div><code>DDD2CA</code></div>
+            <div class="chip"><div class="sw" style="background:#FFF8F2"></div><code>FFF8F2</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Eyes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#73D8D4"></div><code>73D8D4</code></div>
+            <div class="chip"><div class="sw" style="background:#BDF8F2"></div><code>BDF8F2</code></div>
+            <div class="chip"><div class="sw" style="background:#8BFFF2"></div><code>8BFFF2</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Clothes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#F4F2EC"></div><code>F4F2EC</code></div>
+            <div class="chip"><div class="sw" style="background:#D7D3CC"></div><code>D7D3CC</code></div>
+            <div class="chip"><div class="sw" style="background:#6A6F78"></div><code>6A6F78</code></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- TYPE C -->
+      <div class="card">
+        <div class="card-head"><h3>타입 C</h3><span class="stars">★★★★☆</span></div>
+        <div class="card-note">꿈속 주민 · 현실감이 가장 적고 신비로움</div>
+        <div class="bgrow">
+          <div class="bgcell bg-past"><span class="label">잔재</span>
+            <div class="character" style="--hair-base:#E3E5EA;--hair-shadow:#C6CBD5;--hair-hi:#FBFCFD;--skin-base:#E8E4E8;--skin-shadow:#D0CAD2;--skin-hi:#F8F7F8;--eye-base:#65D7D9;--eye-hi:#B8F7F5;--eye-glow:#9BFFF6;--tunic:#ECEBED;--bottom:#C8CBD4;--shoe:#666D79;">
+              <div class="tint tint-past"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-present"><span class="label">응시</span>
+            <div class="character" style="--hair-base:#E3E5EA;--hair-shadow:#C6CBD5;--hair-hi:#FBFCFD;--skin-base:#E8E4E8;--skin-shadow:#D0CAD2;--skin-hi:#F8F7F8;--eye-base:#65D7D9;--eye-hi:#B8F7F5;--eye-glow:#9BFFF6;--tunic:#ECEBED;--bottom:#C8CBD4;--shoe:#666D79;">
+              <div class="tint tint-present"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="bgcell bg-future"><span class="label">균열</span>
+            <div class="character shadowed" style="--hair-base:#E3E5EA;--hair-shadow:#C6CBD5;--hair-hi:#FBFCFD;--skin-base:#E8E4E8;--skin-shadow:#D0CAD2;--skin-hi:#F8F7F8;--eye-base:#65D7D9;--eye-hi:#B8F7F5;--eye-glow:#9BFFF6;--tunic:#ECEBED;--bottom:#C8CBD4;--shoe:#666D79;">
+              <div class="tint tint-future"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+        </div>
+        <div class="swatch-groups">
+          <div class="swatch-group"><div class="glabel">Hair</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#E3E5EA"></div><code>E3E5EA</code></div>
+            <div class="chip"><div class="sw" style="background:#C6CBD5"></div><code>C6CBD5</code></div>
+            <div class="chip"><div class="sw" style="background:#FBFCFD"></div><code>FBFCFD</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Skin</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#E8E4E8"></div><code>E8E4E8</code></div>
+            <div class="chip"><div class="sw" style="background:#D0CAD2"></div><code>D0CAD2</code></div>
+            <div class="chip"><div class="sw" style="background:#F8F7F8"></div><code>F8F7F8</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Eyes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#65D7D9"></div><code>65D7D9</code></div>
+            <div class="chip"><div class="sw" style="background:#B8F7F5"></div><code>B8F7F5</code></div>
+            <div class="chip"><div class="sw" style="background:#9BFFF6"></div><code>9BFFF6</code></div>
+          </div></div>
+          <div class="swatch-group"><div class="glabel">Clothes</div><div class="chips">
+            <div class="chip"><div class="sw" style="background:#ECEBED"></div><code>ECEBED</code></div>
+            <div class="chip"><div class="sw" style="background:#C8CBD4"></div><code>C8CBD4</code></div>
+            <div class="chip"><div class="sw" style="background:#666D79"></div><code>666D79</code></div>
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title"><span class="num">02</span> 가독성 체크 — 균열(밝은 배경) 구간</div>
+    <div class="callout">
+      <div>
+        <h4>밝은 배경에서는 그림자 보정이 필요해요</h4>
+        <p>무드보드의 균열 지역도 배경이 밝은 파스텔이라, 캐릭터는 옅은 라벤더 틴트(22% 농도)만으로는 부족하고 뒤쪽에 옅은 그림자를 깔아 대비를 확보해야 해요. 무드보드 속 캐릭터도 밝은 꽃밭 위에서 은은한 그림자를 달고 있어요.</p>
+      </div>
+      <div class="compare-row">
+        <div class="compare-box">
+          <div class="bgcell bg-future">
+            <div class="character" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="cap">보정 전</div>
+        </div>
+        <div class="compare-box">
+          <div class="bgcell bg-future">
+            <div class="character shadowed" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+              <div class="tint tint-future"></div>
+              <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+            </div>
+          </div>
+          <div class="cap">그림자+틴트 보정 후 (권장)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title"><span class="num">03</span> 감정 이펙트 컬러 — 눈·손끝·발자국·스킬 이펙트 전용</div>
+    <div class="sec-desc">캐릭터 본체 색은 유지하고, 이 컬러들은 감정 표현 지점에서만 은은하게 사용해요.</div>
+    <div class="emo-grid">
+      <div class="emo-card">
+        <div class="emo-head"><div class="emo-icon" style="background:#6278A9"></div><h4>잔재</h4><span>Residual · 과거·죄책감</span></div>
+        <div class="emo-chips">
+          <div class="emo-chip"><div class="sw" style="background:#445A8E"></div><code>445A8E</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#6278A9"></div><code>6278A9</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#8AA0C9"></div><code>8AA0C9</code></div>
+        </div>
+      </div>
+      <div class="emo-card">
+        <div class="emo-head"><div class="emo-icon" style="background:#8D74B8"></div><h4>응시</h4><span>Gaze · 현재·수치심</span></div>
+        <div class="emo-chips">
+          <div class="emo-chip"><div class="sw" style="background:#8D74B8"></div><code>8D74B8</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#5BA7AF"></div><code>5BA7AF</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#B6A4D9"></div><code>B6A4D9</code></div>
+        </div>
+      </div>
+      <div class="emo-card">
+        <div class="emo-head"><div class="emo-icon" style="background:#9EFFF4"></div><h4>균열</h4><span>Fracture · 미래·불안</span></div>
+        <div class="emo-chips">
+          <div class="emo-chip"><div class="sw" style="background:#B7F5D7"></div><code>B7F5D7</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#D8C2FF"></div><code>D8C2FF</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#9EFFF4"></div><code>9EFFF4</code></div>
+          <div class="emo-chip"><div class="sw" style="background:#FFF1C9"></div><code>FFF1C9</code></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title"><span class="num">04</span> 의상 구조 — 튜닉 + 반바지·레깅스 (망토 없음)</div>
+    <div class="sec-desc">Draft v1에서 처음 정하신 의상 방향이에요. 지금 캐릭터 실루엣도 이 구조 그대로 반영돼 있어요 — 상의(튜닉)와 하의(반바지·레깅스)가 분리된 두 개의 도형으로 구성되고, 망토에 해당하는 파츠는 아예 없어요.</div>
+    <div class="outfit-wrap">
+      <div class="character outfit-demo" style="--hair-base:#E7EAF0;--hair-shadow:#C9D0DB;--hair-hi:#FDFDFD;--skin-base:#EEE7E2;--skin-shadow:#D8CEC8;--skin-hi:#FAF6F2;--eye-base:#73D8D4;--eye-hi:#BDF8F2;--eye-glow:#8BFFF2;--tunic:#F5F3EF;--bottom:#C9CDD6;--shoe:#676F80;">
+        <div class="hair"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="body"></div><div class="bottom"></div><div class="shoe shoe-l"></div><div class="shoe shoe-r"></div>
+      </div>
+      <div class="outfit-legend">
+        <div class="outfit-row"><span class="dot" style="background:#F5F3EF;border:1px solid #999"></span><div><b>튜닉 (상의)</b><br>몸통을 감싸는 사다리꼴 실루엣 — 메트로배니아 애니메이션에 유리한 단순한 형태</div></div>
+        <div class="outfit-row"><span class="dot" style="background:#C9CDD6"></span><div><b>반바지 + 레깅스 (하의)</b><br>튜닉 아래로 살짝 드러나는 별도 파츠. 다리 움직임 애니메이션이 튜닉에 가리지 않게 함</div></div>
+        <div class="outfit-row"><span class="dot" style="background:#676F80"></span><div><b>신발</b><br>단순한 실루엣으로 처리, 색은 의상 톤보다 한 단계 어둡게</div></div>
+        <div class="outfit-row no-cape"><span class="dot x">✕</span><div><b>망토 — 사용 안 함</b><br>할로우 나이트와의 차별화 포인트로 의도적으로 제외. 실루엣에 망토 파츠가 없는 것을 확인할 수 있어요</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final">
+    <h3>✅ 재조정 결과 요약</h3>
+    <ul>
+      <li>의상은 <b>튜닉 + 반바지·레깅스</b> 조합, 망토는 사용하지 않음 (04절)</li>
+      <li>캐릭터 베이스(<b>타입 A</b>) 컬러는 변경 없음 — 무드보드 속 캐릭터도 거의 무채색 흰 존재로 표현됨</li>
+      <li>지역 진입 시 캐릭터에 <b>그림자 틴트</b>를 곱하기 블렌드로 적용 — 잔재 남색 / 응시 보라 / 균열 저농도 라벤더</li>
+      <li>균열(밝은 배경)에서는 틴트만으로 부족해 <b>배경 그림자</b>를 함께 사용 (02절)</li>
+      <li>감정 이펙트 컬러(눈·손끝·발자국)는 기존 값 유지, 그림자 틴트와는 별개 레이어</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

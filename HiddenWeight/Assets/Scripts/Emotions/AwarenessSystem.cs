@@ -49,6 +49,15 @@ namespace HiddenWeight.Emotions
 
         void Update()
         {
+            // AwarenessHeld는 PausePressed와 마찬가지로 PlayerInput.Enabled와 무관하게 동작하므로
+            // (Ending 시퀀스가 필요로 함), 일시정지 중에는 여기서 직접 막아 이전과 같은 동작을 유지한다.
+            if (GameManager.Instance.State != GameState.Playing)
+            {
+                if (IsActive) Deactivate();
+                IsActive = false;
+                return;
+            }
+
             bool wanted = GameManager.Instance.Progress.HasAwareness && PlayerInput.AwarenessHeld;
             if (wanted != IsActive)
             {

@@ -4,8 +4,9 @@ namespace HiddenWeight.Player
 {
     // 키 입력을 이 파일에만 모아둔다. 다른 스크립트는 Input 클래스를 직접 건드리지 않고
     // 이 static 클래스를 통해서만 입력을 읽는다.
-    // Enabled가 false면 PausePressed를 제외한 모든 값이 0/false로 고정된다
-    // (일시정지 화면에서도 Escape로 해제할 수 있어야 하므로).
+    // Enabled가 false면 PausePressed·AwarenessHeld를 제외한 모든 값이 0/false로 고정된다
+    // (일시정지 화면에서도 Escape로 해제할 수 있어야 하고, Ending 시퀀스에서도 이동/공격은
+    // 막되 자각(L) 입력만은 받아야 하므로).
     public static class PlayerInput
     {
         public static bool Enabled { get; set; } = true;
@@ -34,8 +35,10 @@ namespace HiddenWeight.Player
         public static bool SkillHeld
             => Enabled && Input.GetKey(KeyCode.K);
 
+        // 일시정지와 마찬가지로 Enabled 여부와 무관하게 항상 동작한다 — Ending 시퀀스는
+        // PlayerInput.Enabled = false로 이동/공격을 막아둔 채 이 값만 직접 읽는다.
         public static bool AwarenessHeld
-            => Enabled && Input.GetKey(KeyCode.L);
+            => Input.GetKey(KeyCode.L);
 
         // 일시정지 해제용이므로 Enabled 여부와 무관하게 항상 동작한다.
         public static bool PausePressed

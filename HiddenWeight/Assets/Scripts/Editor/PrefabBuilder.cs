@@ -115,6 +115,7 @@ namespace HiddenWeight.EditorTools
             var controller = root.AddComponent<PlayerController>();
             var attack = root.AddComponent<PlayerAttack>();
             root.AddComponent<PlayerHealth>();
+            root.AddComponent<VoidRespawn>(); // 맵 밖 무한 낙하 소프트락 방지
             root.AddComponent<PlayerAnimator>();
             root.AddComponent<EmotionSkillController>();
             var rewind = root.AddComponent<RewindSkill>();

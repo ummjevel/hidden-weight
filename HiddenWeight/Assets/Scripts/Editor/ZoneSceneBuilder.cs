@@ -404,7 +404,19 @@ namespace HiddenWeight.EditorTools
 
             BuildZoneVolume(root.transform, zoneAssetName);
 
+            // 모든 지역의 바닥은 x=-1에서 시작한다. 왼쪽(이전 지역 방향)으로 되돌아가면
+            // 허공으로 떨어져 소프트락되므로 보이지 않는 경계벽으로 막는다.
+            // (오른쪽 경계는 지역마다 폭이 달라 각 빌더가 세운다.)
+            BuildBoundary(root.transform, "LeftBoundary", -2f);
+
             return tilemap;
+        }
+
+        // 보이지 않는 지역 경계벽. Ground 레이어라 벽잡기(Wall 레이어 전용)는 되지 않는다.
+        static void BuildBoundary(Transform parent, string name, float x)
+        {
+            var go = BuildSolidBlock(parent, name, new Vector2(x, 6f), new Vector2(1f, 26f), "Ground");
+            go.GetComponent<SpriteRenderer>().enabled = false;
         }
 
         // 공통 지역 킷 2단계: MainCamera + Player + HUD + PauseMenu + EventSystem.
@@ -496,14 +508,19 @@ namespace HiddenWeight.EditorTools
             // 반복 홉으로 오르는 고난도 루트만 남아 사실상 진행 불가에 가까웠다. 튜토리얼
             // 난이도에 맞게 천장을 열고 안쪽 핑퐁 루트를 정식 경로로 만든다.
             Floor(tilemap, 48, 72, 0);
-            BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 4), new Vector2(1, 8), "Wall");
-            BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 4), new Vector2(1, 8), "Wall");
+            // 벽 2개를 공중에 띄운다(y 2.2~8). 바닥에서 굴뚝 아래로 걸어 들어간 뒤 점프해서
+            // 벽면에 붙는 것이 입구다 — 점프 정점(속도14·중력3.5 기준 약 2.85)이 벽 하단(2.2)에
+            // 확실히 닿는다. 이전 버전은 벽이 바닥부터 서 있어 굴뚝에 들어갈 방법이 없었다.
+            BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 5.1f), new Vector2(1, 5.8f), "Wall");
+            BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 5.1f), new Vector2(1, 5.8f), "Wall");
             BuildTutorialHint(root.transform, new Vector2(55, 3),
-                "벽 쪽 방향키를 누른 채  벽에 붙고\nSpace  로 반대 벽에 옮겨 붙으며 오르기");
+                "두 벽 사이에서 점프해  벽 쪽 방향키로 붙고\nSpace  로 반대 벽에 옮겨 붙으며 오르기");
             BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
 
             // 굴뚝 입구(x 58.5~60.5) 바로 위를 넉넉히 덮는다 — 착지 없이 닿기만 하면 클리어.
             BuildZoneTrigger(root.transform, new Vector2(59.5f, 9.5f), new Vector2(3, 3), false);
+
+            BuildBoundary(root.transform, "RightBoundary", 73f);
 
             SaveScene(scene, "Zone_Prologue");
         }
@@ -572,6 +589,8 @@ namespace HiddenWeight.EditorTools
                 "결국 남은 건, 스스로에게조차 하지 못한 용서.");
             BuildRoom(rooms.transform, "Room4", new Vector2(84, 5), new Vector2(24, 16));
 
+            BuildBoundary(root.transform, "RightBoundary", 97f);
+
             SaveScene(scene, "Zone_Residue");
         }
 
@@ -635,6 +654,8 @@ namespace HiddenWeight.EditorTools
                 "아무도 보지 않아도, 나는 나를 보고 있었다.");
             BuildZoneTrigger(root.transform, new Vector2(94, 1), new Vector2(2, 3), false);
             BuildRoom(rooms.transform, "Room4", new Vector2(84, 4), new Vector2(24, 14));
+
+            BuildBoundary(root.transform, "RightBoundary", 97f);
 
             SaveScene(scene, "Zone_Gaze");
         }
@@ -703,6 +724,8 @@ namespace HiddenWeight.EditorTools
                 "불안은 미래가 아니라, 지금의 다른 이름이었다.", EmotionId.None, false);
             BuildZoneTrigger(root.transform, new Vector2(106, 1), new Vector2(2, 3), true);
             BuildRoom(rooms.transform, "Room4", new Vector2(96, 4), new Vector2(24, 14));
+
+            BuildBoundary(root.transform, "RightBoundary", 109f);
 
             SaveScene(scene, "Zone_Fracture");
         }

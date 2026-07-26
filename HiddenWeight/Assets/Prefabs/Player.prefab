@@ -77,6 +77,7 @@ GameObject:
   - component: {fileID: 1650520107059479430}
   - component: {fileID: 9066701329897454345}
   - component: {fileID: 6758930399747167471}
+  - component: {fileID: 4849260326678869083}
   - component: {fileID: 294943554896669473}
   - component: {fileID: 235938274342975415}
   - component: {fileID: 9025343236818499697}
@@ -280,6 +281,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a23528d2e2d084cf78cd0dc6485a5921, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.PlayerHealth
+--- !u!114 &4849260326678869083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6094728301191228689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c478174b547c4ac2bdbf2fad2380557, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.VoidRespawn
+  voidY: -15
 --- !u!114 &294943554896669473
 MonoBehaviour:
   m_ObjectHideFlags: 0

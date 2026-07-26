@@ -1,12 +1,13 @@
 using UnityEngine;
 using HiddenWeight.Data;
 using HiddenWeight.Core;
+using HiddenWeight.World;
 
 namespace HiddenWeight.Player
 {
-    // 근접 공격 판정. Enemies 모듈은 Task 9에서 만들어지므로 여기서는 참조하지 않는다.
-    // 부채꼴 판정에 명중한 대상에게 실제 피해를 적용하는 코드는 Task 9가
-    // IDamageable 연동과 함께 이 파일에 추가한다. 이번 태스크는 Attacked 이벤트 발행까지만 한다.
+    // 근접 공격 판정. 피해 적용은 IDamageable(World/Interactions.cs)만 참조한다 — 적 모듈의
+    // 구현 타입은 절대 참조하지 않는다. Interactions.cs는 어떤 모듈에도 의존하지 않는 순수
+    // 계약 파일이라 Player가 참조해도 World → Player 의존 방향(설계 문서 3.1절)이 깨지지 않는다.
     public class PlayerAttack : MonoBehaviour
     {
         [SerializeField] LayerMask enemyLayer;
@@ -45,7 +46,9 @@ namespace HiddenWeight.Player
                 var toTarget = ((Vector2)hit.transform.position - (Vector2)transform.position).normalized;
                 if (Vector2.Angle(facingVec, toTarget) <= _data.attackAngle * 0.5f)
                 {
-                    // 명중 판정만 한다. 피해 적용은 Task 9에서 추가된다.
+                    var damageable = hit.GetComponentInParent<IDamageable>();
+                    if (damageable != null && damageable.IsAlive)
+                        damageable.TakeDamage(_data.attackDamage, transform.position);
                 }
             }
 

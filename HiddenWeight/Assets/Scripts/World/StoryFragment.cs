@@ -1,6 +1,7 @@
 using UnityEngine;
 using HiddenWeight.Core;
 using HiddenWeight.Data;
+using HiddenWeight.Emotions;
 
 namespace HiddenWeight.World
 {
@@ -32,6 +33,7 @@ namespace HiddenWeight.World
             if (grantsAwareness) p.GrantAwareness();
             Debug.Log(text);
             gameObject.SetActive(false);
+            EmotionSkillController.Instance?.RefreshActive();
         }
     }
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using HiddenWeight.Data;
 
 namespace HiddenWeight.Core
@@ -10,6 +11,10 @@ namespace HiddenWeight.Core
 
         [SerializeField] BalanceData balance;
         public BalanceData Balance => balance;
+
+        // Bootstrap 씬의 GameManager 인스턴스만 true로 오버라이드된다(Task 13,
+        // ZoneSceneBuilder가 씬에서만 뒤집는다 — 프리팹 기본값은 건드리지 않는다).
+        [SerializeField] bool autoLoadTitle = false;
 
         public ProgressState Progress { get; private set; }
         public GameState State { get; private set; }
@@ -34,6 +39,27 @@ namespace HiddenWeight.Core
             Instance = this;
             DontDestroyOnLoad(gameObject);
             Progress = new ProgressState();
+
+            // 지역 씬이 로드될 때마다 CurrentZoneData/Progress.CurrentZone을 자동으로 맞춘다.
+            // (씬 이름 -> ZoneData 매핑. ZoneTrigger는 이 값을 읽기만 할 뿐 채우지 않으므로
+            // 여기서 채워두지 않으면 스킬 해금·다음 지역 이동·백트래킹 판정이 전부 깨진다.)
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
+        void Start()
+        {
+            if (autoLoadTitle) SceneFlow.Load(SceneFlow.Title);
+        }
+
+        void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            var zone = balance != null ? balance.GetZoneByScene(scene.name) : null;
+            if (zone != null) EnterZone(zone.id);
         }
 
         public void SetState(GameState next)

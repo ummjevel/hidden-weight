@@ -1,0 +1,690 @@
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.Tilemaps;
+using UnityEngine.Rendering;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using HiddenWeight.Core;
+using HiddenWeight.Data;
+using HiddenWeight.World;
+using HiddenWeight.Enemies;
+using HiddenWeight.UI;
+using HiddenWeight.Ending;
+
+namespace HiddenWeight.EditorTools
+{
+    // 씬 7개(Bootstrap/Title/지역 4곳/Ending)를 코드로 조립하고 EditorBuildSettings에 등록한다.
+    // ProjectSetup.Run()은 절대 호출하지 않는다 — URP 에셋이 새 GUID로 재생성되어 참조가 깨진다.
+    // Volume 프로파일은 항상 기존 ZoneData 에셋의 참조를 그대로 읽어 쓴다.
+    public static class ZoneSceneBuilder
+    {
+        const string ScenesFolder = "Assets/Scenes";
+        const string PrefabFolder = "Assets/Prefabs";
+        const string DataFolder = "Assets/ScriptableObjects";
+        const string ArtFolder = "Assets/Art/Placeholder";
+
+        public static void Run()
+        {
+            EnsureScenesFolder();
+
+            BuildBootstrap();
+            BuildTitle();
+            BuildZonePrologue();
+            BuildZoneResidue();
+            BuildZoneGaze();
+            BuildZoneFracture();
+            BuildEnding();
+
+            RegisterBuildSettings();
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[ZoneSceneBuilder] 씬 7개 생성 완료");
+        }
+
+        // ============================================================
+        // 공통 헬퍼
+        // ============================================================
+
+        static void EnsureScenesFolder()
+        {
+            if (!AssetDatabase.IsValidFolder(ScenesFolder))
+                AssetDatabase.CreateFolder("Assets", "Scenes");
+        }
+
+        static Scene NewScene() => EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+        static void SaveScene(Scene scene, string name)
+        {
+            EditorSceneManager.SaveScene(scene, $"{ScenesFolder}/{name}.unity");
+        }
+
+        static Sprite LoadSprite(string name) => AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtFolder}/{name}.png");
+        static T LoadData<T>(string name) where T : Object => AssetDatabase.LoadAssetAtPath<T>($"{DataFolder}/{name}.asset");
+
+        static GameObject Spawn(string prefabName, Vector3 position)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabFolder}/{prefabName}.prefab");
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            instance.transform.position = position;
+            return instance;
+        }
+
+        static void SetField(Object target, string propertyName, System.Action<SerializedProperty> apply)
+        {
+            var so = new SerializedObject(target);
+            apply(so.FindProperty(propertyName));
+            so.ApplyModifiedProperties();
+        }
+
+        // Tile 에셋(1회 생성, 이후 재사용). Tile.png 스프라이트를 그대로 얹는다.
+        static Tile _groundTile;
+        static Tile GroundTile()
+        {
+            if (_groundTile != null) return _groundTile;
+
+            const string path = "Assets/Art/Placeholder/GroundTile.asset";
+            _groundTile = AssetDatabase.LoadAssetAtPath<Tile>(path);
+            if (_groundTile != null) return _groundTile;
+
+            _groundTile = ScriptableObject.CreateInstance<Tile>();
+            _groundTile.sprite = LoadSprite("Tile");
+            AssetDatabase.CreateAsset(_groundTile, path);
+            return _groundTile;
+        }
+
+        // 셀 사각형 [xMin,xMax) x [yMin,yMax)를 타일로 채운다.
+        static void PlaceTiles(Tilemap tilemap, TileBase tile, int xMin, int xMax, int yMin, int yMax)
+        {
+            for (int x = xMin; x < xMax; x++)
+                for (int y = yMin; y < yMax; y++)
+                    tilemap.SetTile(new Vector3Int(x, y, 0), tile);
+        }
+
+        // 표면 높이 topY, 깊이 depth(기본 6)의 solid 바닥 한 구간을 채운다.
+        static void Floor(Tilemap tilemap, int xMin, int xMax, int topY, int depth = 6)
+            => PlaceTiles(tilemap, GroundTile(), xMin, xMax, topY - depth, topY);
+
+        // Grid + Tilemap(Ground, TilemapCollider2D+CompositeCollider2D) 생성.
+        static Tilemap BuildGroundGrid(out GameObject gridGO)
+        {
+            gridGO = new GameObject("Grid");
+            gridGO.AddComponent<Grid>();
+
+            var tilemapGO = new GameObject("Tilemap");
+            tilemapGO.transform.SetParent(gridGO.transform, false);
+            tilemapGO.layer = LayerMask.NameToLayer("Ground");
+
+            var tilemap = tilemapGO.AddComponent<Tilemap>();
+            tilemapGO.AddComponent<TilemapRenderer>();
+
+            var tmCollider = tilemapGO.AddComponent<TilemapCollider2D>();
+            tmCollider.usedByComposite = true;
+
+            var rb = tilemapGO.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Static;
+
+            tilemapGO.AddComponent<CompositeCollider2D>();
+
+            return tilemap;
+        }
+
+        static GameObject BuildRoom(Transform parent, string name, Vector2 center, Vector2 size)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            var room = go.AddComponent<Room>();
+            SetField(room, "size", p => p.vector2Value = size);
+
+            col.isTrigger = true;
+            col.size = size;
+            col.offset = Vector2.zero;
+
+            return go;
+        }
+
+        static void BuildZoneVolume(Transform parent, string zoneAssetName)
+        {
+            var zoneData = LoadData<ZoneData>($"Zone_{zoneAssetName}");
+
+            var go = new GameObject("ZoneVolume");
+            go.transform.SetParent(parent, false);
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.weight = 1f;
+            vol.sharedProfile = zoneData != null ? zoneData.volumeProfile : null;
+        }
+
+        // 1x1 Tile 스프라이트를 늘려 쓰는 단순 블록(벽·안전 발판 등). localScale로 크기를 낸다.
+        static GameObject BuildSolidBlock(Transform parent, string name, Vector2 center, Vector2 size, string layerName, Color? tint = null)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+            go.transform.localScale = new Vector3(size.x, size.y, 1f);
+            go.layer = LayerMask.NameToLayer(layerName);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite("Tile");
+            if (tint.HasValue) sr.color = tint.Value;
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = Vector2.one;
+
+            return go;
+        }
+
+        // 균열 지역의 "안전한" 발판. CrumblingPlatform과 같은 Platform 스프라이트(96x16px, 이미
+        // 3x0.5 유닛 네이티브 크기)를 그대로 써서 시각적으로 구분되지 않게 한다 — 결코 무너지지
+        // 않는다는 점만 다르다.
+        static GameObject BuildSafePlatform(Transform parent, Vector2 pos)
+        {
+            var go = new GameObject("SafePlatform");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+            go.layer = LayerMask.NameToLayer("Ground");
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite("Platform");
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(3f, 0.5f);
+
+            return go;
+        }
+
+        static GameObject BuildZoneTrigger(Transform parent, Vector2 center, Vector2 size, bool marksFractureCleared)
+        {
+            var go = new GameObject("ZoneTrigger");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = size;
+
+            var trigger = go.AddComponent<ZoneTrigger>();
+            if (marksFractureCleared) SetField(trigger, "marksFractureCleared", p => p.boolValue = true);
+
+            return go;
+        }
+
+        static GameObject BuildStoryFragment(Transform parent, Vector2 pos, string fragmentId, string text, EmotionId grantsSkill, bool grantsAwareness)
+        {
+            var go = Spawn("StoryFragment", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            var frag = go.GetComponent<HiddenWeight.World.StoryFragment>();
+            SetField(frag, "fragmentId", p => p.stringValue = fragmentId);
+            SetField(frag, "text", p => p.stringValue = text);
+            SetField(frag, "grantsSkill", p => p.intValue = (int)grantsSkill);
+            SetField(frag, "grantsAwareness", p => p.boolValue = grantsAwareness);
+            return go;
+        }
+
+        static GameObject BuildHiddenFragment(Transform parent, Vector2 pos, string fragmentId, string text)
+        {
+            var go = Spawn("HiddenFragment", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            var frag = go.GetComponent<HiddenFragment>();
+            SetField(frag, "fragmentId", p => p.stringValue = fragmentId);
+            SetField(frag, "text", p => p.stringValue = text);
+            return go;
+        }
+
+        static GameObject BuildGate(Transform parent, Vector2 pos, EmotionId requiredSkill, bool requiresFinalCondition)
+        {
+            var go = Spawn("Gate", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            var gate = go.GetComponent<HiddenWeight.World.Gate>();
+            SetField(gate, "requiredSkill", p => p.intValue = (int)requiredSkill);
+            SetField(gate, "requiresFinalCondition", p => p.boolValue = requiresFinalCondition);
+            return go;
+        }
+
+        static GameObject BuildEnemy(Transform parent, Vector2 pos, EnemyData overrideData)
+        {
+            var go = Spawn("Enemy", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            if (overrideData != null)
+            {
+                var enemy = go.GetComponent<Enemy>();
+                SetField(enemy, "data", p => p.objectReferenceValue = overrideData);
+            }
+            return go;
+        }
+
+        static GameObject BuildGazeHazard(Transform parent, Vector2 pos, float rotationZ = 0f)
+        {
+            var go = Spawn("GazeHazard", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            go.transform.rotation = Quaternion.Euler(0f, 0f, rotationZ);
+            return go;
+        }
+
+        static GameObject BuildMovingPlatform(Transform parent, Vector2 pos, Vector2 offset, float period)
+        {
+            var go = Spawn("MovingPlatform", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            var mp = go.GetComponent<HiddenWeight.World.MovingPlatform>();
+            SetField(mp, "offset", p => p.vector2Value = offset);
+            SetField(mp, "period", p => p.floatValue = period);
+            return go;
+        }
+
+        static GameObject BuildCrumblingPlatform(Transform parent, Vector2 pos)
+        {
+            var go = Spawn("CrumblingPlatform", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            return go;
+        }
+
+        static GameObject BuildRewindableBlock(Transform parent, Vector2 pos)
+        {
+            var go = Spawn("RewindableBlock", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            return go;
+        }
+
+        static GameObject BuildCheckpoint(Transform parent, Vector2 pos)
+        {
+            var go = Spawn("Checkpoint", new Vector3(pos.x, pos.y, 0f));
+            go.transform.SetParent(parent, true);
+            return go;
+        }
+
+        static GameObject BuildEventSystem(Transform parent)
+        {
+            var go = new GameObject("EventSystem");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<EventSystem>();
+            go.AddComponent<StandaloneInputModule>();
+            return go;
+        }
+
+        static GameObject BuildPauseMenu(Transform parent)
+        {
+            var go = new GameObject("PauseMenu");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<PauseMenu>();
+            return go;
+        }
+
+        // 공통 지역 킷: GameManager(가장 먼저 - Awake 순서 보장) + MainCamera + Player + HUD +
+        // PauseMenu + EventSystem + Grid/Tilemap(Ground) + 지역 Volume.
+        static Tilemap BuildZoneCommon(string zoneAssetName, Vector3 playerSpawn, out GameObject root)
+        {
+            root = new GameObject($"Zone_{zoneAssetName}");
+
+            Spawn("GameManager", Vector3.zero).transform.SetParent(root.transform, true);
+
+            var camGO = Spawn("MainCamera", new Vector3(playerSpawn.x, playerSpawn.y, -10f));
+            camGO.transform.SetParent(root.transform, true);
+
+            Spawn("Player", playerSpawn).transform.SetParent(root.transform, true);
+
+            Spawn("HUD", Vector3.zero).transform.SetParent(root.transform, true);
+
+            BuildPauseMenu(root.transform);
+            BuildEventSystem(root.transform);
+
+            var tilemap = BuildGroundGrid(out var gridGO);
+            gridGO.transform.SetParent(root.transform, true);
+
+            BuildZoneVolume(root.transform, zoneAssetName);
+
+            return tilemap;
+        }
+
+        // ============================================================
+        // Step 2: Bootstrap / Title
+        // ============================================================
+
+        static void BuildBootstrap()
+        {
+            var scene = NewScene();
+
+            var gm = Spawn("GameManager", Vector3.zero);
+            SetField(gm.GetComponent<GameManager>(), "autoLoadTitle", p => p.boolValue = true);
+
+            SaveScene(scene, "Bootstrap");
+        }
+
+        static void BuildTitle()
+        {
+            var scene = NewScene();
+
+            Spawn("GameManager", Vector3.zero);
+
+            var titleGO = new GameObject("TitleScreen");
+            titleGO.AddComponent<TitleScreen>();
+
+            BuildEventSystem(null);
+
+            SaveScene(scene, "Title");
+        }
+
+        // ============================================================
+        // Step 3: Zone_Prologue — 몽환의 우주. 튜토리얼 3룸.
+        // ============================================================
+
+        static void BuildZonePrologue()
+        {
+            var scene = NewScene();
+            var tilemap = BuildZoneCommon("Prologue", new Vector3(2f, 1f, 0f), out var root);
+            var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
+
+            // Room1 [0,24]: 평평한 바닥, 좌우 이동만.
+            Floor(tilemap, -1, 25, 0);
+            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
+
+            // Room2 [24,48]: 3단 계단 + 폭4 구덩이(점프·대시). 착지 실패 시 낮은 통로로 떨어져
+            // 안전하게 재시도할 수 있다(진짜 무저갱이 아니다).
+            Floor(tilemap, 24, 30, 0);
+            Floor(tilemap, 30, 32, 1);
+            Floor(tilemap, 32, 34, 2);
+            Floor(tilemap, 34, 36, 3);
+            Floor(tilemap, 36, 40, 3);
+            Floor(tilemap, 40, 44, 0); // 착지 실패 시 떨어지는 낮은 안전 통로
+            Floor(tilemap, 44, 48, 3);
+            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
+
+            // Room3 [48,72]: 높이8 수직 벽 2개, 벽점프로 올라가야 출구.
+            Floor(tilemap, 48, 72, 0);
+            BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 4), new Vector2(1, 8), "Wall");
+            BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 4), new Vector2(1, 8), "Wall");
+            PlaceTiles(tilemap, GroundTile(), 57, 63, 8, 9); // 벽 위 착지 발판
+            BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
+
+            BuildZoneTrigger(root.transform, new Vector2(60, 9.5f), new Vector2(4, 2), false);
+
+            SaveScene(scene, "Zone_Prologue");
+        }
+
+        // ============================================================
+        // Step 4: Zone_Residue — 잔재(과거·죄책감). 4룸.
+        // ============================================================
+
+        static void BuildZoneResidue()
+        {
+            var scene = NewScene();
+            var tilemap = BuildZoneCommon("Residue", new Vector3(2f, 1f, 0f), out var root);
+            var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
+
+            // Room1 [0,24]: 입구. Checkpoint. StoryFragment(grantsSkill=Rewind).
+            Floor(tilemap, -1, 25, 0);
+            BuildCheckpoint(root.transform, new Vector2(4, 1));
+            BuildStoryFragment(root.transform, new Vector2(12, 1), "residue_skill",
+                "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
+            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
+
+            // Room2 [24,48]: 무너진 다리. RewindableBlock 3개가 떨어져 있다(중력으로 낙하 후
+            // 되감기로 원위치 복원). 실패 시 낮은 안전 바닥으로 떨어진다.
+            Floor(tilemap, 24, 35, 0);
+            Floor(tilemap, 38, 48, 0);
+            PlaceTiles(tilemap, GroundTile(), 35, 38, -8, -6); // 다리 아래 안전 바닥
+            BuildRewindableBlock(root.transform, new Vector2(35.5f, -0.5f));
+            BuildRewindableBlock(root.transform, new Vector2(36.5f, -0.5f));
+            BuildRewindableBlock(root.transform, new Vector2(37.5f, -0.5f));
+            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
+
+            // Room3 [48,72]: CrumblingPlatform 4개 연속. 밟으면 무너지고 되감기로 되살린다.
+            Floor(tilemap, 48, 58, 0);
+            Floor(tilemap, 70, 72, 0);
+            PlaceTiles(tilemap, GroundTile(), 58, 70, -8, -6); // 추락 시 안전 바닥
+            BuildCrumblingPlatform(root.transform, new Vector2(59.5f, 0f));
+            BuildCrumblingPlatform(root.transform, new Vector2(62.5f, 0f));
+            BuildCrumblingPlatform(root.transform, new Vector2(65.5f, 0f));
+            BuildCrumblingPlatform(root.transform, new Vector2(68.5f, 0f));
+            BuildRoom(rooms.transform, "Room3", new Vector2(60, 4), new Vector2(24, 14));
+
+            // Room4 [72,96]: Enemy(Residue) 2, Gate(Rewind), 출구. 곁가지: 되돌아왔을 때만
+            // 열리는 Gate(requiresFinalCondition) 뒤에 HiddenFragment.
+            Floor(tilemap, 72, 96, 0);
+            BuildEnemy(root.transform, new Vector2(78, 1), null); // 프리팹 기본값이 이미 Enemy_Residue
+            BuildEnemy(root.transform, new Vector2(86, 1), null);
+            BuildGate(root.transform, new Vector2(90, 1.5f), EmotionId.Rewind, false);
+            BuildZoneTrigger(root.transform, new Vector2(94, 1), new Vector2(2, 3), false);
+
+            // 백트래킹 전용 곁가지: 점프로만 닿는 얇은 선반 위 최종 Gate + HiddenFragment.
+            PlaceTiles(tilemap, GroundTile(), 76, 86, 4, 5);
+            BuildGate(root.transform, new Vector2(80, 6.5f), EmotionId.None, true);
+            BuildHiddenFragment(root.transform, new Vector2(83, 5.5f), "residue_hidden_final",
+                "결국 남은 건, 스스로에게조차 하지 못한 용서.");
+            BuildRoom(rooms.transform, "Room4", new Vector2(84, 5), new Vector2(24, 16));
+
+            SaveScene(scene, "Zone_Residue");
+        }
+
+        // ============================================================
+        // Step 5: Zone_Gaze — 응시(현재·수치심). 4룸.
+        // ============================================================
+
+        static void BuildZoneGaze()
+        {
+            var scene = NewScene();
+            var tilemap = BuildZoneCommon("Gaze", new Vector3(2f, 1f, 0f), out var root);
+            var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
+
+            // Room1 [0,24]: 입구 + Checkpoint. GazeHazard 1개를 멀리 배치해 위험을 미리 보여준다.
+            Floor(tilemap, -1, 25, 0);
+            BuildCheckpoint(root.transform, new Vector2(4, 1));
+            BuildGazeHazard(root.transform, new Vector2(20, 1.5f), 180f);
+            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
+
+            // Room2 [24,48]: StoryFragment(grantsSkill=Hush, grantsAwareness=true).
+            Floor(tilemap, 24, 48, 0);
+            BuildStoryFragment(root.transform, new Vector2(36, 1), "gaze_skill",
+                "숨을 죽이면, 나를 보던 눈들도 조용해진다.", EmotionId.Hush, true);
+            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
+
+            // Room3 [48,72]: GazeHazard 3개가 겹치는 통로 + 높이1.2 좁은 틈. 숨죽이기로만 통과.
+            Floor(tilemap, 48, 72, 0);
+            BuildSolidBlock(root.transform, "LowCeiling", new Vector2(60, 3.2f), new Vector2(12, 4), "Ground");
+            BuildGazeHazard(root.transform, new Vector2(55, 0.6f), 0f);
+            BuildGazeHazard(root.transform, new Vector2(60, 0.6f), 180f);
+            BuildGazeHazard(root.transform, new Vector2(65, 0.6f), 0f);
+            BuildRoom(rooms.transform, "Room3", new Vector2(60, 4), new Vector2(24, 14));
+
+            // Room4 [72,96]: Enemy(Gaze) 2 + HiddenFragment(자각으로만 보임) 2 + 출구.
+            Floor(tilemap, 72, 96, 0);
+            var gazeEnemyData = LoadData<EnemyData>("Enemy_Gaze");
+            BuildEnemy(root.transform, new Vector2(78, 1), gazeEnemyData);
+            BuildEnemy(root.transform, new Vector2(86, 1), gazeEnemyData);
+            BuildHiddenFragment(root.transform, new Vector2(82, 1), "gaze_hidden_01",
+                "부끄러움은 언제나 나보다 먼저 도착해 있었다.");
+            BuildHiddenFragment(root.transform, new Vector2(90, 1), "gaze_hidden_02",
+                "아무도 보지 않아도, 나는 나를 보고 있었다.");
+            BuildZoneTrigger(root.transform, new Vector2(94, 1), new Vector2(2, 3), false);
+            BuildRoom(rooms.transform, "Room4", new Vector2(84, 4), new Vector2(24, 14));
+
+            SaveScene(scene, "Zone_Gaze");
+        }
+
+        // ============================================================
+        // Step 6: Zone_Fracture — 균열(미래·불안). 4룸. awarenessStable=false는 ZoneData에서
+        // 이미 처리됨(DataAssetBuilder) — 씬은 손대지 않는다.
+        // ============================================================
+
+        static void BuildZoneFracture()
+        {
+            var scene = NewScene();
+            var tilemap = BuildZoneCommon("Fracture", new Vector3(2f, 1f, 0f), out var root);
+            var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
+
+            // Room1 [0,24]: 입구 + Checkpoint + StoryFragment(grantsSkill=Foresight).
+            Floor(tilemap, -1, 25, 0);
+            BuildCheckpoint(root.transform, new Vector2(4, 1));
+            BuildStoryFragment(root.transform, new Vector2(12, 1), "fracture_skill",
+                "아직 오지 않은 것들이, 이미 나를 흔든다.", EmotionId.Foresight, false);
+            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
+
+            // Room2 [24,48]: MovingPlatform 3개, 서로 다른 주기로 왕복. 예지로 도착 위치를 본다.
+            Floor(tilemap, 24, 32, 0);
+            Floor(tilemap, 44, 48, 0);
+            PlaceTiles(tilemap, GroundTile(), 32, 44, -8, -6); // 추락 시 안전 바닥
+            BuildMovingPlatform(root.transform, new Vector2(34, 0), new Vector2(3, 0), 3f);
+            BuildMovingPlatform(root.transform, new Vector2(38, 0), new Vector2(3, 0), 5f);
+            BuildMovingPlatform(root.transform, new Vector2(42, 0), new Vector2(3, 0), 7f);
+            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
+
+            // Room3 [48,84]: CrumblingPlatform 6개 중 3개만 안전(예지로 구분).
+            Floor(tilemap, 48, 60, 0);
+            Floor(tilemap, 78, 84, 0);
+            PlaceTiles(tilemap, GroundTile(), 60, 78, -8, -6); // 추락 시 안전 바닥
+            BuildCrumblingPlatform(root.transform, new Vector2(61.5f, 0f));   // 위험
+            BuildSafePlatform(root.transform, new Vector2(64.5f, 0f));       // 안전
+            BuildCrumblingPlatform(root.transform, new Vector2(67.5f, 0f));   // 위험
+            BuildSafePlatform(root.transform, new Vector2(70.5f, 0f));       // 안전
+            BuildCrumblingPlatform(root.transform, new Vector2(73.5f, 0f));   // 위험
+            BuildSafePlatform(root.transform, new Vector2(76.5f, 0f));       // 안전
+            BuildRoom(rooms.transform, "Room3", new Vector2(66, 4), new Vector2(36, 14));
+
+            // Room4 [84,108]: Enemy(Fracture) 2 + HiddenFragment 2 + 출구(marksFractureCleared=true).
+            Floor(tilemap, 84, 108, 0);
+            var fractureEnemyData = LoadData<EnemyData>("Enemy_Fracture");
+            BuildEnemy(root.transform, new Vector2(90, 1), fractureEnemyData);
+            BuildEnemy(root.transform, new Vector2(98, 1), fractureEnemyData);
+            BuildHiddenFragment(root.transform, new Vector2(94, 1), "fracture_hidden_01",
+                "무너질 걸 알면서도, 발을 뗄 수밖에 없었다.");
+            BuildHiddenFragment(root.transform, new Vector2(102, 1), "fracture_hidden_02",
+                "불안은 미래가 아니라, 지금의 다른 이름이었다.");
+            BuildZoneTrigger(root.transform, new Vector2(106, 1), new Vector2(2, 3), true);
+            BuildRoom(rooms.transform, "Room4", new Vector2(96, 4), new Vector2(24, 14));
+
+            SaveScene(scene, "Zone_Fracture");
+        }
+
+        // ============================================================
+        // Step 7: Ending — 횡스크롤 없음. 정적 침실 레이어 + 이상 오브젝트 3개 + 몽타주.
+        // ============================================================
+
+        static void BuildEnding()
+        {
+            var scene = NewScene();
+            var root = new GameObject("Ending");
+
+            Spawn("GameManager", Vector3.zero).transform.SetParent(root.transform, true);
+
+            var camGO = new GameObject("MainCamera");
+            camGO.tag = "MainCamera";
+            camGO.transform.SetParent(root.transform, true);
+            camGO.transform.position = new Vector3(0f, 0f, -10f);
+            var cam = camGO.AddComponent<Camera>();
+            cam.orthographic = true;
+            cam.orthographicSize = 6f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = Color.black;
+
+            // 배경 레이어: Wall(z0) 뒤에 Bed(z-1, 카메라에 더 가깝게 = 앞).
+            var wallGO = new GameObject("Wall");
+            wallGO.transform.SetParent(root.transform, true);
+            wallGO.transform.position = new Vector3(0f, 0f, 0f);
+            wallGO.transform.localScale = new Vector3(3f, 2.2f, 1f);
+            var wallSr = wallGO.AddComponent<SpriteRenderer>();
+            wallSr.sprite = LoadSprite("Wall");
+            wallSr.sortingOrder = 0;
+
+            var bedGO = new GameObject("Bed");
+            bedGO.transform.SetParent(root.transform, true);
+            bedGO.transform.position = new Vector3(0f, -3f, -1f);
+            bedGO.transform.localScale = new Vector3(1.5f, 1.5f, 1f);
+            var bedSr = bedGO.AddComponent<SpriteRenderer>();
+            bedSr.sprite = LoadSprite("Bed");
+            bedSr.sortingOrder = 1;
+
+            // AnomalyObject 3개.
+            var candle = BuildAnomaly(root.transform, "Anomaly_Candle", AnomalyObject.Kind.InvertedCandle,
+                new Vector3(2.5f, -1.6f, -1.2f), "Candle", Color.white, new Vector2(1f, 1f));
+            var shadow = BuildAnomaly(root.transform, "Anomaly_Shadow", AnomalyObject.Kind.MismatchedShadow,
+                new Vector3(-2.5f, -3.6f, -1.2f), "Tile", Color.black, new Vector2(2f, 0.4f));
+            var wallPatch = BuildAnomaly(root.transform, "Anomaly_TremblingWall", AnomalyObject.Kind.TremblingWall,
+                new Vector3(3.5f, 1.5f, -0.2f), "Tile", new Color(0.18f, 0.16f, 0.22f), new Vector2(1.2f, 1.2f));
+
+            // 몽타주용 전체화면 Canvas + Image.
+            var canvasGO = new GameObject("MontageCanvas");
+            canvasGO.transform.SetParent(root.transform, true);
+            var canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 50;
+            canvasGO.AddComponent<CanvasScaler>();
+
+            var imageGO = new GameObject("MontageImage");
+            imageGO.transform.SetParent(canvasGO.transform, false);
+            var image = imageGO.AddComponent<Image>();
+            var imgRt = image.rectTransform;
+            imgRt.anchorMin = Vector2.zero;
+            imgRt.anchorMax = Vector2.one;
+            imgRt.offsetMin = Vector2.zero;
+            imgRt.offsetMax = Vector2.zero;
+
+            // EndingSequence.
+            var sequenceGO = new GameObject("EndingSequence");
+            sequenceGO.transform.SetParent(root.transform, true);
+            var sequence = sequenceGO.AddComponent<EndingSequence>();
+
+            var so = new SerializedObject(sequence);
+            var anomaliesProp = so.FindProperty("anomalies");
+            anomaliesProp.arraySize = 3;
+            anomaliesProp.GetArrayElementAtIndex(0).objectReferenceValue = candle;
+            anomaliesProp.GetArrayElementAtIndex(1).objectReferenceValue = shadow;
+            anomaliesProp.GetArrayElementAtIndex(2).objectReferenceValue = wallPatch;
+
+            so.FindProperty("montageImage").objectReferenceValue = image;
+
+            var framesProp = so.FindProperty("montageFrames");
+            framesProp.arraySize = 3;
+            framesProp.GetArrayElementAtIndex(0).objectReferenceValue = LoadSprite("Tile");   // 잔재
+            framesProp.GetArrayElementAtIndex(1).objectReferenceValue = LoadSprite("Eye");    // 응시
+            framesProp.GetArrayElementAtIndex(2).objectReferenceValue = LoadSprite("Gate");   // 균열
+            so.ApplyModifiedProperties();
+
+            SaveScene(scene, "Ending");
+        }
+
+        static AnomalyObject BuildAnomaly(Transform parent, string name, AnomalyObject.Kind kind, Vector3 pos, string spriteName, Color tint, Vector2 scale)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+
+            var visualGO = new GameObject("Visual");
+            visualGO.transform.SetParent(go.transform, false);
+            visualGO.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            var sr = visualGO.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite(spriteName);
+            sr.color = tint;
+            sr.sortingOrder = 2;
+
+            var anomaly = go.AddComponent<AnomalyObject>();
+            var so = new SerializedObject(anomaly);
+            so.FindProperty("type").intValue = (int)kind;
+            so.FindProperty("visual").objectReferenceValue = sr;
+            so.ApplyModifiedProperties();
+
+            return anomaly;
+        }
+
+        // ============================================================
+        // Step 8: EditorBuildSettings 등록
+        // ============================================================
+
+        static void RegisterBuildSettings()
+        {
+            EditorBuildSettings.scenes = new[]
+            {
+                new EditorBuildSettingsScene($"{ScenesFolder}/Bootstrap.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Title.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Prologue.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Residue.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Gaze.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Fracture.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Ending.unity", true),
+            };
+        }
+    }
+}

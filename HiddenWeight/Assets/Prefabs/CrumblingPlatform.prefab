@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 3784083646502007087}
   - component: {fileID: 1405976904651687462}
   - component: {fileID: 478380296758526250}
+  - component: {fileID: 7752877053473386108}
   m_Layer: 8
   m_Name: CrumblingPlatform
   m_TagString: Untagged
@@ -182,3 +183,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.World.CrumblingPlatform
   crumbleDelay: 0.6
   respawnDelay: 0
+--- !u!114 &7752877053473386108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2193636149946113349}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79096af9e217544c89b835db459f4498, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.World.RewindHighlight
+  outlineColor: {r: 1, g: 0.82, b: 0.35, a: 1}
+  outlineScale: 1.2
+  pulseSpeed: 2.5

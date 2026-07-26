@@ -9,7 +9,10 @@ namespace HiddenWeight.Emotions
 {
     // 자각(L 홀드) 시스템. 채도를 잃은 볼륨을 띄우고, 이동속도를 늦추고,
     // AwarenessRegistry에 등록된 반응 오브젝트들에 On/Off를 방송한다.
-    // 균열 지역(awarenessStable == false)에서는 켜져 있는 동안 주기적으로 깜빡인다(기획서 5.3절).
+    //
+    // 균열 지역(awarenessStable == false)에서는 자각이 완전히 무력화된다 — 볼륨·감속 등
+    // "자각을 쓰는 감각"은 그대로지만, 반응 오브젝트에는 항상 "이상 없음"만 방송된다
+    // (기획서 EMOTION_SYSTEM 3.3절: 예지만이 유일하게 신뢰 가능한 정보원).
     public class AwarenessSystem : MonoBehaviour
     {
         // 기획서 5.3절 리터럴: 자각 중 이동 가능하되 속도 0.6배.
@@ -25,7 +28,7 @@ namespace HiddenWeight.Emotions
 
         Volume _volume;
         Coroutine _weightRoutine;
-        Coroutine _flickerRoutine;
+        bool _revealing; // 반응 오브젝트들에 마지막으로 방송한 값
 
         void Awake()
         {
@@ -44,34 +47,31 @@ namespace HiddenWeight.Emotions
         // (씬 로드 순서상 HiddenFragment.OnEnable이 이 시점 이후에 돌 수 있다).
         void HandleAdded(IAwarenessReactive r)
         {
-            if (IsActive) r.OnAwarenessChanged(true);
+            if (_revealing) r.OnAwarenessChanged(true);
         }
 
         void Update()
         {
             // AwarenessHeld는 PausePressed와 마찬가지로 PlayerInput.Enabled와 무관하게 동작하므로
             // (Ending 시퀀스가 필요로 함), 일시정지 중에는 여기서 직접 막아 이전과 같은 동작을 유지한다.
-            if (GameManager.Instance.State != GameState.Playing)
-            {
-                if (IsActive) Deactivate();
-                IsActive = false;
-                return;
-            }
+            bool wanted = GameManager.Instance.State == GameState.Playing
+                && GameManager.Instance.Progress.HasAwareness
+                && PlayerInput.AwarenessHeld;
 
-            bool wanted = GameManager.Instance.Progress.HasAwareness && PlayerInput.AwarenessHeld;
             if (wanted != IsActive)
             {
                 IsActive = wanted;
                 if (IsActive) Activate();
                 else Deactivate();
-                return;
             }
 
-            // 자각을 유지한 채로 안정 지역 -> 균열 지역으로 넘어간 경우.
-            // 반대 방향(균열 -> 안정)은 UnstableFlicker의 while 조건이 스스로 끝내준다.
-            if (IsActive && !IsStable && _flickerRoutine == null)
+            // 반응 오브젝트 방송은 "켜짐 + 안정 지역"일 때만 true. 자각을 유지한 채로
+            // 안정 <-> 균열 지역을 넘나드는 경우도 이 비교 한 번으로 따라온다.
+            bool reveal = IsActive && IsStable;
+            if (reveal != _revealing)
             {
-                _flickerRoutine = StartCoroutine(UnstableFlicker());
+                _revealing = reveal;
+                Broadcast(reveal);
             }
         }
 
@@ -79,22 +79,12 @@ namespace HiddenWeight.Emotions
         {
             PlayerController.Instance.ExternalSpeedMultiplier = slowMultiplier;
             StartWeightRamp(1f);
-            Broadcast(true);
-
-            if (!IsStable) _flickerRoutine = StartCoroutine(UnstableFlicker());
         }
 
         void Deactivate()
         {
             PlayerController.Instance.ExternalSpeedMultiplier = 1f;
             StartWeightRamp(0f);
-            Broadcast(false);
-
-            if (_flickerRoutine != null)
-            {
-                StopCoroutine(_flickerRoutine);
-                _flickerRoutine = null;
-            }
         }
 
         void Broadcast(bool active)
@@ -120,29 +110,6 @@ namespace HiddenWeight.Emotions
                 yield return null;
             }
             _volume.weight = target;
-        }
-
-        IEnumerator UnstableFlicker()
-        {
-            while (IsActive && !IsStable)
-            {
-                yield return new WaitForSeconds(Random.Range(0.3f, 0.8f));
-
-                var items = AwarenessRegistry.Items;
-                if (items.Count == 0) continue;
-
-                int n = Mathf.Max(1, items.Count / 2);
-                for (int i = 0; i < n; i++)
-                {
-                    var pick = items[Random.Range(0, items.Count)];
-                    pick?.OnAwarenessChanged(false);
-                }
-
-                yield return new WaitForSeconds(0.15f);
-                foreach (var r in items) r?.OnAwarenessChanged(true);
-            }
-
-            _flickerRoutine = null;
         }
     }
 }

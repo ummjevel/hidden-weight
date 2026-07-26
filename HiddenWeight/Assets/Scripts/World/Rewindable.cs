@@ -1,11 +1,18 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.Core;
 
 namespace HiddenWeight.World
 {
     // IRewindable의 기본 구현. 부서지거나 옮겨진 오브젝트를 원래 자리로 되돌린다 (기획서 4.2절).
+    //
+    // 되감기는 영구다 (EMOTION_SYSTEM 1.2절): 되돌린 사실을 ProgressState에 persistentId로
+    // 기록하고, 씬이 다시 로드되면 Start에서 곧바로 복원 상태로 시작한다. 복원된 오브젝트는
+    // Static으로 고정한다 — 중력으로 다시 무너지면 "영구"가 아니게 되기 때문이다.
     public class Rewindable : MonoBehaviour, IRewindable
     {
+        [SerializeField] string persistentId; // 비워두면 씬 이름 + 초기 좌표로 자동 생성
+
         Vector3 _initialPosition;
         Quaternion _initialRotation;
         bool _initialActive;
@@ -25,6 +32,17 @@ namespace HiddenWeight.World
             _sprite = GetComponent<SpriteRenderer>();
             _rb = GetComponent<Rigidbody2D>();
             CaptureInitial();
+
+            if (string.IsNullOrEmpty(persistentId))
+            {
+                persistentId = $"{gameObject.scene.name}:{name}:{_initialPosition.x:F1},{_initialPosition.y:F1}";
+            }
+
+            // 이전 방문에서 이미 되감은 오브젝트는 복원 상태 그대로 시작한다.
+            if (GameManager.Instance != null && GameManager.Instance.Progress.IsRewound(persistentId))
+            {
+                Freeze();
+            }
         }
 
         public void CaptureInitial()
@@ -41,10 +59,19 @@ namespace HiddenWeight.World
             transform.rotation = _initialRotation;
             gameObject.SetActive(_initialActive);
             if (_sprite != null) _sprite.sprite = _initialSprite;
-            if (_rb != null) _rb.linearVelocity = Vector2.zero;
+            Freeze();
+
+            if (GameManager.Instance != null) GameManager.Instance.Progress.MarkRewound(persistentId);
 
             if (_bounceRoutine != null) StopCoroutine(_bounceRoutine);
             _bounceRoutine = StartCoroutine(BounceRoutine());
+        }
+
+        void Freeze()
+        {
+            if (_rb == null) return;
+            _rb.linearVelocity = Vector2.zero;
+            _rb.bodyType = RigidbodyType2D.Static;
         }
 
         // 0.3초에 걸쳐 스케일을 0.8 -> 1.0으로 튕기는 되감기 연출.

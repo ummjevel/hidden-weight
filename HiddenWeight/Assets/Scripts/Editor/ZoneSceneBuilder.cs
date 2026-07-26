@@ -264,11 +264,19 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
-        static GameObject BuildGazeHazard(Transform parent, Vector2 pos, float rotationZ = 0f)
+        // rotateSpeed가 0이 아니면 회전형(GazeRotator) — 기획서 EMOTION_SYSTEM 2.3절의
+        // 고정형/회전형 두 종류 구분.
+        static GameObject BuildGazeHazard(Transform parent, Vector2 pos, float rotationZ = 0f, float rotateSpeed = 0f)
         {
             var go = Spawn("GazeHazard", new Vector3(pos.x, pos.y, 0f));
             go.transform.SetParent(parent, true);
             go.transform.rotation = Quaternion.Euler(0f, 0f, rotationZ);
+
+            if (rotateSpeed != 0f)
+            {
+                var rot = go.AddComponent<GazeRotator>();
+                SetField(rot, "degreesPerSecond", p => p.floatValue = rotateSpeed);
+            }
             return go;
         }
 
@@ -300,6 +308,55 @@ namespace HiddenWeight.EditorTools
         {
             var go = Spawn("Checkpoint", new Vector3(pos.x, pos.y, 0f));
             go.transform.SetParent(parent, true);
+            return go;
+        }
+
+        // 충돌 없는 배경 연출용 스프라이트 (새장·무너진 탑·거울 기둥 등).
+        static SpriteRenderer BuildDecor(Transform parent, string name, Vector2 pos, Vector2 scale,
+            string spriteName, Color tint, float rotationZ = 0f, int sortingOrder = -5)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+            go.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            go.transform.rotation = Quaternion.Euler(0f, 0f, rotationZ);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite(spriteName);
+            sr.color = tint;
+            sr.sortingOrder = sortingOrder;
+            return sr;
+        }
+
+        // 조작 안내 텍스트. 플레이어가 다가오면 TutorialHint가 스스로 페이드 인한다.
+        static GameObject BuildTutorialHint(Transform parent, Vector2 pos, string message)
+        {
+            var go = new GameObject("TutorialHint");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+
+            var hint = go.AddComponent<TutorialHint>();
+            SetField(hint, "message", p => p.stringValue = message);
+            return go;
+        }
+
+        // 자각 해금 지점: 거대 눈 오브제 + 트리거. 응시 지역 후반부에 1곳만 배치한다.
+        static GameObject BuildAwarenessUnlock(Transform parent, Vector2 triggerPos, Vector2 eyePos, string text)
+        {
+            var eye = BuildDecor(parent, "GreatEye", eyePos, new Vector2(4f, 4f), "Eye",
+                new Color(0.72f, 0.64f, 0.85f), 0f, -3);
+
+            var go = new GameObject("AwarenessUnlock");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(triggerPos.x, triggerPos.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(3f, 4f);
+
+            var moment = go.AddComponent<AwarenessUnlockMoment>();
+            SetField(moment, "eyeVisual", p => p.objectReferenceValue = eye);
+            SetField(moment, "fragmentText", p => p.stringValue = text);
             return go;
         }
 
@@ -418,6 +475,7 @@ namespace HiddenWeight.EditorTools
             // 스폰은 항상 이 바닥의 실제 topY에서 계산한다 — 하드코딩된 좌표가 레이아웃과
             // 따로 놀다 바닥 밑/뒤에 파묻히는 일(Task 13 버그)을 막는다.
             PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
+            BuildTutorialHint(root.transform, new Vector2(10, 3), "← →  또는  A / D  이동");
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
 
             // Room2 [24,48]: 3단 계단 + 폭4 구덩이(점프·대시). 착지 실패 시 낮은 통로로 떨어져
@@ -429,6 +487,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 36, 40, 3);
             Floor(tilemap, 40, 44, 0); // 착지 실패 시 떨어지는 낮은 안전 통로
             Floor(tilemap, 44, 48, 3);
+            BuildTutorialHint(root.transform, new Vector2(29, 3.5f), "Space  점프  ·  LeftCtrl  대시");
             BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
 
             // Room3 [48,72]: 높이8 수직 벽 2개, 벽점프로 올라가야 출구.
@@ -436,6 +495,7 @@ namespace HiddenWeight.EditorTools
             BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 4), new Vector2(1, 8), "Wall");
             BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 4), new Vector2(1, 8), "Wall");
             PlaceTiles(tilemap, GroundTile(), 57, 63, 8, 9); // 벽 위 착지 발판
+            BuildTutorialHint(root.transform, new Vector2(55, 3), "벽에 붙어  Space  벽점프");
             BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
 
             BuildZoneTrigger(root.transform, new Vector2(60, 9.5f), new Vector2(4, 2), false);
@@ -460,6 +520,7 @@ namespace HiddenWeight.EditorTools
             BuildCheckpoint(root.transform, new Vector2(4, 1));
             BuildStoryFragment(root.transform, new Vector2(12, 1), "residue_skill",
                 "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
+            BuildTutorialHint(root.transform, new Vector2(16, 3), "K 홀드  —  되감기");
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
 
             // Room2 [24,48]: 무너진 다리. RewindableBlock 3개가 떨어져 있다(중력으로 낙하 후
@@ -484,7 +545,16 @@ namespace HiddenWeight.EditorTools
 
             // Room4 [72,96]: Enemy(Residue) 2, Gate(Rewind), 출구. 곁가지: 되돌아왔을 때만
             // 열리는 Gate(requiresFinalCondition) 뒤에 HiddenFragment.
+            // 클라이맥스 연출(WORLD_MAP 2.3절): 출구 뒤로 무너진 거대 탑의 실루엣을 배경에 세운다.
             Floor(tilemap, 72, 96, 0);
+            BuildDecor(root.transform, "RuinTower_Left", new Vector2(88, 4.5f), new Vector2(1.6f, 9f),
+                "Tile", new Color(0.16f, 0.17f, 0.24f), 6f);
+            BuildDecor(root.transform, "RuinTower_Mid", new Vector2(91.5f, 5.5f), new Vector2(2f, 12f),
+                "Tile", new Color(0.13f, 0.14f, 0.2f), -3f);
+            BuildDecor(root.transform, "RuinTower_Right", new Vector2(94.5f, 4f), new Vector2(1.4f, 8f),
+                "Tile", new Color(0.18f, 0.19f, 0.26f), 10f);
+            BuildDecor(root.transform, "RuinBell", new Vector2(91.5f, 10f), new Vector2(2.4f, 2.4f),
+                "Eye", new Color(0.35f, 0.28f, 0.18f), 0f, -4);
             BuildEnemy(root.transform, new Vector2(78, 1), null); // 프리팹 기본값이 이미 Enemy_Residue
             BuildEnemy(root.transform, new Vector2(86, 1), null);
             BuildGate(root.transform, new Vector2(90, 1.5f), EmotionId.Rewind, false);
@@ -518,25 +588,42 @@ namespace HiddenWeight.EditorTools
             BuildGazeHazard(root.transform, new Vector2(20, 1.5f), 180f);
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
 
-            // Room2 [24,48]: StoryFragment(grantsSkill=Hush, grantsAwareness=true).
+            // Room2 [24,48]: StoryFragment(grantsSkill=Hush). 자각은 여기서 주지 않는다 —
+            // 기획서 EMOTION_SYSTEM 2.4절대로 지역 후반부의 거대 눈 앞(Room3 끝)에서 해금한다.
             Floor(tilemap, 24, 48, 0);
             BuildStoryFragment(root.transform, new Vector2(36, 1), "gaze_skill",
-                "숨을 죽이면, 나를 보던 눈들도 조용해진다.", EmotionId.Hush, true);
+                "숨을 죽이면, 나를 보던 눈들도 조용해진다.", EmotionId.Hush, false);
+            BuildTutorialHint(root.transform, new Vector2(40, 3), "K 홀드  —  숨죽이기");
             BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
 
-            // Room3 [48,72]: GazeHazard 3개가 겹치는 통로 + 높이1.2 좁은 틈. 숨죽이기로만 통과.
+            // Room3 [48,72]: 감시자의 회랑(WORLD_MAP 3.2절 E) — 회전형 눈 3개가 위상차를 두고
+            // 통로를 훑는다 + 높이1.2 좁은 틈. 숨죽이기로만 통과. 끝에서 자각 해금.
             Floor(tilemap, 48, 72, 0);
             BuildSolidBlock(root.transform, "LowCeiling", new Vector2(60, 3.2f), new Vector2(12, 4), "Ground");
-            BuildGazeHazard(root.transform, new Vector2(55, 0.6f), 0f);
-            BuildGazeHazard(root.transform, new Vector2(60, 0.6f), 180f);
-            BuildGazeHazard(root.transform, new Vector2(65, 0.6f), 0f);
+            BuildGazeHazard(root.transform, new Vector2(55, 0.6f), 0f, 60f);
+            BuildGazeHazard(root.transform, new Vector2(60, 0.6f), 120f, 60f);
+            BuildGazeHazard(root.transform, new Vector2(65, 0.6f), 240f, 60f);
+            BuildAwarenessUnlock(root.transform, new Vector2(70, 2), new Vector2(70, 6),
+                "숨는 대신, 처음으로 정면을 마주 보았다.");
             BuildRoom(rooms.transform, "Room3", new Vector2(60, 4), new Vector2(24, 14));
 
-            // Room4 [72,96]: Enemy(Gaze) 2 + HiddenFragment(자각으로만 보임) 2 + 출구.
+            // Room4 [72,96]: 우리(새장) 연출(WORLD_MAP 3.2절 F) + Enemy(Gaze) 2 +
+            // HiddenFragment(자각으로만 보임) 2 = 해금 직후 자각 튜토리얼 퍼즐 + 출구.
             Floor(tilemap, 72, 96, 0);
+            BuildDecor(root.transform, "Cage_1", new Vector2(76, 6.5f), new Vector2(1.6f, 2.2f),
+                "Gate", new Color(0.28f, 0.24f, 0.38f));
+            BuildDecor(root.transform, "Cage_1_Figure", new Vector2(76, 6.2f), new Vector2(0.5f, 1f),
+                "Player", new Color(0.1f, 0.09f, 0.14f), 0f, -6);
+            BuildDecor(root.transform, "Cage_2", new Vector2(83, 7.5f), new Vector2(1.6f, 2.2f),
+                "Gate", new Color(0.24f, 0.2f, 0.34f));
+            BuildDecor(root.transform, "Cage_2_Figure", new Vector2(83, 7.2f), new Vector2(0.5f, 1f),
+                "Player", new Color(0.1f, 0.09f, 0.14f), 0f, -6);
+            BuildDecor(root.transform, "Cage_3", new Vector2(90, 6f), new Vector2(1.6f, 2.2f),
+                "Gate", new Color(0.26f, 0.22f, 0.36f));
             var gazeEnemyData = LoadData<EnemyData>("Enemy_Gaze");
             BuildEnemy(root.transform, new Vector2(78, 1), gazeEnemyData);
             BuildEnemy(root.transform, new Vector2(86, 1), gazeEnemyData);
+            BuildTutorialHint(root.transform, new Vector2(79, 3), "L 홀드  —  자각");
             BuildHiddenFragment(root.transform, new Vector2(82, 1), "gaze_hidden_01",
                 "부끄러움은 언제나 나보다 먼저 도착해 있었다.");
             BuildHiddenFragment(root.transform, new Vector2(90, 1), "gaze_hidden_02",
@@ -565,6 +652,8 @@ namespace HiddenWeight.EditorTools
             BuildCheckpoint(root.transform, new Vector2(4, 1));
             BuildStoryFragment(root.transform, new Vector2(12, 1), "fracture_skill",
                 "아직 오지 않은 것들이, 이미 나를 흔든다.", EmotionId.Foresight, false);
+            // 자각이 이 지역에서 무력하다는 것은 설명하지 않는다 — 직접 겪게 한다 (WORLD_MAP 4.1절).
+            BuildTutorialHint(root.transform, new Vector2(16, 3), "K 탭  —  예지");
             BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
 
             // Room2 [24,48]: MovingPlatform 3개, 서로 다른 주기로 왕복. 예지로 도착 위치를 본다.
@@ -576,10 +665,18 @@ namespace HiddenWeight.EditorTools
             BuildMovingPlatform(root.transform, new Vector2(42, 0), new Vector2(3, 0), 7f);
             BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
 
-            // Room3 [48,84]: CrumblingPlatform 6개 중 3개만 안전(예지로 구분).
+            // Room3 [48,84]: 거울 방(WORLD_MAP 4.2절 I) — 좌우가 완벽히 대칭인 기둥들 사이에
+            // CrumblingPlatform 6개 중 3개만 안전. 겉보기(대칭·동일 스프라이트)로는 구분 불가,
+            // 예지로만 구분된다 = 자각 무력화를 가장 극적으로 보여주는 구간.
             Floor(tilemap, 48, 60, 0);
             Floor(tilemap, 78, 84, 0);
             PlaceTiles(tilemap, GroundTile(), 60, 78, -8, -6); // 추락 시 안전 바닥
+            var mirrorTint = new Color(0.85f, 0.92f, 0.88f);
+            BuildDecor(root.transform, "MirrorPillar_L1", new Vector2(60, 3.5f), new Vector2(0.8f, 7f), "Tile", mirrorTint);
+            BuildDecor(root.transform, "MirrorPillar_R1", new Vector2(78, 3.5f), new Vector2(0.8f, 7f), "Tile", mirrorTint);
+            BuildDecor(root.transform, "MirrorPillar_L2", new Vector2(64.5f, 3f), new Vector2(0.6f, 6f), "Tile", mirrorTint);
+            BuildDecor(root.transform, "MirrorPillar_R2", new Vector2(73.5f, 3f), new Vector2(0.6f, 6f), "Tile", mirrorTint);
+            BuildDecor(root.transform, "MirrorArch", new Vector2(69, 6.5f), new Vector2(10f, 0.5f), "Tile", mirrorTint);
             BuildCrumblingPlatform(root.transform, new Vector2(61.5f, 0f));   // 위험
             BuildSafePlatform(root.transform, new Vector2(64.5f, 0f));       // 안전
             BuildCrumblingPlatform(root.transform, new Vector2(67.5f, 0f));   // 위험
@@ -588,15 +685,17 @@ namespace HiddenWeight.EditorTools
             BuildSafePlatform(root.transform, new Vector2(76.5f, 0f));       // 안전
             BuildRoom(rooms.transform, "Room3", new Vector2(66, 4), new Vector2(36, 14));
 
-            // Room4 [84,108]: Enemy(Fracture) 2 + HiddenFragment 2 + 출구(marksFractureCleared=true).
+            // Room4 [84,108]: Enemy(Fracture) 2 + StoryFragment 2 + 출구(marksFractureCleared=true).
+            // 이 지역의 파편은 숨기지 않는다 — 자각이 완전히 무력화되어(EMOTION_SYSTEM 3.3절)
+            // 숨김 파편은 영원히 찾을 수 없기 때문이다. 눈에 보이는 파편으로 클라이맥스에 배치한다.
             Floor(tilemap, 84, 108, 0);
             var fractureEnemyData = LoadData<EnemyData>("Enemy_Fracture");
             BuildEnemy(root.transform, new Vector2(90, 1), fractureEnemyData);
             BuildEnemy(root.transform, new Vector2(98, 1), fractureEnemyData);
-            BuildHiddenFragment(root.transform, new Vector2(94, 1), "fracture_hidden_01",
-                "무너질 걸 알면서도, 발을 뗄 수밖에 없었다.");
-            BuildHiddenFragment(root.transform, new Vector2(102, 1), "fracture_hidden_02",
-                "불안은 미래가 아니라, 지금의 다른 이름이었다.");
+            BuildStoryFragment(root.transform, new Vector2(94, 1), "fracture_hidden_01",
+                "무너질 걸 알면서도, 발을 뗄 수밖에 없었다.", EmotionId.None, false);
+            BuildStoryFragment(root.transform, new Vector2(102, 1), "fracture_hidden_02",
+                "불안은 미래가 아니라, 지금의 다른 이름이었다.", EmotionId.None, false);
             BuildZoneTrigger(root.transform, new Vector2(106, 1), new Vector2(2, 3), true);
             BuildRoom(rooms.transform, "Room4", new Vector2(96, 4), new Vector2(24, 14));
 

@@ -9,6 +9,7 @@ namespace HiddenWeight.Core
     {
         readonly HashSet<EmotionId> _skills = new HashSet<EmotionId>();
         readonly HashSet<string> _fragments = new HashSet<string>();
+        readonly HashSet<string> _rewound = new HashSet<string>();
 
         public bool HasAwareness { get; private set; }
         public bool HasClearedFracture { get; private set; }
@@ -31,6 +32,15 @@ namespace HiddenWeight.Core
 
         public bool HasFragment(string id) => _fragments.Contains(id);
 
+        // 기획서 EMOTION_SYSTEM 1.2절: 되감기는 영구 — 한 번 되돌리면 재방문(씬 재로드) 시에도
+        // 유지된다. World의 Rewindable이 자기 persistentId로 기록하고 로드 시 복원한다.
+        public void MarkRewound(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) _rewound.Add(id);
+        }
+
+        public bool IsRewound(string id) => !string.IsNullOrEmpty(id) && _rewound.Contains(id);
+
         // 게이트가 요구하는 스킬이 None이면 조건 없이 열린다.
         public bool CanOpenGate(EmotionId required)
             => required == EmotionId.None || _skills.Contains(required);
@@ -43,6 +53,7 @@ namespace HiddenWeight.Core
         {
             _skills.Clear();
             _fragments.Clear();
+            _rewound.Clear();
             HasAwareness = false;
             HasClearedFracture = false;
             CurrentZone = ZoneId.Prologue;

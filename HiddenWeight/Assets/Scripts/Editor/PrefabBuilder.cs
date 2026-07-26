@@ -216,6 +216,7 @@ namespace HiddenWeight.EditorTools
             col.size = new Vector2(3f, 0.5f);
 
             root.AddComponent<CrumblingPlatform>();
+            root.AddComponent<RewindHighlight>(); // 무너진 뒤 되감기 가능해지면 골드 아웃라인
 
             SavePrefab(root, "CrumblingPlatform");
         }
@@ -236,6 +237,7 @@ namespace HiddenWeight.EditorTools
             col.size = new Vector2(1f, 1f); // Tile.png 32x32px / 32ppu
 
             root.AddComponent<Rewindable>();
+            root.AddComponent<RewindHighlight>(); // 제자리를 벗어나면(되감기 가능) 골드 아웃라인
 
             SavePrefab(root, "RewindableBlock");
         }

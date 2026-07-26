@@ -23,6 +23,10 @@ namespace HiddenWeight.Player
 
         public event System.Action<int, int> HealthChanged;
 
+        // 실제로 피해가 들어간 순간(무적으로 흡수된 피격은 제외). 되감기 채널링 캔슬처럼
+        // "맞았다"에 반응해야 하는 쪽(Emotions)이 구독한다.
+        public event System.Action Damaged;
+
         void Awake()
         {
             var data = GameManager.Instance.Balance.player;
@@ -51,6 +55,7 @@ namespace HiddenWeight.Player
 
             Current = Mathf.Max(0, Current - amount);
             HealthChanged?.Invoke(Current, _maxHealth);
+            Damaged?.Invoke();
 
             var direction = ((Vector2)transform.position - sourcePosition).normalized;
             PlayerController.Instance.ApplyKnockback(direction, _knockbackForce);
@@ -76,24 +81,32 @@ namespace HiddenWeight.Player
             RestoreFull();
         }
 
-        void StartInvulnerability()
+        // 피격 외의 이유(숨죽이기 해제 등)로 짧은 무적을 걸 때 쓴다. 이미 더 긴 무적이
+        // 돌고 있으면 남은 시간을 줄이지 않는다.
+        public void GrantInvulnerability(float seconds) => StartInvulnerability(seconds);
+
+        void StartInvulnerability() => StartInvulnerability(_invulnerableTime);
+
+        void StartInvulnerability(float duration)
         {
-            if (_blinkRoutine != null) StopCoroutine(_blinkRoutine);
-            _blinkRoutine = StartCoroutine(InvulnerabilityRoutine());
+            _invulnRemaining = Mathf.Max(_invulnRemaining, duration);
+            if (_blinkRoutine == null) _blinkRoutine = StartCoroutine(InvulnerabilityRoutine());
         }
+
+        float _invulnRemaining;
 
         IEnumerator InvulnerabilityRoutine()
         {
             IsInvulnerable = true;
-            float elapsed = 0f;
 
-            while (elapsed < _invulnerableTime)
+            while (_invulnRemaining > 0f)
             {
                 if (_sprite != null) _sprite.enabled = !_sprite.enabled;
                 yield return new WaitForSeconds(_blinkInterval);
-                elapsed += _blinkInterval;
+                _invulnRemaining -= _blinkInterval;
             }
 
+            _invulnRemaining = 0f;
             if (_sprite != null) _sprite.enabled = true;
             IsInvulnerable = false;
             _blinkRoutine = null;

@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.World
 {
@@ -29,7 +30,7 @@ namespace HiddenWeight.World
 
         void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.gameObject.layer != LayerMask.NameToLayer("Player")) return;
+            if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             RoomCamera.Instance.SetRoom(this);
         }

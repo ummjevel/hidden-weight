@@ -12,7 +12,7 @@ namespace HiddenWeight.World
 
         void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.gameObject.layer != LayerMask.NameToLayer("Player")) return;
+            if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             var gm = GameManager.Instance;
             if (marksFractureCleared) gm.Progress.MarkFractureCleared();

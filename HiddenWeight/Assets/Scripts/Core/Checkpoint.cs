@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.Core
 {
@@ -11,7 +12,7 @@ namespace HiddenWeight.Core
         void OnTriggerEnter2D(Collider2D other)
         {
             if (_used) return;
-            if (other.gameObject.layer != LayerMask.NameToLayer("Player")) return;
+            if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             GameManager.Instance.Progress.LastCheckpoint = transform.position;
             _used = true;

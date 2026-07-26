@@ -341,7 +341,15 @@ namespace HiddenWeight.EditorTools
         {
             Spawn("MainCamera", new Vector3(spawn.x, spawn.y, -10f)).transform.SetParent(root.transform, true);
             Spawn("Player", spawn).transform.SetParent(root.transform, true);
-            Spawn("HUD", Vector3.zero).transform.SetParent(root.transform, true);
+
+            // HUD(FragmentLog 포함)는 의도적으로 Zone 루트 아래에 넣지 않고 씬 루트 오브젝트로
+            // 남겨둔다. 이전에는 Zone 루트의 자식으로 붙였는데, FragmentLog.Awake()가 호출하는
+            // DontDestroyOnLoad는 루트 오브젝트에서만 동작해서 씬 로드마다("DontDestroyOnLoad only
+            // works on root GameObjects") 에러가 찍혔다(플레이 1회당 6번). HUD는 지역 씬마다 새로
+            // 만들어지는 것으로 이미 충분하므로(각 지역 씬이 자기 HUD를 들고 있다) FragmentLog의
+            // DontDestroyOnLoad 자체를 제거했다 — 씬 루트로 남겨두는 것은 그 호출이 더 이상 없어도
+            // 계층을 불필요하게 깊게 만들지 않기 위한 선택이다.
+            Spawn("HUD", Vector3.zero);
 
             BuildPauseMenu(root.transform);
             BuildEventSystem(root.transform);

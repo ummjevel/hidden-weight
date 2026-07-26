@@ -24,7 +24,8 @@
 
 ## 씬 배치
 
-- **FragmentLog / ScreenFader**: `Instance` 싱글턴 + `DontDestroyOnLoad` 패턴. 훅 등록이 씬 전환과 무관하게 항상 유효해야 하므로 `Bootstrap` 씬에 한 번만 배치한다(다른 씬에 실수로 또 두어도 `Awake`의 중복 파괴 로직이 안전하게 무시한다).
+- **ScreenFader**: `Instance` 싱글턴 + `DontDestroyOnLoad` 패턴. 훅 등록이 씬 전환과 무관하게 항상 유효해야 하므로 `Bootstrap` 씬에 한 번만 배치한다(다른 씬에 실수로 또 두어도 `Awake`의 중복 파괴 로직이 안전하게 무시한다).
+- **FragmentLog**: `HUD` 프리팹의 일부로 각 지역(`Zone_*`) 씬에 씬 루트 오브젝트로 배치되며, `DontDestroyOnLoad`를 쓰지 않는 씬 단위 싱글턴이다(이전에는 Zone 루트의 자식이라 DontDestroyOnLoad가 씬 로드마다 에러를 냈다 — 지금은 애초에 호출하지 않는다). 지역 씬마다 새로 생성/등록되므로 Bootstrap 배치가 필요 없다.
 - **HUD / PauseMenu**: 각 지역(`Zone_*`) 씬에 배치. `HUD`는 `GameState.Playing`이 아니면 스스로 캔버스를 숨기므로 Ending 씬에 있어도 무해하지만, 통상은 지역 씬 전용으로 둔다. `PauseMenu`는 `Update`에서 항상 `PlayerInput.PausePressed`를 폴링하므로 지역 씬에 반드시 있어야 일시정지가 동작한다.
 - **TitleScreen**: `Title` 씬 전용.
 - **Ending 씬**: HUD/PauseMenu를 두지 않는 것이 자연스럽다(플레이 상태가 아니므로 HUD는 어차피 숨겨지고, 일시정지 UX가 필요 없다면 PauseMenu도 생략 가능) — 단, 정확한 배치는 Ending 모듈 설계에 따른다.
@@ -39,7 +40,7 @@
 
 ## 의존성 주의
 
-- `ScreenFader`와 `FragmentLog`는 각각 정확히 인스턴스 하나만 존재해야 훅이 의미가 있다 — 씬에 없으면 `SceneFlow.LoadWithFade`는 페이드 없이 동작(폴백 있음)하지만, `GameManager.FragmentPresenter`가 비어 있으면 `StoryFragment`의 `?.Invoke`가 조용히 아무 일도 하지 않아 파편 텍스트가 아예 표시되지 않는다(예외는 없지만 UX 누락이 발생) — Bootstrap 씬 배치를 빠뜨리지 않을 것.
+- `ScreenFader`와 `FragmentLog`는 각각(씬 안에서) 정확히 인스턴스 하나만 존재해야 훅이 의미가 있다 — 씬에 없으면 `SceneFlow.LoadWithFade`는 페이드 없이 동작(폴백 있음)하지만, `GameManager.FragmentPresenter`가 비어 있으면 `StoryFragment`의 `?.Invoke`가 조용히 아무 일도 하지 않아 파편 텍스트가 아예 표시되지 않는다(예외는 없지만 UX 누락이 발생) — 지역 씬에 `HUD` 프리팹(FragmentLog 포함) 배치를 빠뜨리지 않을 것.
 - `HUD`/`PauseMenu`는 `GameManager.Instance`가 null이면 상태 갱신을 건너뛰므로(널 체크 있음) NRE는 나지 않지만, Bootstrap을 거치지 않고 지역 씬을 단독 실행하면 캔버스 표시/일시정지 전환이 정상 동작하지 않는다.
 - `HUD.TryBindPlayerHealth`는 `PlayerController.Instance`가 나타날 때까지 매 프레임 재시도한다 — 플레이어 프리팹이 아예 없는 씬(Title 등)에서는 영구히 바인딩되지 않지만 예외 없이 조용히 실패한다.
 - 새로 UI를 추가할 때 Core/World/Player/Emotions 쪽 코드를 수정해 UI를 직접 참조하게 만들지 말 것 — 반드시 기존 훅(`FadeLoader`/`FragmentPresenter`)을 재사용하거나, 필요하면 Core에 같은 패턴의 새 정적 훅을 추가하고 UI가 등록하는 방향을 유지한다.

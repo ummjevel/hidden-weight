@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.World
 {
@@ -34,7 +35,7 @@ namespace HiddenWeight.World
         void OnCollisionEnter2D(Collision2D collision)
         {
             if (HasCrumbled || _crumbleRoutine != null) return;
-            if (collision.gameObject.layer != LayerMask.NameToLayer("Player")) return;
+            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
 
             bool fromAbove = false;
             foreach (var contact in collision.contacts)

@@ -23,6 +23,9 @@ namespace HiddenWeight.Player
         PlayerAttack _attack;
 
         float _coyoteTimer;
+        float _wallCoyoteTimer; // 벽에서 떨어진 직후에도 잠깐 벽점프를 허용
+        int _wallDir;           // 지금 닿아 있는 벽 방향 (+1 오른쪽, -1 왼쪽, 0 없음)
+        int _lastWallDir;       // 벽 코요테용 — 마지막으로 붙었던 벽 방향
         float _jumpBufferTimer;
         float _dashTimer;
         float _dashCooldownTimer;
@@ -75,6 +78,7 @@ namespace HiddenWeight.Player
             _jumpBufferTimer = PlayerInput.JumpPressed ? _data.jumpBufferTime : _jumpBufferTimer - Time.fixedDeltaTime;
 
             if (_dashCooldownTimer > 0f) _dashCooldownTimer -= Time.fixedDeltaTime;
+            if (_wallCoyoteTimer > 0f) _wallCoyoteTimer -= Time.fixedDeltaTime;
             if (_knockbackLockTimer > 0f) _knockbackLockTimer -= Time.fixedDeltaTime;
             if (_landTimer > 0f) _landTimer -= Time.fixedDeltaTime;
             if (_attackTimer > 0f) _attackTimer -= Time.fixedDeltaTime;
@@ -127,11 +131,14 @@ namespace HiddenWeight.Player
             bool wasGrounded = IsGrounded;
             IsGrounded = Physics2D.OverlapBox(groundCheck.position, groundCheckSize, 0f, groundLayer);
 
-            // wallCheck는 Facing 방향으로 좌우 반전시켜 하나의 체크포인트로 양쪽 벽을 판정한다.
-            var local = wallCheck.localPosition;
-            local.x = Mathf.Abs(local.x) * Facing;
-            wallCheck.localPosition = local;
-            IsOnWall = Physics2D.OverlapBox(wallCheck.position, wallCheckSize, 0f, wallLayer);
+            // 양쪽 벽을 동시에 판정한다 (Celeste·Hollow Knight식). 예전에는 Facing 방향
+            // 한쪽만 판정해서, 벽점프로 반대편 벽에 날아가도 방향키를 다시 누르기 전까지는
+            // 벽에 닿은 것으로 치지 않았다 — 핑퐁이 안 되던 핵심 원인.
+            var offset = new Vector2(Mathf.Abs(wallCheck.localPosition.x), wallCheck.localPosition.y);
+            bool onRight = Physics2D.OverlapBox((Vector2)transform.position + offset, wallCheckSize, 0f, wallLayer);
+            bool onLeft = Physics2D.OverlapBox((Vector2)transform.position - new Vector2(offset.x, -offset.y), wallCheckSize, 0f, wallLayer);
+            _wallDir = onRight ? 1 : onLeft ? -1 : 0;
+            IsOnWall = _wallDir != 0;
 
             if (!wasGrounded && IsGrounded) _landTimer = 0.12f;
         }
@@ -157,29 +164,46 @@ namespace HiddenWeight.Player
             float h = PlayerInput.Horizontal;
             if (h != 0f) Facing = h > 0f ? 1 : -1;
 
+            // 공중에서 입력이 없으면 수평 관성을 유지한다. 예전에는 즉시 0으로 덮어써서
+            // 벽점프 잠금이 풀리는 순간(0.15초 뒤) 비행이 뚝 끊겼다 — 어색함의 주범.
+            if (!IsGrounded && h == 0f) return;
+
             float speed = (PlayerInput.RunHeld ? _data.runSpeed : _data.walkSpeed) * ExternalSpeedMultiplier;
             _rb.linearVelocity = new Vector2(h * speed, _rb.linearVelocity.y);
         }
 
+        // 낙하 중 벽에 닿으면 자동으로 붙는다 (방향키 불필요). 벽 반대 방향을 밀고 있을 때만
+        // 놓아준다 — "붙기"가 기본, "떼기"가 선택이 되어야 조작이 자연스럽다.
         bool ApplyWallCling()
         {
-            if (IsGrounded || !IsOnWall) return false;
+            if (IsGrounded || _wallDir == 0) return false;
+            if (_rb.linearVelocity.y > 0f) return false; // 상승 중에는 긁히지 않는다
 
             float h = PlayerInput.Horizontal;
-            if (h == 0f || (int)Mathf.Sign(h) != Facing) return false;
+            if (h != 0f && (int)Mathf.Sign(h) != _wallDir) return false; // 벽에서 떼기
 
+            Facing = _wallDir; // 벽을 향해 본다
             _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, -_data.wallSlideSpeed);
+
+            // 벽 코요테: 붙어 있는 동안 계속 갱신 — 벽에서 떨어진 직후에도 잠깐 벽점프 허용
+            _wallCoyoteTimer = _data.wallCoyoteTime;
+            _lastWallDir = _wallDir;
             return true;
         }
 
         void TryJump(bool wallClinging)
         {
-            if (_jumpBufferTimer <= 0f || (_coyoteTimer <= 0f && !wallClinging)) return;
+            bool canWallJump = wallClinging || _wallCoyoteTimer > 0f;
+            if (_jumpBufferTimer <= 0f || (_coyoteTimer <= 0f && !canWallJump)) return;
 
-            if (wallClinging)
+            // 지상(코요테 포함) 점프가 우선. 공중에서 벽에 붙어 있거나 방금 떨어졌으면 벽점프.
+            if (_coyoteTimer <= 0f && canWallJump)
             {
-                _rb.linearVelocity = new Vector2(-Facing * _data.wallJumpVelocity.x, _data.wallJumpVelocity.y);
+                int dir = wallClinging ? _wallDir : _lastWallDir;
+                _rb.linearVelocity = new Vector2(-dir * _data.wallJumpVelocity.x, _data.wallJumpVelocity.y);
+                Facing = -dir; // 몸을 벽 반대편으로 돌린다 — 다음 벽을 향해 나는 느낌
                 _wallJumpLockTimer = _data.wallJumpLockTime;
+                _wallCoyoteTimer = 0f;
             }
             else
             {

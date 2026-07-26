@@ -26,6 +26,7 @@ namespace HiddenWeight.Data
         public float wallSlideSpeed = 2f; // 벽잡기 하강 속도
         public Vector2 wallJumpVelocity = new Vector2(9f, 13f); // 벽 반대 방향 x, 위쪽 y
         public float wallJumpLockTime = 0.15f; // 벽점프 직후 좌우 입력 무시 시간
+        public float wallCoyoteTime = 0.1f; // 벽에서 떨어진 뒤에도 벽점프를 허용하는 유예 시간
 
         [Header("생존")]
         public int maxHealth = 3;

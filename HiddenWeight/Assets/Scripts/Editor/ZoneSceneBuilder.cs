@@ -514,7 +514,7 @@ namespace HiddenWeight.EditorTools
             BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 5.1f), new Vector2(1, 5.8f), "Wall");
             BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 5.1f), new Vector2(1, 5.8f), "Wall");
             BuildTutorialHint(root.transform, new Vector2(55, 3),
-                "두 벽 사이에서 점프해  벽 쪽 방향키로 붙고\nSpace  로 반대 벽에 옮겨 붙으며 오르기");
+                "점프해서 벽에 닿으면 자동으로 붙는다\nSpace  를 번갈아 눌러 좌우 벽을 오르기");
             BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
 
             // 굴뚝 입구(x 58.5~60.5) 바로 위를 넉넉히 덮는다 — 착지 없이 닿기만 하면 클리어.

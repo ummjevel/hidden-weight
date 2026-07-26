@@ -31,7 +31,7 @@ namespace HiddenWeight.World
             if (!p.CollectFragment(fragmentId)) return; // 이미 먹은 것
             if (grantsSkill != EmotionId.None) p.UnlockSkill(grantsSkill);
             if (grantsAwareness) p.GrantAwareness();
-            Debug.Log(text);
+            GameManager.FragmentPresenter?.Invoke(text);
             gameObject.SetActive(false);
             EmotionSkillController.Instance?.RefreshActive();
         }

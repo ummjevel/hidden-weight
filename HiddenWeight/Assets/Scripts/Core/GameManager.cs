@@ -20,6 +20,9 @@ namespace HiddenWeight.Core
         // Player 모듈을 직접 참조하지 않기 위한 역방향 훅. PlayerHealth가 구독한다.
         public event System.Action<Vector3> RespawnRequested;
 
+        // World가 UI(FragmentLog)를 직접 참조하지 않기 위한 훅. UI가 채운다.
+        public static System.Action<string> FragmentPresenter;
+
         void Awake()
         {
             if (Instance != null && Instance != this)

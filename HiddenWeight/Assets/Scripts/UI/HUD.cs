@@ -99,7 +99,7 @@ namespace HiddenWeight.UI
         void UpdateFragmentCount()
         {
             if (GameManager.Instance == null) return;
-            _fragmentText.text = $"파편 {GameManager.Instance.Progress.FragmentCount}";
+            _fragmentText.text = $"파편 {GameManager.Instance.Progress.FragmentCount}   재화 {GameManager.Instance.Progress.Currency}";
         }
 
         void BuildHierarchy()

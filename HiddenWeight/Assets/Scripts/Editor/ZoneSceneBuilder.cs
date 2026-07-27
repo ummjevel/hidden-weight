@@ -18,7 +18,7 @@ namespace HiddenWeight.EditorTools
     // 씬 7개(Bootstrap/Title/지역 4곳/Ending)를 코드로 조립하고 EditorBuildSettings에 등록한다.
     // ProjectSetup.Run()은 절대 호출하지 않는다 — URP 에셋이 새 GUID로 재생성되어 참조가 깨진다.
     // Volume 프로파일은 항상 기존 ZoneData 에셋의 참조를 그대로 읽어 쓴다.
-    public static class ZoneSceneBuilder
+    public static partial class ZoneSceneBuilder
     {
         const string ScenesFolder = "Assets/Scenes";
         const string PrefabFolder = "Assets/Prefabs";
@@ -311,6 +311,242 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
+        // 소형 획득물(일반 재화). 점프 경로를 따라 놓아 이동 유도선으로 쓴다.
+        static GameObject BuildCurrencyPickup(Transform parent, Vector2 pos, int amount = 1)
+        {
+            var go = new GameObject("CurrencyPickup");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+            go.transform.localScale = Vector3.one * 0.5f;
+            go.layer = LayerMask.NameToLayer("Interactable");
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite("Fragment");
+            sr.color = new Color(0.95f, 0.86f, 0.6f);
+            sr.sortingOrder = 5; // Art/Residue/README.md의 Interactables 레이어 기준
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.8f; // localScale 0.5가 곱해져 실제 반경 0.4
+
+            var pickup = go.AddComponent<CurrencyPickup>();
+            SetField(pickup, "amount", p => p.intValue = amount);
+
+            return go;
+        }
+
+
+
+        // ============================================================
+        // 잔재 적 구성 (CONTENT_SYSTEM.md 4절). 프리팹을 새로 만들지 않고 기본 Enemy 프리팹에
+        // 데이터와 행동 모듈만 갈아끼운다 — PrefabBuilder.Run()을 다시 돌리면 프리팹 내부
+        // fileID가 바뀌어 기존 씬의 인스턴스 오버라이드가 끊기기 때문이다.
+        // ============================================================
+
+        public enum ResidueEnemyKind { Walker, Carrier, Finger, Hardened }
+
+        // EnemyData 에셋을 없을 때만 만든다(GroundTile과 같은 방식).
+        static EnemyData ResidueEnemyData(ResidueEnemyKind kind)
+        {
+            string name = $"Enemy_Residue_{kind}";
+            var existing = LoadData<EnemyData>(name);
+            if (existing != null) return existing;
+
+            var data = ScriptableObject.CreateInstance<EnemyData>();
+            switch (kind)
+            {
+                case ResidueEnemyKind.Walker: // 잔재 보행자 — 기본 순찰
+                    data.maxHealth = 2; data.moveSpeed = 1.5f; data.contactDamage = 1;
+                    data.tint = new Color(0.55f, 0.5f, 0.6f);
+                    break;
+                case ResidueEnemyKind.Carrier: // 애도 운반자 — 직선 돌진
+                    data.maxHealth = 3; data.moveSpeed = 2f; data.contactDamage = 1;
+                    data.tint = new Color(0.7f, 0.45f, 0.4f);
+                    data.telegraphSeconds = 0.8f;  // 명세 R07: 돌진 전 0.8초 예고
+                    data.stunSeconds = 1.5f;       // 벽 충돌 시 1.5초 경직
+                    data.chargeSpeed = 11f; data.detectRange = 9f;
+                    break;
+                case ResidueEnemyKind.Finger: // 매달린 손가락 — 천장 매복
+                    data.maxHealth = 2; data.moveSpeed = 1.2f; data.contactDamage = 1;
+                    data.tint = new Color(0.62f, 0.6f, 0.68f);
+                    data.dropSpeed = 14f;
+                    break;
+                case ResidueEnemyKind.Hardened: // 굳은 잔재 — 방어형 정예
+                    data.maxHealth = 6; data.moveSpeed = 1.2f; data.contactDamage = 1;
+                    data.tint = new Color(0.42f, 0.44f, 0.5f);
+                    data.telegraphSeconds = 1.1f;  // 느린 강공격
+                    data.recoverSeconds = 1.2f;    // 그만큼 빈틈도 크다
+                    data.guardArc = 120f; data.attackRange = 2.2f; data.detectRange = 7f;
+                    break;
+            }
+
+            AssetDatabase.CreateAsset(data, $"{DataFolder}/{name}.asset");
+            return data;
+        }
+
+        static GameObject BuildResidueEnemy(Transform parent, Vector2 pos, ResidueEnemyKind kind)
+        {
+            var go = BuildEnemy(parent, pos, ResidueEnemyData(kind));
+            int groundMask = 1 << LayerMask.NameToLayer("Ground");
+            int playerMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
+
+            switch (kind)
+            {
+                case ResidueEnemyKind.Walker:
+                    break; // 기본 프리팹이 이미 EnemyPatrol을 들고 있다
+
+                case ResidueEnemyKind.Carrier:
+                {
+                    var charger = go.AddComponent<ChargerBehavior>();
+                    SetField(charger, "obstacleMask", p => p.intValue = groundMask | (1 << LayerMask.NameToLayer("Wall")));
+                    break;
+                }
+
+                case ResidueEnemyKind.Finger:
+                {
+                    // 착지 예정 지점에 그리는 그림자. 이 예고가 이 적의 전부다.
+                    var shadowGO = new GameObject("DropShadow");
+                    shadowGO.transform.SetParent(go.transform, false);
+                    shadowGO.transform.localPosition = new Vector3(0f, -4f, 0f);
+                    shadowGO.transform.localScale = new Vector3(1.2f, 0.3f, 1f);
+                    var shadowSr = shadowGO.AddComponent<SpriteRenderer>();
+                    shadowSr.sprite = LoadSprite("Tile");
+                    shadowSr.color = new Color(0f, 0f, 0f, 0.5f);
+                    shadowSr.sortingOrder = 4;
+
+                    var ambush = go.AddComponent<AmbusherBehavior>();
+                    SetField(ambush, "shadow", p => p.objectReferenceValue = shadowSr);
+
+                    // 매복 중에는 순찰하지 않는다. 착지 후 AmbusherBehavior가 다시 켠다.
+                    var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
+                    if (patrol != null) patrol.enabled = false;
+                    break;
+                }
+
+                case ResidueEnemyKind.Hardened:
+                {
+                    var guard = go.AddComponent<GuardBehavior>();
+                    SetField(guard, "playerMask", p => p.intValue = playerMask);
+                    var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
+                    if (patrol != null) patrol.enabled = false;
+                    break;
+                }
+            }
+
+            return go;
+        }
+
+        // 보스. 체력·패턴만 다르고 나머지는 같은 BossController를 쓴다.
+        static GameObject BuildBoss(Transform parent, Vector2 pos, string assetName, int health,
+                                    BossController.Move[] moves, float[] phases, Color tint)
+        {
+            var data = LoadData<EnemyData>(assetName);
+            if (data == null)
+            {
+                data = ScriptableObject.CreateInstance<EnemyData>();
+                data.maxHealth = health;
+                data.moveSpeed = 2f;
+                data.contactDamage = 1;
+                data.tint = tint;
+                AssetDatabase.CreateAsset(data, $"{DataFolder}/{assetName}.asset");
+            }
+
+            var go = BuildEnemy(parent, pos, data);
+            go.transform.localScale = Vector3.one * 2f;
+
+            var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
+            if (patrol != null) patrol.enabled = false;
+
+            var boss = go.AddComponent<BossController>();
+            SetField(boss, "playerMask", p => p.intValue =
+                1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed"));
+            SetField(boss, "obstacleMask", p => p.intValue =
+                1 << LayerMask.NameToLayer("Ground") | 1 << LayerMask.NameToLayer("Wall"));
+            SetField(boss, "moves", p =>
+            {
+                p.arraySize = moves.Length;
+                for (int i = 0; i < moves.Length; i++)
+                    p.GetArrayElementAtIndex(i).enumValueIndex = (int)moves[i];
+            });
+            SetField(boss, "phaseThresholds", p =>
+            {
+                p.arraySize = phases.Length;
+                for (int i = 0; i < phases.Length; i++)
+                    p.GetArrayElementAtIndex(i).floatValue = phases[i];
+            });
+
+            return go;
+        }
+
+        // 소형 회복물.
+        static GameObject BuildHealingPickup(Transform parent, Vector2 pos, int amount = 1)
+        {
+            var go = new GameObject("HealingPickup");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+            go.transform.localScale = Vector3.one * 0.7f;
+            go.layer = LayerMask.NameToLayer("Interactable");
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = LoadSprite("Fragment");
+            sr.color = new Color(0.6f, 0.9f, 0.75f);
+            sr.sortingOrder = 5;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.7f;
+
+            var pickup = go.AddComponent<HealingPickup>();
+            SetField(pickup, "amount", p => p.intValue = amount);
+            return go;
+        }
+
+        // 물리적으로 열리는 숏컷. 닫혀 있는 동안은 blocker가 길을 막고, 열리면 다리·승강기 본체가
+        // 나타난다. 첫 방문에는 "만져볼 수 있지만 통과할 수 없는" 상태로 보여야 한다(R03 명세).
+        static Shortcut BuildShortcut(Transform parent, string id, Vector2 center, Vector2 size, Color tint)
+        {
+            var go = new GameObject($"Shortcut_{id}");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+
+            var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", tint * 0.5f);
+            var opened = BuildSolidBlock(go.transform, "Opened", center, size, "Ground", tint);
+            opened.SetActive(false);
+
+            var shortcut = go.AddComponent<Shortcut>();
+            SetField(shortcut, "shortcutId", p => p.stringValue = id);
+            SetField(shortcut, "blocker", p => p.objectReferenceValue = blocker);
+            SetField(shortcut, "openedVisual", p => p.objectReferenceValue = opened);
+            return shortcut;
+        }
+
+        // 깊은 "안전 바닥" 바로 위를 덮는 추락 복귀 트리거. 안전 바닥은 본 바닥보다 6 낮은데
+        // 실측 최대 점프 높이가 2.72라 한 번 떨어지면 다시 못 올라온다 — 그대로 두면 재시도가
+        // 아니라 진행 불가다. 피해 없이 마지막 체크포인트로만 돌려보낸다.
+        static GameObject BuildHazardFloor(Transform parent, int xMin, int xMax, int topY)
+            => BuildHazard(parent, new Vector2((xMin + xMax) * 0.5f, topY + 1.5f),
+                           new Vector2(xMax - xMin, 3f), 0, null);
+
+        // 위험 영역 공통 빌더. damage>0이면 체력을 깎고, recoveryPoint가 있으면 방 안의 그 지점으로
+        // 되돌린다(없으면 마지막 체크포인트). 명세 R07·R09가 요구하는 "직전 안전 발판 복귀"가 이것이다.
+        static GameObject BuildHazard(Transform parent, Vector2 center, Vector2 size, int damage, Transform recoveryPoint)
+        {
+            var go = new GameObject(damage > 0 ? "Hazard" : "FallRecovery");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(center.x, center.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = size;
+
+            var hazard = go.AddComponent<Hazard>();
+            SetField(hazard, "damage", p => p.intValue = damage);
+            if (recoveryPoint != null)
+                SetField(hazard, "recoveryPoint", p => p.objectReferenceValue = recoveryPoint);
+
+            return go;
+        }
+
         // 충돌 없는 배경 연출용 스프라이트 (새장·무너진 탑·거울 기둥 등).
         static SpriteRenderer BuildDecor(Transform parent, string name, Vector2 pos, Vector2 scale,
             string spriteName, Color tint, float rotationZ = 0f, int sortingOrder = -5)
@@ -497,7 +733,9 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 32, 34, 2);
             Floor(tilemap, 34, 36, 3);
             Floor(tilemap, 36, 40, 3);
-            Floor(tilemap, 40, 44, 0); // 착지 실패 시 떨어지는 낮은 안전 통로
+            // 착지 실패 시 떨어지는 낮은 통로. 표면을 y=1로 둔다 — y=0이면 양옆 바닥(y=3)까지
+            // 3을 올라야 하는데 실측 최대 점프 높이가 2.72라 다시 못 올라와 진행 불가가 된다.
+            Floor(tilemap, 40, 44, 1);
             Floor(tilemap, 44, 48, 3);
             BuildTutorialHint(root.transform, new Vector2(29, 3.5f), "Space  점프  ·  LeftCtrl  대시");
             BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
@@ -550,6 +788,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 24, 35, 0);
             Floor(tilemap, 38, 48, 0);
             PlaceTiles(tilemap, GroundTile(), 35, 38, -8, -6); // 다리 아래 안전 바닥
+            BuildHazardFloor(root.transform, 35, 38, -6);
             BuildRewindableBlock(root.transform, new Vector2(35.5f, -0.5f));
             BuildRewindableBlock(root.transform, new Vector2(36.5f, -0.5f));
             BuildRewindableBlock(root.transform, new Vector2(37.5f, -0.5f));
@@ -559,6 +798,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 48, 58, 0);
             Floor(tilemap, 70, 72, 0);
             PlaceTiles(tilemap, GroundTile(), 58, 70, -8, -6); // 추락 시 안전 바닥
+            BuildHazardFloor(root.transform, 58, 70, -6);
             BuildCrumblingPlatform(root.transform, new Vector2(59.5f, 0f));
             BuildCrumblingPlatform(root.transform, new Vector2(62.5f, 0f));
             BuildCrumblingPlatform(root.transform, new Vector2(65.5f, 0f));
@@ -686,6 +926,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 24, 32, 0);
             Floor(tilemap, 44, 48, 0);
             PlaceTiles(tilemap, GroundTile(), 32, 44, -8, -6); // 추락 시 안전 바닥
+            BuildHazardFloor(root.transform, 32, 44, -6);
             BuildMovingPlatform(root.transform, new Vector2(34, 0), new Vector2(3, 0), 3f);
             BuildMovingPlatform(root.transform, new Vector2(38, 0), new Vector2(3, 0), 5f);
             BuildMovingPlatform(root.transform, new Vector2(42, 0), new Vector2(3, 0), 7f);
@@ -697,6 +938,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 48, 60, 0);
             Floor(tilemap, 78, 84, 0);
             PlaceTiles(tilemap, GroundTile(), 60, 78, -8, -6); // 추락 시 안전 바닥
+            BuildHazardFloor(root.transform, 60, 78, -6);
             var mirrorTint = new Color(0.85f, 0.92f, 0.88f);
             BuildDecor(root.transform, "MirrorPillar_L1", new Vector2(60, 3.5f), new Vector2(0.8f, 7f), "Tile", mirrorTint);
             BuildDecor(root.transform, "MirrorPillar_R1", new Vector2(78, 3.5f), new Vector2(0.8f, 7f), "Tile", mirrorTint);
@@ -857,6 +1099,11 @@ namespace HiddenWeight.EditorTools
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Gaze.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Fracture.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Ending.unity", true),
+                // 잔재 재설계 전체 지역(15룸). 아직 게임 흐름에 연결하지 않았지만 Play Mode
+                // 테스트가 이름으로 로드해야 하므로 등록해 둔다.
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Residue_Full.unity", true),
+                // 잔재 재설계 작업용 단독 방 씬. 아직 어디에서도 연결하지 않지만, 등록해 두어야
+                // Play Mode 테스트가 이름으로 로드할 수 있다. 파일이 없으면 조용히 건너뛴다.
             };
         }
     }

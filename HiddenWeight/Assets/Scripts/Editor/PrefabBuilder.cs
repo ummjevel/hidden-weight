@@ -91,6 +91,59 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- Player ----------------
+        // 플레이어 콜라이더용 무마찰 재질. 프로젝트에 PhysicsMaterial2D가 하나도 없으면 2D 기본
+        // 마찰 0.4가 걸리는데, 그러면 방향키를 벽 쪽으로 누른 채 벽면에 닿는 순간 중력이 마찰을
+        // 이기지 못해 플레이어가 공중에서 벽에 붙어 그대로 멈춘다(계단·둔덕 모서리에서 잘 난다).
+        // 벽잡기·벽점프는 마찰이 아니라 wallCheck 판정으로 하므로 이 재질에 영향받지 않는다.
+        // 검증: Assets/Tests/PlayMode/ResidueR01Tests.cs
+        public static PhysicsMaterial2D FrictionlessPlayerMaterial()
+        {
+            const string path = "Assets/Settings/Player_Frictionless.physicsMaterial2D";
+
+            var existing = AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(path);
+            if (existing != null)
+            {
+                existing.friction = 0f;
+                existing.bounciness = 0f;
+                EditorUtility.SetDirty(existing);
+                return existing;
+            }
+
+            if (!AssetDatabase.IsValidFolder("Assets/Settings"))
+                AssetDatabase.CreateFolder("Assets", "Settings");
+
+            var material = new PhysicsMaterial2D("Player_Frictionless") { friction = 0f, bounciness = 0f };
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        // 프리팹 13종을 전부 다시 짓지 않고 Player 프리팹에만 무마찰 재질을 붙인다.
+        // (PrefabBuilder.Run()을 다시 돌리면 프리팹 내부 fileID가 바뀌어 씬의 인스턴스 오버라이드가
+        //  끊기므로, 이 한 가지 수정 때문에 전체를 재생성하지는 않는다.)
+        [MenuItem("Hidden Weight/Fix/Apply Player Physics Material")]
+        public static void ApplyPlayerPhysicsMaterial()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/Player.prefab");
+            var col = prefab.GetComponent<CapsuleCollider2D>();
+            col.sharedMaterial = FrictionlessPlayerMaterial();
+
+            // 입력 펌프. 없으면 점프·대시가 프레임 타이밍에 따라 씹힌다.
+            if (prefab.GetComponent<PlayerInputPump>() == null) prefab.AddComponent<PlayerInputPump>();
+
+            // 공격 시각 피드백. 없으면 J를 눌러도 화면에 아무 변화가 없다.
+            if (prefab.GetComponent<AttackVisual>() == null)
+            {
+                var visual = prefab.AddComponent<AttackVisual>();
+                var so = new SerializedObject(visual);
+                so.FindProperty("sprite").objectReferenceValue = LoadSprite("Tile");
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            EditorUtility.SetDirty(prefab);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[PrefabBuilder] Player 콜라이더에 무마찰 재질 적용 완료");
+        }
+
         static void BuildPlayer()
         {
             var root = new GameObject("Player");
@@ -106,6 +159,7 @@ namespace HiddenWeight.EditorTools
             var col = root.AddComponent<CapsuleCollider2D>();
             col.direction = CapsuleDirection2D.Vertical;
             col.size = new Vector2(0.8f, 1.4f); // Player.png 32x48px / 32ppu = 1x1.5 유닛 기준
+            col.sharedMaterial = FrictionlessPlayerMaterial();
 
             var groundCheck = NewChild(root.transform, "GroundCheck");
             groundCheck.transform.localPosition = new Vector3(0f, -0.75f, 0f);
@@ -117,6 +171,9 @@ namespace HiddenWeight.EditorTools
             root.AddComponent<PlayerHealth>();
             root.AddComponent<VoidRespawn>(); // 맵 밖 무한 낙하 소프트락 방지
             root.AddComponent<PlayerAnimator>();
+            root.AddComponent<PlayerInputPump>();
+            var attackVisual = root.AddComponent<AttackVisual>();
+            new SerializedObject(attackVisual).FindProperty("sprite").objectReferenceValue = LoadSprite("Tile");
             root.AddComponent<EmotionSkillController>();
             var rewind = root.AddComponent<RewindSkill>();
             root.AddComponent<HushSkill>();

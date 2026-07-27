@@ -22,16 +22,21 @@ namespace HiddenWeight.EditorTools
 
         public static void BuildMac()
         {
-            var scenes = new[]
+            // 씬 목록은 EditorBuildSettings 하나만 진실로 삼는다. 여기에 따로 적어 두면
+            // ZoneSceneBuilder가 새 씬을 등록해도 빌드에는 안 들어가서, 게임 안에서 그 씬으로
+            // 넘어가려 할 때 "has not been added to the active build profile"로 조용히 실패한다
+            // (실제로 잔재 신규 지역이 그렇게 빠졌다).
+            var scenes = System.Array.ConvertAll(
+                System.Array.FindAll(EditorBuildSettings.scenes, s => s.enabled),
+                s => s.path);
+
+            if (scenes.Length == 0)
             {
-                "Assets/Scenes/Bootstrap.unity",
-                "Assets/Scenes/Title.unity",
-                "Assets/Scenes/Zone_Prologue.unity",
-                "Assets/Scenes/Zone_Residue.unity",
-                "Assets/Scenes/Zone_Gaze.unity",
-                "Assets/Scenes/Zone_Fracture.unity",
-                "Assets/Scenes/Ending.unity",
-            };
+                Debug.LogError("[BuildScript] 빌드 설정에 씬이 하나도 없다. ZoneSceneBuilder를 먼저 실행할 것.");
+                EditorApplication.Exit(1);
+                return;
+            }
+            Debug.Log($"[BuildScript] 빌드에 포함할 씬 {scenes.Length}개: {string.Join(", ", scenes)}");
 
             var report = BuildPipeline.BuildPlayer(
                 scenes, "Builds/macOS/HiddenWeight.app", BuildTarget.StandaloneOSX, BuildOptions.None);

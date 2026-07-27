@@ -11,6 +11,16 @@ namespace HiddenWeight.Core
         readonly HashSet<string> _fragments = new HashSet<string>();
         readonly HashSet<string> _rewound = new HashSet<string>();
 
+        // 아래 셋은 CONTENT_SYSTEM.md 6절 "초기화 규칙"이 영구 유지라고 정한 것들이다.
+        // 정예·중간 보스·지역 보스 조우, 물리적으로 열린 숏컷, 한 번만 주는 고정 보상.
+        readonly HashSet<string> _clearedEncounters = new HashSet<string>();
+        readonly HashSet<string> _openedShortcuts = new HashSet<string>();
+        readonly HashSet<string> _takenRewards = new HashSet<string>();
+
+        // 일반 재화. CONTENT_SYSTEM.md 5절: 사망해도 유지되고 지역 재진입으로 초기화되지 않는다.
+        // 소비처(상점·지도·업그레이드)는 아직 없고, 지금은 소형 획득물이 이동 유도선 역할을 하는 데 쓴다.
+        public int Currency { get; private set; }
+
         public bool HasAwareness { get; private set; }
         public bool HasClearedFracture { get; private set; }
         public ZoneId CurrentZone { get; set; } = ZoneId.Prologue;
@@ -23,6 +33,41 @@ namespace HiddenWeight.Core
         }
 
         public bool HasSkill(EmotionId id) => _skills.Contains(id);
+
+        public void AddCurrency(int amount)
+        {
+            if (amount > 0) Currency += amount;
+        }
+
+        // 영구 성장 조각. 먹을 때마다 최대 체력이 1 늘어난다(CONTENT_SYSTEM.md 5절).
+        public int HealthShards { get; private set; }
+
+        public void AddHealthShard() => HealthShards++;
+
+        // 일회성 조우(정예·보스). 한 번 클리어하면 방을 다시 와도 다시 싸우지 않는다.
+        public void MarkEncounterCleared(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) _clearedEncounters.Add(id);
+        }
+
+        public bool IsEncounterCleared(string id)
+            => !string.IsNullOrEmpty(id) && _clearedEncounters.Contains(id);
+
+        // 물리적으로 열린 숏컷. 지역을 다시 들어와도 열린 채로 시작한다.
+        public void MarkShortcutOpen(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) _openedShortcuts.Add(id);
+        }
+
+        public bool IsShortcutOpen(string id)
+            => !string.IsNullOrEmpty(id) && _openedShortcuts.Contains(id);
+
+        // 고정 보상. 같은 보상을 두 번 주지 않는다(되감기로 복제하는 것도 여기서 막힌다).
+        public bool TakeReward(string id)
+            => !string.IsNullOrEmpty(id) && _takenRewards.Add(id);
+
+        public bool IsRewardTaken(string id)
+            => !string.IsNullOrEmpty(id) && _takenRewards.Contains(id);
 
         public void GrantAwareness() => HasAwareness = true;
 
@@ -54,6 +99,11 @@ namespace HiddenWeight.Core
             _skills.Clear();
             _fragments.Clear();
             _rewound.Clear();
+            _clearedEncounters.Clear();
+            _openedShortcuts.Clear();
+            _takenRewards.Clear();
+            Currency = 0;
+            HealthShards = 0;
             HasAwareness = false;
             HasClearedFracture = false;
             CurrentZone = ZoneId.Prologue;

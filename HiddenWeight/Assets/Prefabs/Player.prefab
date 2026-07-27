@@ -84,6 +84,8 @@ GameObject:
   - component: {fileID: 3763358803398801371}
   - component: {fileID: 71208156174242542}
   - component: {fileID: 3470137536408542213}
+  - component: {fileID: -6405605795070986369}
+  - component: {fileID: -7014378276338596000}
   m_Layer: 10
   m_Name: Player
   m_TagString: Untagged
@@ -205,7 +207,7 @@ CapsuleCollider2D:
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 2a5967f9949324f71af0f68cbf95fb27, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -293,7 +295,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c478174b547c4ac2bdbf2fad2380557, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.VoidRespawn
-  voidY: -15
+  fallLimit: 30
 --- !u!114 &294943554896669473
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -372,3 +374,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Emotions.AwarenessSystem
   slowMultiplier: 0.6
   volumeRampTime: 0.25
+--- !u!114 &-6405605795070986369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6094728301191228689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31fe93814900942eb87cedce115abd5a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.AttackVisual
+  sprite: {fileID: 21300000, guid: 9109f13a8c1274a2aa597b0158602155, type: 3}
+  color: {r: 1, g: 0.95, b: 0.8, a: 0.55}
+--- !u!114 &-7014378276338596000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6094728301191228689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ea521530a59e457ab2e9d85d68054b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.PlayerInputPump

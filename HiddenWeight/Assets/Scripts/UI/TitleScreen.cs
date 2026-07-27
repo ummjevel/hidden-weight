@@ -26,6 +26,16 @@ namespace HiddenWeight.UI
             SceneFlow.LoadWithFade(SceneFlow.Prologue);
         }
 
+        // 작업 중인 잔재 재설계 지역(15룸)으로 바로 들어간다. 빌드한 앱만으로도 새 지역을
+        // 확인할 수 있게 두는 개발용 입구다. 정식 동선(프롤로그→잔재→응시)에는 아직 연결되어
+        // 있지 않으므로, 지역이 완성되어 Zone_Residue를 교체하는 시점에 이 버튼을 지운다.
+        void StartResidueTest()
+        {
+            GameManager.Instance.Progress.ResetAll();
+            GameManager.Instance.SetState(GameState.Playing);
+            SceneFlow.LoadWithFade("Zone_Residue_Full");
+        }
+
         void Quit()
         {
             Application.Quit();
@@ -54,7 +64,8 @@ namespace HiddenWeight.UI
             subRt.anchoredPosition = Vector2.zero;
 
             CreateButton(canvasGO.transform, "시작하기", -20f, StartGame);
-            CreateButton(canvasGO.transform, "종료", -90f, Quit);
+            CreateButton(canvasGO.transform, "잔재 지역 (작업 중)", -90f, StartResidueTest);
+            CreateButton(canvasGO.transform, "종료", -160f, Quit);
         }
 
         static Text CreateText(Transform parent, string content, int fontSize)

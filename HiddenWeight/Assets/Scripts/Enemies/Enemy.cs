@@ -44,6 +44,17 @@ namespace HiddenWeight.Enemies
         {
             if (!IsAlive) return;
 
+            // 방어형 정예는 정면에서 들어온 공격을 막는다(CONTENT_SYSTEM.md 3.1절 "방어형" —
+            // 후방 이동 또는 스킬 활용을 요구하는 적). 막혀도 피격 반응은 보여줘야 플레이어가
+            // "안 통한다"를 읽는다.
+            var guard = GetComponent<GuardBehavior>();
+            if (guard != null && guard.BlocksFrom(sourcePosition))
+            {
+                if (_flashRoutine != null) StopCoroutine(_flashRoutine);
+                _flashRoutine = StartCoroutine(FlashRoutine());
+                return;
+            }
+
             Health -= amount;
 
             // 공격 방향의 반대쪽(자신 위치 - 공격 원점)으로 밀려난다.

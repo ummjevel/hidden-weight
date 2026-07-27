@@ -30,12 +30,23 @@ namespace HiddenWeight.Player
         void Awake()
         {
             var data = GameManager.Instance.Balance.player;
-            _maxHealth = data.maxHealth;
+            // 영구 성장 조각 1개당 최대 체력 +1 (CONTENT_SYSTEM.md 5절). 조각은 ProgressState가
+            // 들고 있으므로 지역을 옮겨도 유지된다.
+            _maxHealth = data.maxHealth + GameManager.Instance.Progress.HealthShards;
             _invulnerableTime = data.invulnerableTime;
             _blinkInterval = data.blinkInterval;
             _knockbackForce = data.knockbackForce;
             _sprite = GetComponentInChildren<SpriteRenderer>();
             Current = _maxHealth;
+        }
+
+        void Start()
+        {
+            // 아직 체크포인트를 밟지 않았다면 이 방의 시작 위치를 기본 복귀 지점으로 삼는다.
+            // 그러지 않으면 LastCheckpoint가 (0,0)이라, 체크포인트가 없는 방에서 죽는 순간
+            // 원점으로 순간이동해 지형 안에 끼거나 허공에서 떨어진다(R03에서 실제로 재현됐다).
+            var progress = GameManager.Instance.Progress;
+            if (progress.LastCheckpoint == Vector3.zero) progress.LastCheckpoint = transform.position;
         }
 
         void OnEnable()
@@ -67,6 +78,15 @@ namespace HiddenWeight.Player
                 // 게임오버 화면은 없다. 마지막 체크포인트로 되돌린다.
                 GameManager.Instance.RespawnPlayer();
             }
+        }
+
+        // 소형 회복물용. 최대치를 넘지 않는다.
+        public void Heal(int amount)
+        {
+            if (amount <= 0 || Current >= _maxHealth) return;
+
+            Current = Mathf.Min(_maxHealth, Current + amount);
+            HealthChanged?.Invoke(Current, _maxHealth);
         }
 
         public void RestoreFull()

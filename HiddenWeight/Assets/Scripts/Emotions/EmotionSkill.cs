@@ -14,16 +14,19 @@ namespace HiddenWeight.Emotions
         public float CooldownRemaining { get; protected set; }
         public virtual bool CanUse => CooldownRemaining <= 0f && !IsActive;
 
-        protected PlayerController Player { get; private set; }
+        // 스킬은 항상 플레이어와 같은 GameObject에 붙는다. 그러니 static Instance를 거치지 말고
+        // 자기 자신에서 찾는다 — Awake에서 PlayerController.Instance를 캡처하면 같은
+        // GameObject 안의 컴포넌트 Awake 순서(보장되지 않는다)에 따라 null이 잡히고, 그 뒤로
+        // 영원히 null로 남아 Begin()이 ApplySpeedMultiplier에서 NullReference로 죽는다.
+        // 즉 감정 스킬 3개(되감기·숨죽이기·예지) 전부가 조용히 먹통이 됐던 원인.
+        // 검증: Assets/Tests/PlayMode/EmotionSkillTests.cs
+        PlayerController _player;
+        protected PlayerController Player
+            => _player != null ? _player : (_player = GetComponent<PlayerController>());
 
         // OnEnd에서 true로 설정하면, 이번 End()에서는 쿨타임을 걸지 않는다.
         // (대상 없이 취소된 되감기 등 — 실패에 쿨타임을 물리지 않기 위함)
         protected bool SkipCooldown;
-
-        void Awake()
-        {
-            Player = PlayerController.Instance;
-        }
 
         void Update()
         {

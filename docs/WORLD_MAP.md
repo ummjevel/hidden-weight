@@ -82,7 +82,8 @@ R01 입구 → R02 애도교 → R03 손바닥 광장
 ```
 
 방별 지형, 적, 보상, 체크포인트, 숏컷, 재방문 규칙은
-`RESIDUE_LEVEL_DESIGN.md`를 단일 기준으로 사용한다.
+`RESIDUE_LEVEL_DESIGN.md`를 따른다. 실제 발판 간격, 로컬 좌표, 조우 순서와 실패 복구는
+`RESIDUE_ROOM_IMPLEMENTATION.md`를 제작 기준으로 사용한다.
 
 ### 2.3 게이팅 흐름 (확정)
 

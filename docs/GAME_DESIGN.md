@@ -465,9 +465,10 @@ Hidden Weight의 차별점은 이 탐험 구조에 감정 스킬과 시간축 �
 ## 13. 다음 기획 작업
 
 1. `RESIDUE_LEVEL_DESIGN.md`: 잔재 12개 메인방·3개 비밀방 상세 설계 — 1차 완료
-2. `CONTENT_SYSTEM.md`: 몬스터·아이템·보상 확장 규칙 — 1차 완료
-3. `GAZE_LEVEL_DESIGN.md`: 응시 지역 상세 설계
-4. `FRACTURE_LEVEL_DESIGN.md`: 균열 지역 상세 설계
-5. `ENDING_SEQUENCE.md`: 거짓 깨어남 → 진짜 각성 컷 단위 스토리보드
-6. `ART_DIRECTION.md`: 시간축 색채 톤 세부 팔레트
-7. `PITCH_VIDEO.md`: 1분 예선 영상 컷 단위 편집 리스트
+2. `RESIDUE_ROOM_IMPLEMENTATION.md`: 잔재 방별 지형·조우·난이도 구현 명세 — 1차 완료
+3. `CONTENT_SYSTEM.md`: 몬스터·아이템·보상 확장 규칙 — 1차 완료
+4. `GAZE_LEVEL_DESIGN.md`: 응시 지역 상세 설계
+5. `FRACTURE_LEVEL_DESIGN.md`: 균열 지역 상세 설계
+6. `ENDING_SEQUENCE.md`: 거짓 깨어남 → 진짜 각성 컷 단위 스토리보드
+7. `ART_DIRECTION.md`: 시간축 색채 톤 세부 팔레트
+8. `PITCH_VIDEO.md`: 1분 예선 영상 컷 단위 편집 리스트

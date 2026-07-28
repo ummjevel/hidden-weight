@@ -16,8 +16,15 @@ namespace HiddenWeight.Enemies
 
         Phase _phase = Phase.Idle;
         int _chargeDirection = 1;
+        EnemyPatrol _patrol;
 
         public bool IsStunned => _phase == Phase.Stun;
+
+        protected override void Awake()
+        {
+            base.Awake();
+            _patrol = GetComponent<EnemyPatrol>();
+        }
 
         void Update()
         {
@@ -32,6 +39,10 @@ namespace HiddenWeight.Enemies
 
         IEnumerator ChargeRoutine()
         {
+            // EnemyPatrol은 FixedUpdate에서 매 스텝 속도를 순찰 속도로 되돌리므로, 켜 둔 채로
+            // 이 코루틴이 속도를 건드리면 서로 덮어써서 떤다(StalkerBehavior.cs의 경고와 동일 상황).
+            if (_patrol != null) _patrol.enabled = false;
+
             _phase = Phase.Telegraph;
             _chargeDirection = DirectionToPlayer;
             FaceTowards(_chargeDirection);
@@ -62,7 +73,7 @@ namespace HiddenWeight.Enemies
             _phase = Phase.Recover;
             Body.linearVelocity = new Vector2(0f, Body.linearVelocity.y);
             yield return new WaitForSeconds(Data.recoverSeconds);
-            _phase = Phase.Idle;
+            ReturnToIdle();
         }
 
         IEnumerator StunRoutine()
@@ -72,7 +83,20 @@ namespace HiddenWeight.Enemies
             ShowTelegraph(true); // 경직도 눈에 보여야 공격 기회로 읽힌다
             yield return new WaitForSeconds(Data.stunSeconds);
             ShowTelegraph(false);
+            ReturnToIdle();
+        }
+
+        void ReturnToIdle()
+        {
             _phase = Phase.Idle;
+
+            // 돌진 중 FaceTowards()가 스케일(보이는 방향)만 바꿔 놨으므로, 순찰을 다시 켜기 전에
+            // 내부 방향(_dir)도 맞춰 준다 — 안 그러면 재개 첫 프레임에 반대 방향으로 미끄러진다.
+            if (_patrol != null)
+            {
+                _patrol.SyncDirection(_chargeDirection);
+                _patrol.enabled = true;
+            }
         }
     }
 }

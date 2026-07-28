@@ -51,7 +51,7 @@
   - 잔재(`Enemy_Residue`): 1.2, tint ≈ (0.42, 0.36, 0.32) 탁한 회갈색
   - 응시(`Enemy_Gaze`): 2.0, tint ≈ (0.48, 0.37, 0.65) 보라
   - 균열(`Enemy_Fracture`): 1.6, tint ≈ (0.56, 0.85, 0.77) 파스텔 민트
-- **균열 지역 지터**: `EnemyData.wobbleAmplitude`/`wobbleFrequency`로 구현되어 있음. `Enemy_Fracture.asset`만 `wobbleAmplitude = 0.2`(나머지 두 에셋은 0). 다만 실제 구현은 기획서가 말하는 "0.2유닛 순찰 폭 변화"가 아니라, `EnemyPatrol.FixedUpdate`에서 `Mathf.Sin(Time.time * wobbleFrequency) * wobbleAmplitude`를 `Rigidbody2D.linearVelocity.y`에 매 프레임 더하는 **수직 흔들림(bobbing)**이다. 좌우 순찰 폭 자체는 지역과 무관하게 낭떠러지/벽 감지로만 결정된다.
+- **균열 지역 지터 — 현재 죽은 코드**: `EnemyData.wobbleAmplitude`/`wobbleFrequency`를 `EnemyPatrol.FixedUpdate`가 `Mathf.Sin(Time.time * wobbleFrequency) * wobbleAmplitude`로 `Rigidbody2D.linearVelocity.y`에 매 프레임 더하는 수직 흔들림(bobbing)으로 구현해 뒀었다. 하지만 균열 지역의 이름 붙은 몬스터 4종(불안 새싹=`FeintPatrol`, 선행 그림자=`PrecursorBehavior`, 가능성 수집자=`CollectorBehavior`, 갈라진 자아=`SplitSelfBehavior`)은 전부 `Awake()`에서 `EnemyPatrol`을 영구히 꺼버리고 예지 스킬의 "2초 뒤 위치 예측"을 위해 시간의 순수 함수로 직접 움직이므로, 이 흔들림은 **어떤 실제 균열 몬스터에도 적용되지 않는다**. 그래서 모든 `Enemy_Fracture*.asset`의 `wobbleAmplitude`를 다른 지역과 같이 0으로 되돌렸다. 코드 자체(`EnemyPatrol`의 wobble 로직)는 지역 전용이 아니라 범용 기능이라 남겨 뒀다 — 앞으로 어떤 지역이든 전용 Behavior 없이 베이스 순찰만 쓰는 개체가 생기면 재사용할 수 있다.
 
 ## 씬 배치
 

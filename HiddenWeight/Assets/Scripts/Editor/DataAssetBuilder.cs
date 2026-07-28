@@ -72,7 +72,9 @@ namespace HiddenWeight.EditorTools
             {
                 d.moveSpeed = 1.6f;
                 ColorUtility.TryParseHtmlString("#8FD9C4", out d.tint);
-                d.wobbleAmplitude = 0.2f;
+                // 균열 몬스터는 전부 EnemyPatrol을 끄고 시간 함수로 직접 움직이므로 이 값은
+                // 실제로는 적용되지 않는다(Enemies/README.md 참고). 다른 지역과 같이 0으로 둔다.
+                d.wobbleAmplitude = 0f;
             });
 
             var zonePrologue = LoadOrCreate<ZoneData>($"{Folder}/Zone_Prologue.asset", d =>
@@ -167,6 +169,27 @@ namespace HiddenWeight.EditorTools
             configure(asset);
             AssetDatabase.CreateAsset(asset, path);
             return asset;
+        }
+
+        // 이미 만들어져 있던 Enemy_Residue_Walker.asset에는 turnHesitationSeconds 필드가 없던
+        // 시절에 저장된 값이 남아있어, 새로 추가한 필드가 기본값(0)으로 직렬화돼 있다.
+        // ZoneSceneBuilder.ResidueEnemyData()의 Walker 케이스를 재실행하면 기존 에셋을 그대로
+        // 반환하고 건드리지 않으므로(LoadData가 있으면 스킵), 여기서 한 번만 값을 채워 넣는다.
+        [MenuItem("Hidden Weight/Fix/Apply Residue Walker Hesitation")]
+        public static void ApplyResidueWalkerHesitation()
+        {
+            string path = $"{Folder}/Enemy_Residue_Walker.asset";
+            var data = AssetDatabase.LoadAssetAtPath<EnemyData>(path);
+            if (data == null)
+            {
+                Debug.LogError($"[DataAssetBuilder] {path} 를 찾을 수 없다.");
+                return;
+            }
+
+            data.turnHesitationSeconds = 0.35f;
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[DataAssetBuilder] Enemy_Residue_Walker.turnHesitationSeconds = 0.35 적용 완료");
         }
     }
 }

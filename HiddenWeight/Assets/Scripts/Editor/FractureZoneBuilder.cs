@@ -218,7 +218,9 @@ namespace HiddenWeight.EditorTools
             if (existing != null) return existing;
 
             var data = ScriptableObject.CreateInstance<EnemyData>();
-            data.wobbleAmplitude = 0.2f; // 균열의 모든 것은 조금씩 흔들린다
+            // 이름 붙은 균열 몬스터 4종은 전부 EnemyPatrol을 꺼버리고 시간 함수로 직접 움직이므로
+            // wobbleAmplitude(EnemyPatrol 전용 수직 흔들림)는 적용되지 않는다(Enemies/README.md 참고).
+            // 다른 지역과 같이 0으로 둔다.
 
             switch (kind)
             {

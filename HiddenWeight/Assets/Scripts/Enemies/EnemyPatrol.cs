@@ -38,6 +38,11 @@ namespace HiddenWeight.Enemies
         float _stuckTimer;
         float _stuckAnchorX;
 
+        // 방향을 바꾸기 전 잠깐 멈칫거리는 개체용(EnemyData.turnHesitationSeconds > 0인 경우만).
+        // 0이면(기본값, 잔재 보행자 외 전 개체) 이 상태에 절대 들어가지 않아 기존 동작과 완전히 같다.
+        bool _hesitating;
+        float _hesitationTimer;
+
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
@@ -47,9 +52,31 @@ namespace HiddenWeight.Enemies
             _stuckAnchorX = transform.position.x;
         }
 
+        // 외부(예: ChargerBehavior)가 자체 이동으로 이 컴포넌트를 잠깐 껐다가 다시 켤 때,
+        // 그 사이 FaceTowards() 등으로 바뀐 실제 방향을 알려준다. 이걸 안 하면 재개 직후
+        // 스케일(보이는 방향)과 _dir(속도 방향)이 어긋나 한 프레임 반대로 미끄러진다.
+        public void SyncDirection(int dir) => _dir = dir >= 0 ? 1 : -1;
+
         void FixedUpdate()
         {
             if (_flipTimer > 0f) _flipTimer -= Time.fixedDeltaTime;
+
+            if (_hesitating)
+            {
+                _hesitationTimer -= Time.fixedDeltaTime;
+                _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+                if (_enemy != null) _enemy.PlayClip("Idle");
+
+                if (_hesitationTimer <= 0f)
+                {
+                    _hesitating = false;
+                    Flip();
+                    _flipTimer = FlipCooldown;
+                    _stuckTimer = 0f;
+                    _stuckAnchorX = transform.position.x;
+                }
+                return;
+            }
 
             bool groundAhead = Physics2D.OverlapCircle(edgeCheck.position, 0.1f, groundMask);
             // 벽 판정은 몸통 옆면에서 쏜다. 중심에서 쏘면 지형에 살짝 파고든 순간 양쪽 다
@@ -71,6 +98,15 @@ namespace HiddenWeight.Enemies
 
             if ((!groundAhead || wallAhead || stuck) && _flipTimer <= 0f)
             {
+                if (_data.turnHesitationSeconds > 0f)
+                {
+                    _hesitating = true;
+                    _hesitationTimer = _data.turnHesitationSeconds;
+                    _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+                    if (_enemy != null) _enemy.PlayClip("Idle");
+                    return;
+                }
+
                 Flip();
                 _flipTimer = FlipCooldown;
                 _stuckTimer = 0f;

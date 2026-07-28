@@ -11,8 +11,9 @@ namespace HiddenWeight.Data
         public int contactDamage = 1;
         public Color tint = Color.white;
         public float knockbackForce = 6f;
-        public float wobbleAmplitude = 0f; // 균열 지역만 0.2
+        public float wobbleAmplitude = 0f; // 현재 이 값을 쓰는 순찰 개체 없음(균열 몬스터는 전부 EnemyPatrol을 끄고 자체 이동을 씀) — 향후 베이스 순찰만 쓰는 개체가 생기면 재사용
         public float wobbleFrequency = 3f;
+        public float turnHesitationSeconds = 0f; // 방향 전환 전 멈칫거리는 시간(초). 죄책감처럼 발이 무거운 개체용(잔재 보행자만 0보다 큼)
 
         // --- 행동 모듈 공통 수치 (CONTENT_SYSTEM.md 3.3절) ---
         // 기존 순찰형 에셋은 아래 값을 쓰지 않으므로 기본값 그대로 둬도 동작이 바뀌지 않는다.

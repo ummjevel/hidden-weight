@@ -369,6 +369,7 @@ namespace HiddenWeight.EditorTools
                 case ResidueEnemyKind.Walker: // 잔재 보행자 — 기본 순찰
                     data.maxHealth = 2; data.moveSpeed = 1.5f; data.contactDamage = 1;
                     data.tint = new Color(0.55f, 0.5f, 0.6f);
+                    data.turnHesitationSeconds = 0.35f; // 죄책감처럼 발이 무겁게, 방향 전환 전 잠깐 멈칫
                     break;
                 case ResidueEnemyKind.Carrier: // 애도 운반자 — 직선 돌진
                     data.maxHealth = 3; data.moveSpeed = 2f; data.contactDamage = 1;

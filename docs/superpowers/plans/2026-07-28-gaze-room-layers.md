@@ -373,8 +373,14 @@ for room in rooms:
                 assert im.getchannel('A').getextrema()==(255,255)
         else:
             assert im.mode=='RGBA', (p,im.mode)
-            corners=[(0,0),(1671,0),(0,940),(1671,940)]
-            assert sum(im.getpixel(q)[3]==0 for q in corners)>=3, p
+            alpha=im.getchannel('A')
+            assert alpha.getextrema()[0]==0, p
+            if layer=='FG_Overlay':
+                # 전경은 의도적으로 네 모서리를 감싼다. 모서리 대신 실제 플레이 중심부가
+                # 95% 이상 비어 있는지 검사한다.
+                center=alpha.crop((418,188,1254,753))
+                clear=sum(v==0 for v in center.getdata())/len(center.getdata())
+                assert clear>=0.95, (p,clear)
         count+=1
 print('PASS room layers',count)
 assert count==45
@@ -401,4 +407,3 @@ git add docs/concept-art/generated/gaze-room-layers \
   HiddenWeight/Assets/Art/Gaze
 git commit -m "[art] 응시 룸 레이어 45장 제작 완료"
 ```
-

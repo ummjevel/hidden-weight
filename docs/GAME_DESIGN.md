@@ -464,11 +464,13 @@ Hidden Weight의 차별점은 이 탐험 구조에 감정 스킬과 시간축 �
 
 ## 13. 다음 기획 작업
 
+0. `DESIGN_IMPLEMENTATION_GAP_ANALYSIS.md`: 현재 코드·씬 기준 구현 상태, 설계 공백, 우선순위별 제작 로드맵 — 기준 문서
 1. `RESIDUE_LEVEL_DESIGN.md`: 잔재 12개 메인방·3개 비밀방 상세 설계 — 1차 완료
 2. `RESIDUE_ROOM_IMPLEMENTATION.md`: 잔재 방별 지형·조우·난이도 구현 명세 — 1차 완료
 3. `CONTENT_SYSTEM.md`: 몬스터·아이템·보상 확장 규칙 — 1차 완료
-4. `GAZE_LEVEL_DESIGN.md`: 응시 지역 상세 설계
-5. `FRACTURE_LEVEL_DESIGN.md`: 균열 지역 상세 설계
+4. `GAZE_LEVEL_DESIGN.md`: 응시 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
+5. `FRACTURE_LEVEL_DESIGN.md`: 균열 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
 6. `ENDING_SEQUENCE.md`: 거짓 깨어남 → 진짜 각성 컷 단위 스토리보드
 7. `ART_DIRECTION.md`: 시간축 색채 톤 세부 팔레트
 8. `PITCH_VIDEO.md`: 1분 예선 영상 컷 단위 편집 리스트
+9. `UI_UX_DESIGN.md`: HUD·메뉴·지도·기억 기록·튜토리얼·접근성·Unity 구현 기준 — 1차 완료

@@ -9,7 +9,7 @@ namespace HiddenWeight.Enemies
     // 명세(S2): "굳은 잔재는 전방 방어, 느린 강공격", "측면 벽을 복원하면 돌진을 막거나
     // 뒤쪽 공격 경로를 만든다". 즉 정면으로 두드리면 안 되고 뒤를 잡아야 하는 적이다.
     // 그래서 정면 각도 안에서 들어온 피해는 막고, 뒤에서 들어온 피해만 통과시킨다.
-    public class GuardBehavior : EnemyBehavior
+    public class GuardBehavior : EnemyBehavior, IGuard
     {
         [SerializeField] LayerMask playerMask;
 

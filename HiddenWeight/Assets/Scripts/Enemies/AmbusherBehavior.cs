@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.Enemies
 {
@@ -13,6 +14,11 @@ namespace HiddenWeight.Enemies
         [SerializeField] float triggerWidth = 1.5f;  // 이 폭 안으로 들어오면 예고 시작
         [SerializeField] float shadowSeconds = 1.5f; // 명세가 지정한 그림자 예고 시간
         [SerializeField] SpriteRenderer shadow;      // 착지 예정 지점에 그리는 그림자
+
+        // 응시의 "매달린 관객"은 같은 매복형이지만 숨죽인 플레이어 바로 아래를 지나가도
+        // 떨어지지 않는다(GAZE_LEVEL_DESIGN.md 6.1절). 잔재의 매달린 손가락은 이 값을
+        // 끄고 그대로 쓴다 — 적을 새로 만들지 않고 반응 규칙 하나만 갈아끼운다.
+        [SerializeField] bool ignoreHushedPlayer = false;
 
         bool _triggered;
 
@@ -28,6 +34,7 @@ namespace HiddenWeight.Enemies
         void Update()
         {
             if (_triggered || Player == null) return;
+            if (ignoreHushedPlayer && PlayerLayers.IsHushed(Player.gameObject)) return;
 
             // 아래를 지날 때만. 위나 옆에 있을 때는 반응하지 않는다.
             bool below = Player.position.y < transform.position.y;

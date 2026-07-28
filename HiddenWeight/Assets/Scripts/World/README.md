@@ -22,6 +22,31 @@
 | `Room.cs` | 룸 단위 카메라 경계. 플레이어 진입 시 `RoomCamera`에 자신을 등록 | 5.5 월드(룸) |
 | `RoomCamera.cs` | 현재 룸 경계 안에서 플레이어를 부드럽게 따라가는 카메라 | 5.5 월드(룸 카메라) |
 
+### 응시·균열 지역 추가 모듈 (2026-07-28)
+
+두 번째·세 번째 지역을 짓기 위해 추가한 배치물이다. 기존 모듈과 같은 계약(`IForeseeable`,
+`IAwarenessReactive`)만 쓰고 새 인터페이스를 만들지 않았다.
+
+| 파일 | 역할 | 명세 |
+|---|---|---|
+| `LiftPlatform.cs` | 웨이포인트를 따라 한 번 올라가는 승강기. 종점에 닿으면 연결된 `Shortcut`을 연다. `IForeseeable`로 남은 경로를 계산해 미래 위치를 정확히 돌려준다 | GAZE 4.8(G08), FRACTURE 4.8(F08) |
+| `OrbitPlatform.cs` | 중심점을 도는 발판(시계바늘). 위치가 `Time.time`의 순수 함수라 예지 고스트와 정확히 일치하고, 사망 후 항상 같은 위상으로 돌아온다 | FRACTURE 4.10, 10절 |
+| `FutureEcho.cs` | 예지 안에서만 보이는 미래 구조물. `sightingsToFix`번 고스트로 보이면 현재 공간에 고정되고 연결된 `Shortcut`을 연다 | FRACTURE 4.3·4.5·4.11, 5절 |
+| `DelayedBlast.cs` | 착지 예정 지점에 놓이는 지연 폭발. 남은 시간이 짧을수록 빠르게 깜빡여 예지 없이도 읽힌다 | FRACTURE 6.1(가능성 수집자) |
+| `PathChoice.cs` | 여러 갈래 중 플레이어가 처음 들어선 하나만 실제 발판이 된다. 선택되지 않은 갈래는 흔적으로 남는다 | FRACTURE 4.12, 9절 |
+| `AwarenessRevealed.cs` | 자각 중에만 드러나는 표식·발판·거울문. `invert = true`면 반대로 "자각 중에만 사라지는 벽"이 된다(GS3 입구) | GAZE 4.11, 5절 |
+| `DecoyTelegraph.cs` | 가짜 공격 예고를 내는 관객 조각상. 자각이 켜지면 가짜만 조용해져 진짜가 드러난다 | GAZE 7.2 |
+| `ShortcutLever.cs` | 안쪽에서 직접 여는 숏컷 장치. 여는 조건은 바깥이 정한다는 `Shortcut`의 규칙을 그대로 따른다 | GAZE 8.2(숏컷 A) |
+
+`GazeHazard`도 같은 작업에서 세 가지가 늘었다 — 점멸 주기(`onSeconds`/`offSeconds`,
+`IsGazeOn`을 적 행동 모듈이 읽는다), 휴면(`dormant`, 밀고하는 입이 `Activate()`로 켠다),
+포착 복귀(`retreatPoint`, 체력 1 피해 + 직전 엄폐물 뒤로 + 0.8초 무적). 시선 종류를 새로
+만드는 대신 켜짐 조건과 복귀 방식만 넓혔다.
+
+`CrumblingPlatform.RespawnDelay`(읽기 전용)가 추가됐다. 되감기가 없는 균열 지역에서
+`respawnDelay = 0`이면 한 번 무너진 발판이 영영 돌아오지 않아 진행 불가가 되므로,
+`GazeFractureZoneTests`가 이 값을 검사한다.
+
 ## 핵심 규칙 구현
 
 - **되감기(`IRewindable`)**: `CaptureInitial()`로 초기 상태를 저장하고 `Rewind()`로 되돌린다. `Rewindable`은 위치/회전/활성/스프라이트를, `CrumblingPlatform`은 `HasCrumbled` 플래그 하나만 되돌린다(위치를 바꾸지 않는 발판이라 `CaptureInitial()`은 빈 구현). `CanRewind`는 "이미 초기 상태면 false"를 보장해 불필요한 되감기를 막는다.

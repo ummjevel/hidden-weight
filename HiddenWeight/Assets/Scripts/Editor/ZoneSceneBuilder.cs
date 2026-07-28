@@ -1200,9 +1200,11 @@ namespace HiddenWeight.EditorTools
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Gaze.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Fracture.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Ending.unity", true),
-                // 잔재 재설계 전체 지역(15룸). 아직 게임 흐름에 연결하지 않았지만 Play Mode
+                // 재설계 전체 지역(각 15룸). 아직 게임 흐름에 연결하지 않았지만 Play Mode
                 // 테스트가 이름으로 로드해야 하므로 등록해 둔다.
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Residue_Full.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Gaze_Full.unity", true),
+                new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Fracture_Full.unity", true),
                 // 잔재 재설계 작업용 단독 방 씬. 아직 어디에서도 연결하지 않지만, 등록해 두어야
                 // Play Mode 테스트가 이름으로 로드할 수 있다. 파일이 없으면 조용히 건너뛴다.
             };

@@ -19,6 +19,11 @@ namespace HiddenWeight.World
 
         public bool HasCrumbled { get; private set; }
 
+        // 스스로 되살아나기까지의 시간. 0이면 되감기로만 복구된다 — 되감기가 없는 지역
+        // (균열)에서 0이면 한 번 무너진 발판이 영영 돌아오지 않아 진행 불가가 된다.
+        // 검증: Assets/Tests/PlayMode/GazeFractureZoneTests.cs
+        public float RespawnDelay => respawnDelay;
+
         public Transform Transform => transform;
         public bool CanRewind => HasCrumbled;
         public Sprite CurrentSprite => _sprite.sprite;

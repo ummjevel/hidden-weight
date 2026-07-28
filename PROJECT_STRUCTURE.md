@@ -280,3 +280,36 @@ ls HiddenWeight/Assets/Scenes/*.unity
 
 기대 결과: `exit=0`, 씬 7개(`Bootstrap`, `Title`, `Zone_Prologue`, `Zone_Residue`,
 `Zone_Gaze`, `Zone_Fracture`, `Ending`).
+
+### 재설계 전체 지역 씬 생성 (지역별 15룸)
+
+`ZoneSceneBuilder.Run()`이 만드는 4룸짜리 MVP 씬과 별개로, 지역마다 주 동선 12룸 +
+비밀방 3룸을 갖춘 `*_Full` 씬을 따로 짓는다. 아직 게임 흐름(`ZoneData.nextSceneName`)에는
+연결하지 않았고, 검증을 통과한 뒤 교체한다. 셋 다 같은 형태로 호출한다.
+
+| 지역 | 진입점 | 결과 씬 | 제작 기준 문서 |
+|---|---|---|---|
+| 잔재 | `ZoneSceneBuilder.RunResidueZone` | `Zone_Residue_Full` | `docs/RESIDUE_ROOM_IMPLEMENTATION.md` |
+| 응시 | `ZoneSceneBuilder.RunGazeZone` | `Zone_Gaze_Full` | `docs/GAZE_LEVEL_DESIGN.md` |
+| 균열 | `ZoneSceneBuilder.RunFractureZone` | `Zone_Fracture_Full` | `docs/FRACTURE_LEVEL_DESIGN.md` |
+
+```bash
+cd "/Users/ksh/Desktop/NHN HACKERton"
+"/Applications/Unity/Hub/Editor/6000.5.4f1/Unity.app/Contents/MacOS/Unity" \
+  -batchmode -quit -nographics -projectPath "$PWD/HiddenWeight" \
+  -logFile "$PWD/.unity-logs/gaze-zone.log" \
+  -executeMethod HiddenWeight.EditorTools.ZoneSceneBuilder.RunGazeZone
+```
+
+```bash
+cd "/Users/ksh/Desktop/NHN HACKERton"
+"/Applications/Unity/Hub/Editor/6000.5.4f1/Unity.app/Contents/MacOS/Unity" \
+  -batchmode -quit -nographics -projectPath "$PWD/HiddenWeight" \
+  -logFile "$PWD/.unity-logs/fracture-zone.log" \
+  -executeMethod HiddenWeight.EditorTools.ZoneSceneBuilder.RunFractureZone
+```
+
+생성된 씬은 `Assets/Tests/PlayMode/GazeFractureZoneTests.cs`가 명세에 대고 검사한다 —
+방 15개와 크기, 체크포인트 3·숏컷 3, 주 동선 12룸이 실제로 걸어서 이어지는지, 숨죽이기
+게이트가 규격(통과 높이 0.84~1.4, 틈 폭 0.48~0.8) 안에 있는지, 균열에 자각으로 여는
+문이 없는지, 균열의 붕괴 발판이 전부 스스로 되살아나는지.

@@ -32,6 +32,10 @@ sysinfo.txt
 HiddenWeight/[Tt]est[Rr]esults/
 HiddenWeight/TestResults-*.xml
 
+# PlayMode 테스트가 실행할 때마다 남기는 임시 씬 (GUID가 매번 달라져 계속 쌓인다)
+HiddenWeight/Assets/InitTestScene*.unity
+HiddenWeight/Assets/InitTestScene*.unity.meta
+
 # macOS
 .DS_Store
 

@@ -33,6 +33,12 @@ namespace HiddenWeight.Tests
                 if (enemy.GetComponent<EnemyPatrol>() != null && enemy.isActiveAndEnabled) { target = enemy; break; }
             Assert.IsNotNull(target, "씬에 순찰형 적이 없다.");
 
+            // 적은 이제 실제로 순찰한다. 그대로 두면 때리기 전에 사거리 밖으로 걸어 나가
+            // "공격이 안 먹는다"로 오탐한다. 검사 대상은 세워 두고 공격만 본다.
+            var patrol = target.GetComponent<EnemyPatrol>();
+            if (patrol != null) patrol.enabled = false;
+            target.GetComponent<Rigidbody2D>().linearVelocity = Vector2.zero;
+
             player.TeleportTo(target.transform.position + new Vector3(-1f, 0f, 0f));
             for (int i = 0; i < 20; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
 

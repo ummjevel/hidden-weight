@@ -611,7 +611,12 @@ namespace HiddenWeight.EditorTools
             BuildResidueWall(c.Root.transform, "R04_Chimney_L", c.P(18f, 8f), new Vector2(1f, 8f));
             BuildResidueWall(c.Root.transform, "R04_Chimney_R", c.P(22f, 8f), new Vector2(1f, 8f));
 
-            BuildResidueEnemy(c.Root.transform, c.P(10f, 15f), ResidueEnemyKind.Walker); // 중층, 위에서 먼저 관찰
+            // 명세: "중층 폭 5유닛 발판, 플레이어가 위에서 먼저 관찰". 폭 3 발판 위에 두면
+            // 돌아설 자리가 없어 제자리에서 떠는 것처럼 보인다.
+            // 하강용 지그재그 발판(폭 3)과 겹치지 않는 자리에 깐다. 겹치면 적이 발판 위에
+            // 올라서서 돌아설 폭이 없어진다.
+            c.Tiles(12, 18, 13, 14);
+            BuildResidueEnemy(c.Root.transform, c.P(15f, 15f), ResidueEnemyKind.Walker);
             BuildResidueEnemy(c.Root.transform, c.P(16f, 3f), ResidueEnemyKind.Walker);  // 하층, S1 반대편
 
             c.Room("Room04", 24f, 22f);
@@ -690,7 +695,8 @@ namespace HiddenWeight.EditorTools
 
             // 매복 적. 착지점 좌우 3유닛은 비워 둔다.
             BuildResidueEnemy(c.Root.transform, c.P(18f, 11f), ResidueEnemyKind.Finger);
-            BuildResidueEnemy(c.Root.transform, c.P(12f, 5f), ResidueEnemyKind.Walker);
+            // 상승 구간 바닥이 y=7이므로 그 위에 세운다. 예전엔 y=5라 지형에 묻혀 있었다.
+            BuildResidueEnemy(c.Root.transform, c.P(12f, 8f), ResidueEnemyKind.Walker);
 
             // 선택 대상: 복원하면 S2 입구가 열린다. 주 동선 문은 닫히지 않는다.
             ResidueRewindable(c.Root.transform, c.P(21f, 6f));

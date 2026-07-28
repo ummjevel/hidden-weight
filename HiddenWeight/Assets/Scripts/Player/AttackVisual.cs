@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.UI;
 using HiddenWeight.Core;
 
 namespace HiddenWeight.Player
@@ -51,6 +52,12 @@ namespace HiddenWeight.Player
 
         IEnumerator FlashRoutine()
         {
+            if (UISettings.ReduceFlash)
+            {
+                _flash.enabled = false;
+                _routine = null;
+                yield break;
+            }
             float radius = GameManager.Instance.Balance.player.attackRadius;
             float duration = Mathf.Max(0.08f, GameManager.Instance.Balance.player.attackActiveTime);
 

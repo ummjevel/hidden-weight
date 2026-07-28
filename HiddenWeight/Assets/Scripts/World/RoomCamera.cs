@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.UI;
 using HiddenWeight.Player;
 
 namespace HiddenWeight.World
@@ -43,6 +44,7 @@ namespace HiddenWeight.World
 
         public void Shake(float duration, float magnitude)
         {
+            if (UISettings.ReduceMotion) return;
             if (_shakeRoutine != null) StopCoroutine(_shakeRoutine);
             _shakeRoutine = StartCoroutine(ShakeRoutine(duration, magnitude));
         }

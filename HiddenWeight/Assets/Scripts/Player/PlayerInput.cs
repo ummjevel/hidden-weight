@@ -29,6 +29,7 @@ namespace HiddenWeight.Player
             public bool skillHeld;
             public bool awarenessHeld;
             public bool pausePressed;
+            public bool mapPressed;
         }
 
         // --- GetKeyDown 유실 방지 ---
@@ -50,8 +51,12 @@ namespace HiddenWeight.Player
         {
             if (Injected.HasValue) return; // 테스트가 주입 중이면 실제 키를 섞지 않는다
 
-            if (Input.GetKeyDown(KeyCode.Space)) _jumpDownTime = Time.unscaledTime;
-            if (Input.GetKeyDown(KeyCode.LeftControl)) _dashDownTime = Time.unscaledTime;
+            InputPrompts.PollDevice();
+
+            if (Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Jump)) || Input.GetKeyDown(KeyCode.JoystickButton0))
+                _jumpDownTime = Time.unscaledTime;
+            if (Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Dash)) || Input.GetKeyDown(KeyCode.JoystickButton4))
+                _dashDownTime = Time.unscaledTime;
         }
 
         static bool Buffered(float downTime) => Time.unscaledTime - downTime <= BufferSeconds;
@@ -66,27 +71,38 @@ namespace HiddenWeight.Player
             => Enabled && (Injected.HasValue ? Injected.Value.jumpPressed : Buffered(_jumpDownTime));
 
         public static bool JumpHeld
-            => Enabled && (Injected.HasValue ? Injected.Value.jumpHeld : Input.GetKey(KeyCode.Space));
+            => Enabled && (Injected.HasValue ? Injected.Value.jumpHeld
+                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Jump)) || Input.GetKey(KeyCode.JoystickButton0));
 
         public static bool DashPressed
             => Enabled && (Injected.HasValue ? Injected.Value.dashPressed : Buffered(_dashDownTime));
 
         public static bool AttackPressed
-            => Enabled && (Injected.HasValue ? Injected.Value.attackPressed : Input.GetKeyDown(KeyCode.J));
+            => Enabled && (Injected.HasValue ? Injected.Value.attackPressed
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Attack)) || Input.GetKeyDown(KeyCode.JoystickButton2));
 
         public static bool SkillPressed
-            => Enabled && (Injected.HasValue ? Injected.Value.skillPressed : Input.GetKeyDown(KeyCode.K));
+            => Enabled && (Injected.HasValue ? Injected.Value.skillPressed
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Skill)) || Input.GetKeyDown(KeyCode.JoystickButton3));
 
         public static bool SkillHeld
-            => Enabled && (Injected.HasValue ? Injected.Value.skillHeld : Input.GetKey(KeyCode.K));
+            => Enabled && (Injected.HasValue ? Injected.Value.skillHeld
+                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Skill)) || Input.GetKey(KeyCode.JoystickButton3));
 
         // 일시정지와 마찬가지로 Enabled 여부와 무관하게 항상 동작한다 — Ending 시퀀스는
         // PlayerInput.Enabled = false로 이동/공격을 막아둔 채 이 값만 직접 읽는다.
         public static bool AwarenessHeld
-            => Injected.HasValue ? Injected.Value.awarenessHeld : Input.GetKey(KeyCode.L);
+            => Injected.HasValue ? Injected.Value.awarenessHeld
+                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Awareness)) || Input.GetKey(KeyCode.JoystickButton5);
 
         // 일시정지 해제용이므로 Enabled 여부와 무관하게 항상 동작한다.
         public static bool PausePressed
-            => Injected.HasValue ? Injected.Value.pausePressed : Input.GetKeyDown(KeyCode.Escape);
+            => Injected.HasValue ? Injected.Value.pausePressed
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Pause))
+                    || Input.GetKeyDown(KeyCode.JoystickButton7) || Input.GetKeyDown(KeyCode.JoystickButton1);
+
+        public static bool MapPressed
+            => Injected.HasValue ? Injected.Value.mapPressed
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Map)) || Input.GetKeyDown(KeyCode.JoystickButton6);
     }
 }

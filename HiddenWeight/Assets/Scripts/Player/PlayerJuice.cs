@@ -1,5 +1,6 @@
 using UnityEngine;
 using HiddenWeight.World;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.Player
 {
@@ -33,7 +34,7 @@ namespace HiddenWeight.Player
             if (state == PlayerState.Land)
             {
                 SpawnDust(landDustPrefab, groundCheck);
-                RoomCamera.Instance?.Shake();
+                if (!UISettings.ReduceMotion) RoomCamera.Instance?.Shake();
             }
             else if (state == PlayerState.WallJump)
             {

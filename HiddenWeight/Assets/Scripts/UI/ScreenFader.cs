@@ -38,7 +38,7 @@ namespace HiddenWeight.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 999;
-            canvasGO.AddComponent<CanvasScaler>();
+            UIBuilder.ConfigureScaler(canvasGO.AddComponent<CanvasScaler>());
 
             var imageGO = new GameObject("FadeImage");
             imageGO.transform.SetParent(canvasGO.transform, false);
@@ -62,6 +62,7 @@ namespace HiddenWeight.UI
 
         public IEnumerator FadeTo(float alpha, float seconds)
         {
+            if (UISettings.ReduceMotion) seconds = Mathf.Min(seconds, 0.08f);
             float start = _image.color.a;
 
             if (seconds <= 0f)

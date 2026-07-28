@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
@@ -7,6 +8,12 @@ namespace HiddenWeight.UI
     // 타이틀 화면. 제목 "Hidden Weight" + 부제 "눈뜨는 꿈", 버튼 "시작하기"/"종료".
     public class TitleScreen : MonoBehaviour
     {
+        Button _newGameButton;
+        Button _creditsButton;
+        Button _settingsButton;
+        ConfirmDialog _dialog;
+        PauseSectionPanel _sections;
+
         void Awake()
         {
             BuildHierarchy();
@@ -17,6 +24,14 @@ namespace HiddenWeight.UI
             // 타이틀 씬에 있다는 사실 자체가 곧 Title 상태다. 콜드 부트 등으로 아직
             // 상태가 반영되지 않았을 수 있으므로 여기서 명시적으로 맞춘다.
             if (GameManager.Instance != null) GameManager.Instance.SetState(GameState.Title);
+            StartCoroutine(SelectInitialButton());
+        }
+
+        IEnumerator SelectInitialButton()
+        {
+            // EventSystem.Start가 이 컴포넌트보다 늦을 수 있으므로 한 프레임 뒤 포커스를 준다.
+            yield return null;
+            UIBuilder.Select(_newGameButton);
         }
 
         void StartGame()
@@ -26,9 +41,7 @@ namespace HiddenWeight.UI
             SceneFlow.LoadWithFade(SceneFlow.Prologue);
         }
 
-        // 작업 중인 잔재 재설계 지역(15룸)으로 바로 들어간다. 빌드한 앱만으로도 새 지역을
-        // 확인할 수 있게 두는 개발용 입구다. 정식 동선(프롤로그→잔재→응시)에는 아직 연결되어
-        // 있지 않으므로, 지역이 완성되어 Zone_Residue를 교체하는 시점에 이 버튼을 지운다.
+        // 작업 중인 지역으로 바로 들어가는 개발용 입구. 정식 빌드에는 절대 노출하지 않는다.
         void StartResidueTest()
         {
             GameManager.Instance.Progress.ResetAll();
@@ -41,6 +54,16 @@ namespace HiddenWeight.UI
             Application.Quit();
         }
 
+        void ShowCredits()
+        {
+            _dialog.ShowInfo(
+                "제작진",
+                "Hidden Weight\n\n기획 · 개발 · 아트\nHidden Weight Team",
+                _creditsButton);
+        }
+
+        void ShowSettings() => _sections.Show(PauseSection.Settings);
+
         void BuildHierarchy()
         {
             var canvasGO = new GameObject("TitleCanvas");
@@ -48,7 +71,7 @@ namespace HiddenWeight.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 10;
-            canvasGO.AddComponent<CanvasScaler>();
+            UIBuilder.ConfigureScaler(canvasGO.AddComponent<CanvasScaler>());
             canvasGO.AddComponent<GraphicRaycaster>();
 
             var title = UIBuilder.CreateText(canvasGO.transform, "Hidden Weight", 56);
@@ -63,9 +86,19 @@ namespace HiddenWeight.UI
             subRt.sizeDelta = new Vector2(500f, 50f);
             subRt.anchoredPosition = Vector2.zero;
 
-            UIBuilder.CreateButton(canvasGO.transform, "시작하기", -20f, StartGame);
-            UIBuilder.CreateButton(canvasGO.transform, "잔재 지역 (작업 중)", -90f, StartResidueTest);
-            UIBuilder.CreateButton(canvasGO.transform, "종료", -160f, Quit);
+            _newGameButton = UIBuilder.CreateButton(canvasGO.transform, "새 게임", -20f, StartGame);
+            _settingsButton = UIBuilder.CreateButton(canvasGO.transform, "설정", -90f, ShowSettings);
+            _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", -160f, ShowCredits);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            UIBuilder.CreateButton(canvasGO.transform, "잔재 지역 (개발용)", -230f, StartResidueTest);
+            UIBuilder.CreateButton(canvasGO.transform, "종료", -300f, Quit);
+#else
+            UIBuilder.CreateButton(canvasGO.transform, "종료", -230f, Quit);
+#endif
+
+            _dialog = canvasGO.AddComponent<ConfirmDialog>();
+            _sections = canvasGO.AddComponent<PauseSectionPanel>();
         }
     }
 }

@@ -12,6 +12,8 @@ namespace HiddenWeight.UI
     {
         const int HeartCount = 3;
 
+        [SerializeField] Sprite heartSprite; // PrefabBuilder.ApplyHudTheme()가 배치모드로 채워 넣는다
+
         GameObject _canvasGO;
         Image[] _hearts;
         GameObject _skillGroup;
@@ -126,7 +128,8 @@ namespace HiddenWeight.UI
                 var go = new GameObject($"Heart{i}");
                 go.transform.SetParent(parent, false);
                 var img = go.AddComponent<Image>();
-                img.color = Color.red;
+                img.sprite = heartSprite; // null이면 기존처럼 단색 사각형으로 그려진다(방어적 폴백)
+                img.color = UIBuilder.HeartFull;
 
                 var rt = img.rectTransform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
@@ -149,7 +152,7 @@ namespace HiddenWeight.UI
             groupRt.offsetMin = Vector2.zero;
             groupRt.offsetMax = Vector2.zero;
 
-            _skillText = CreateText(_skillGroup.transform, "SkillText", 22, TextAnchor.UpperRight);
+            _skillText = UIBuilder.CreateText(_skillGroup.transform, "SkillText", 22, TextAnchor.UpperRight);
             var textRt = _skillText.rectTransform;
             textRt.anchorMin = textRt.anchorMax = new Vector2(1f, 1f);
             textRt.pivot = new Vector2(1f, 1f);
@@ -159,7 +162,7 @@ namespace HiddenWeight.UI
             _rewindGaugeGO = new GameObject("RewindGauge");
             _rewindGaugeGO.transform.SetParent(_skillGroup.transform, false);
             var bgImg = _rewindGaugeGO.AddComponent<Image>();
-            bgImg.color = new Color(0f, 0f, 0f, 0.5f);
+            bgImg.color = UIBuilder.PanelBackground;
             var bgRt = bgImg.rectTransform;
             bgRt.anchorMin = bgRt.anchorMax = new Vector2(1f, 1f);
             bgRt.pivot = new Vector2(1f, 1f);
@@ -169,7 +172,7 @@ namespace HiddenWeight.UI
             var fillGO = new GameObject("Fill");
             fillGO.transform.SetParent(_rewindGaugeGO.transform, false);
             _rewindGaugeFill = fillGO.AddComponent<Image>();
-            _rewindGaugeFill.color = Color.cyan;
+            _rewindGaugeFill.color = UIBuilder.AccentColor;
             _rewindGaugeFill.type = Image.Type.Filled;
             _rewindGaugeFill.fillMethod = Image.FillMethod.Horizontal;
             _rewindGaugeFill.fillAmount = 0f;
@@ -184,25 +187,12 @@ namespace HiddenWeight.UI
 
         void BuildFragmentText(Transform parent)
         {
-            _fragmentText = CreateText(parent, "FragmentText", 22, TextAnchor.LowerLeft);
+            _fragmentText = UIBuilder.CreateText(parent, "FragmentText", 22, TextAnchor.LowerLeft);
             var rt = _fragmentText.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
             rt.pivot = new Vector2(0f, 0f);
             rt.sizeDelta = new Vector2(200f, 32f);
             rt.anchoredPosition = new Vector2(16f, 16f);
-        }
-
-        static Text CreateText(Transform parent, string name, int fontSize, TextAnchor alignment)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.text = string.Empty;
-            return text;
         }
     }
 }

@@ -23,6 +23,22 @@ namespace HiddenWeight.EditorTools
             ("Candle", 16, 32, "#E8A050"),
             ("Bed", 192, 64, "#685878"),
             ("Wall", 256, 192, "#484058"),
+            ("Dust", 8, 8, "#D8D0C0"), // 착지·벽점프 더스트 파티클용 작은 도트
+        };
+
+        // HUD 하트 아이콘용 8x8 픽셀아트 마스크(위에서 아래 순서). 흰색으로 찍어 두고
+        // HUD.cs가 Image.color(UIBuilder.HeartFull)로 원하는 색을 입힌다 — 단색 사각형이
+        // 아니라 최소한 하트 모양으로는 보이게 하기 위한 플레이스홀더.
+        static readonly string[] HeartMask =
+        {
+            "........",
+            ".##..##.",
+            "########",
+            "########",
+            "########",
+            ".######.",
+            "..####..",
+            "...##...",
         };
 
         public static void Run()
@@ -33,6 +49,7 @@ namespace HiddenWeight.EditorTools
             {
                 WritePng(s.name, s.width, s.height, s.hex);
             }
+            WriteMaskedPng("Heart", HeartMask, "#FFFFFF");
 
             // PNG 파일들이 디스크에 먼저 보이도록 임포트를 강제한 뒤에야 TextureImporter를 잡을 수 있다.
             AssetDatabase.SaveAssets();
@@ -42,10 +59,11 @@ namespace HiddenWeight.EditorTools
             {
                 ConfigureImporter($"{Folder}/{s.name}.png");
             }
+            ConfigureImporter($"{Folder}/Heart.png");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[PlaceholderArtBuilder] 스프라이트 {Sprites.Length}개 생성 완료");
+            Debug.Log($"[PlaceholderArtBuilder] 스프라이트 {Sprites.Length + 1}개 생성 완료");
         }
 
         static void EnsureFolder()
@@ -75,6 +93,36 @@ namespace HiddenWeight.EditorTools
             Object.DestroyImmediate(tex);
 
             // Unity 에디터 스크립트에서 상대 경로는 프로젝트 루트(Assets의 부모) 기준으로 풀린다.
+            File.WriteAllBytes($"{Folder}/{name}.png", bytes);
+        }
+
+        // WritePng와 달리 단색이 아니라 문자 마스크대로 칠하고, 나머지는 완전 투명으로 둔다.
+        static void WriteMaskedPng(string name, string[] mask, string hex)
+        {
+            ColorUtility.TryParseHtmlString(hex, out var color);
+            int height = mask.Length;
+            int width = mask[0].Length;
+
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            var pixels = new Color32[width * height];
+            Color32 filled = color;
+            Color32 clear = new Color32(0, 0, 0, 0);
+
+            for (int y = 0; y < height; y++)
+            {
+                // 텍스처의 0번 행은 하단이라, 위에서부터 적어 둔 mask를 뒤집어서 채운다.
+                string row = mask[height - 1 - y];
+                for (int x = 0; x < width; x++)
+                {
+                    pixels[y * width + x] = row[x] == '#' ? filled : clear;
+                }
+            }
+
+            tex.SetPixels32(pixels);
+            tex.Apply();
+
+            var bytes = tex.EncodeToPNG();
+            Object.DestroyImmediate(tex);
             File.WriteAllBytes($"{Folder}/{name}.png", bytes);
         }
 

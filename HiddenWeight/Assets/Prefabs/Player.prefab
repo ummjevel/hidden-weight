@@ -309,6 +309,7 @@ GameObject:
   - component: {fileID: 3470137536408542213}
   - component: {fileID: -6405605795070986369}
   - component: {fileID: -7014378276338596000}
+  - component: {fileID: 4785156168067906590}
   m_Layer: 10
   m_Name: Player
   m_TagString: Untagged
@@ -564,3 +565,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ea521530a59e457ab2e9d85d68054b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.PlayerInputPump
+--- !u!114 &4785156168067906590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6094728301191228689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a0ea45e71ea41de8435ee67f033e1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.PlayerJuice
+  groundCheck: {fileID: 7559177804802650180}
+  wallCheck: {fileID: 5197949991608737770}
+  landDustPrefab: {fileID: 3634827491979914251, guid: b6f52cd14c3b94fa2aad13ebee5af741, type: 3}
+  wallDustPrefab: {fileID: 8896133361710753505, guid: 9f8dc68292bdc4e38a6402d3bbd03810, type: 3}

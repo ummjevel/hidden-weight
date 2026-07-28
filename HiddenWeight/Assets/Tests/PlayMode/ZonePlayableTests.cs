@@ -70,7 +70,11 @@ namespace HiddenWeight.Tests
 
             var spawn = player.transform.position;
             var body = player.GetComponent<Rigidbody2D>();
-            var sprite = player.GetComponent<SpriteRenderer>();
+            // 루트 렌더러는 제거됐다. 실제로 그리는 것은 애니메이터가 가리키는 렌더러다.
+            var animator = player.GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            var sprite = animator != null && animator.Renderer != null
+                ? animator.Renderer
+                : player.GetComponentInChildren<SpriteRenderer>();
             report.AppendLine("스폰 위치: " + spawn.ToString("F3"));
             report.AppendLine("Rigidbody2D: bodyType=" + body.bodyType + " gravityScale=" + body.gravityScale);
 

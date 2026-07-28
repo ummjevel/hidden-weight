@@ -123,25 +123,152 @@ namespace HiddenWeight.EditorTools
         [MenuItem("Hidden Weight/Fix/Apply Player Physics Material")]
         public static void ApplyPlayerPhysicsMaterial()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/Player.prefab");
-            var col = prefab.GetComponent<CapsuleCollider2D>();
-            col.sharedMaterial = FrictionlessPlayerMaterial();
+            // 프리팹 에셋에 "자식 GameObject 추가"까지 하려면 LoadPrefabContents로 열어 편집한 뒤
+            // 다시 저장해야 한다. LoadAssetAtPath로 얻은 인스턴스에 AddComponent만 하면 컴포넌트는
+            // 저장되지만 새로 만든 자식은 사라진다 — 실제로 플레이어 Art 자식이 그렇게 날아갔다.
+            string path = $"{Folder}/Player.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
 
-            // 입력 펌프. 없으면 점프·대시가 프레임 타이밍에 따라 씹힌다.
-            if (prefab.GetComponent<PlayerInputPump>() == null) prefab.AddComponent<PlayerInputPump>();
-
-            // 공격 시각 피드백. 없으면 J를 눌러도 화면에 아무 변화가 없다.
-            if (prefab.GetComponent<AttackVisual>() == null)
+            try
             {
-                var visual = prefab.AddComponent<AttackVisual>();
-                var so = new SerializedObject(visual);
-                so.FindProperty("sprite").objectReferenceValue = LoadSprite("Tile");
-                so.ApplyModifiedPropertiesWithoutUndo();
-            }
+                var col = root.GetComponent<CapsuleCollider2D>();
+                col.sharedMaterial = FrictionlessPlayerMaterial();
 
-            EditorUtility.SetDirty(prefab);
-            AssetDatabase.SaveAssets();
-            Debug.Log("[PrefabBuilder] Player 콜라이더에 무마찰 재질 적용 완료");
+                if (root.GetComponent<PlayerInputPump>() == null) root.AddComponent<PlayerInputPump>();
+
+                if (root.GetComponent<AttackVisual>() == null)
+                {
+                    var visual = root.AddComponent<AttackVisual>();
+                    var so = new SerializedObject(visual);
+                    so.FindProperty("sprite").objectReferenceValue = LoadSprite("Tile");
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                }
+
+                // 루트 스케일은 절대 건드리지 않는다. 캡슐 콜라이더와 GroundCheck가 함께 줄어든다.
+                root.transform.localScale = Vector3.one;
+
+                var idle = FindResidueSprite("Player_Idle");
+                if (idle != null)
+                {
+                    // 꺼 두기만 하면 좌우 반전·피격 점멸이 이 렌더러를 먼저 집어서 문제가 난다
+                    // (안 보이는 그림만 뒤집히고, 점멸이 끝나면 구형 그림이 켜진 채 남는다).
+                    // 아예 없애면 "보이는 렌더러는 Art 자식 하나"가 되어 헷갈릴 여지가 없다.
+                    var rootRenderer = root.GetComponent<SpriteRenderer>();
+                    if (rootRenderer != null) Object.DestroyImmediate(rootRenderer);
+
+                    var artTransform = root.transform.Find("Art");
+                    var artObject = artTransform != null ? artTransform.gameObject : new GameObject("Art");
+                    artObject.transform.SetParent(root.transform, false);
+
+                    var artRenderer = artObject.GetComponent<SpriteRenderer>();
+                    if (artRenderer == null) artRenderer = artObject.AddComponent<SpriteRenderer>();
+                    artRenderer.sprite = idle;
+                    artRenderer.sortingOrder = 10;
+
+                    // 크기는 애니메이터가 프레임마다 맞춘다(클립별 원본 셀 크기가 달라서
+                    // 여기서 한 번 정해 두면 동작마다 캐릭터가 커졌다 작아진다).
+                    artObject.transform.localScale = Vector3.one;
+
+                    AttachPlayerAnimator(artObject, artRenderer, 1.5f);
+                }
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                PatchMainCamera();
+                Debug.Log("[PrefabBuilder] Player 프리팹 갱신 완료(무마찰 재질·입력 펌프·공격 연출·스프라이트 애니메이션)");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // 카메라에 AudioListener가 없으면 Unity가 씬마다 경고를 내고 사운드가 전혀 재생되지 않는다.
+        static void PatchMainCamera()
+        {
+            string path = $"{Folder}/MainCamera.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                if (root.GetComponent<AudioListener>() == null)
+                {
+                    root.AddComponent<AudioListener>();
+                    PrefabUtility.SaveAsPrefabAsset(root, path);
+                    Debug.Log("[PrefabBuilder] MainCamera에 AudioListener 추가");
+                }
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // "클립_00" 형식 프레임을 순서대로 모은다.
+        static Sprite[] FindFrames(string clipName)
+        {
+            var frames = new System.Collections.Generic.List<Sprite>();
+            for (int i = 0; i < 16; i++)
+            {
+                var frame = FindResidueSprite($"{clipName}_{i:00}");
+                if (frame == null) break;
+                frames.Add(frame);
+            }
+            return frames.ToArray();
+        }
+
+        // Gameplay/README.md의 권장 FPS와 루프 여부를 그대로 옮겼다.
+        static void AttachPlayerAnimator(GameObject target, SpriteRenderer renderer, float displayHeight)
+        {
+            var definitions = new (string clip, float fps, bool loop)[]
+            {
+                ("PlayerIdle", 8f, true), ("PlayerWalk", 12f, true), ("PlayerRun", 14f, true),
+                ("PlayerJump", 12f, false), ("PlayerAirMove", 10f, true), ("PlayerFall", 10f, true),
+                ("PlayerLand", 14f, false), ("PlayerAttack", 16f, false), ("PlayerDash", 18f, false),
+                ("PlayerWallCling", 8f, true), ("PlayerWallJump", 14f, false),
+            };
+
+            var valid = new System.Collections.Generic.List<(string, float, bool, Sprite[])>();
+            foreach (var definition in definitions)
+            {
+                var frames = FindFrames(definition.clip);
+                if (frames.Length > 0) valid.Add((definition.clip, definition.fps, definition.loop, frames));
+            }
+            if (valid.Count == 0) return;
+
+            var animator = target.GetComponent<HiddenWeight.World.SpriteAnimator>();
+            if (animator == null) animator = target.AddComponent<HiddenWeight.World.SpriteAnimator>();
+
+            var so = new SerializedObject(animator);
+            so.FindProperty("target").objectReferenceValue = renderer;
+            so.FindProperty("normalizedHeight").floatValue = displayHeight;
+
+            var clips = so.FindProperty("clips");
+            clips.arraySize = valid.Count;
+            for (int i = 0; i < valid.Count; i++)
+            {
+                var element = clips.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("name").stringValue = valid[i].Item1;
+                element.FindPropertyRelative("fps").floatValue = valid[i].Item2;
+                element.FindPropertyRelative("loop").boolValue = valid[i].Item3;
+
+                var frames = element.FindPropertyRelative("frames");
+                frames.arraySize = valid[i].Item4.Length;
+                for (int f = 0; f < valid[i].Item4.Length; f++)
+                    frames.GetArrayElementAtIndex(f).objectReferenceValue = valid[i].Item4[f];
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Debug.Log($"[PrefabBuilder] 플레이어 클립 {valid.Count}개 연결");
+        }
+
+        // 잘라 둔 잔재 스프라이트를 이름으로 찾는다.
+        static Sprite FindResidueSprite(string spriteName)
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { "Assets/Art/Residue" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                    if (asset is Sprite sprite && sprite.name == spriteName) return sprite;
+            }
+            return null;
         }
 
         static void BuildPlayer()
@@ -405,6 +532,8 @@ namespace HiddenWeight.EditorTools
         // ---------------- MainCamera ----------------
         static void BuildMainCamera()
         {
+            // 오디오 리스너가 없으면 Unity가 매 씬마다 경고를 내고 모든 사운드가 재생되지 않는다.
+            // 카메라에 붙여 두면 지역마다 따로 챙길 필요가 없다.
             var root = new GameObject("MainCamera");
             root.tag = "MainCamera";
 

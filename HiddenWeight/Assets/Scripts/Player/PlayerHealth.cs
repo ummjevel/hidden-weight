@@ -36,7 +36,12 @@ namespace HiddenWeight.Player
             _invulnerableTime = data.invulnerableTime;
             _blinkInterval = data.blinkInterval;
             _knockbackForce = data.knockbackForce;
-            _sprite = GetComponentInChildren<SpriteRenderer>();
+            // 점멸시킬 대상도 "보이는 렌더러"여야 한다. 루트의 꺼진 구형 렌더러를 켰다 껐다 하면
+            // 점멸이 끝나는 순간 그 그림이 켜진 채로 남아, 정상 캐릭터 옆에 옛 그림이 함께 보인다.
+            var animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            _sprite = animator != null && animator.Renderer != null
+                ? animator.Renderer
+                : GetComponentInChildren<SpriteRenderer>();
             Current = _maxHealth;
         }
 
@@ -78,6 +83,19 @@ namespace HiddenWeight.Player
                 // 게임오버 화면은 없다. 마지막 체크포인트로 되돌린다.
                 GameManager.Instance.RespawnPlayer();
             }
+        }
+
+        // 성장 조각을 먹은 즉시 최대 체력을 올린다. 다음 씬까지 기다리면 보상을 받은 체감이 없다.
+        public void RefreshMaxHealth()
+        {
+            int max = GameManager.Instance.Balance.player.maxHealth
+                    + GameManager.Instance.Progress.HealthShards;
+            if (max == _maxHealth) return;
+
+            int gained = max - _maxHealth;
+            _maxHealth = max;
+            Current = Mathf.Min(_maxHealth, Current + Mathf.Max(0, gained)); // 늘어난 만큼 채워 준다
+            HealthChanged?.Invoke(Current, _maxHealth);
         }
 
         // 소형 회복물용. 최대치를 넘지 않는다.

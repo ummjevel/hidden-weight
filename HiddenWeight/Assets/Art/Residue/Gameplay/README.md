@@ -122,6 +122,7 @@
 |---|---|---|---|
 | `WristWatcher_Combat_v1.png` | 6×4 / 256×256 | Idle / Sweep / Charge / Impact-Stun | 8 / 12 / 14 / 10 |
 | `WristWatcher_Reactions_v1.png` | 6×3 / 256×341 | Drop / Hurt / Death | 14 / 12 / 10 |
+| `BossArenaDevices_Animation_v1.png` | 8×4 / 222×222 | 감시탑 원형 장치 / 안전 발판 복원 / 교수대 갈고리 예고 / 전장 봉인 파열 | 10 / 14 / 10 / 12 |
 
 `MemoryInstructor_Parts_v1.png`는 프레임 시트가 아니라 조립형 보스다. 몸통, 팔, 사슬,
 후광을 각각 자식 오브젝트로 만들고 피벗 회전·위치 이동으로 애니메이션한다. 큰 보스를
@@ -139,6 +140,20 @@
 
 VFX는 마지막 프레임에서 오브젝트를 반환하는 풀링 방식으로 재생한다. 피격 효과는
 공격 방향에 맞춰 회전하고, 획득·되감기·핵 파동은 회전하지 않는다.
+
+### Items/Animation
+
+| 파일 | 격자 / 셀 | 행 순서 | 권장 FPS |
+|---|---|---|---|
+| `CheckpointShrine_Animation_v1.png` | 8×4 / 222×222 | 체크포인트 활성화 / 활성 대기 / 회복 파동 / 되감기 성소 해제 | 12 / 8 / 14 / 12 |
+| `CollectibleIdle_Animation_v1.png` | 8×5 / 199×199 | 재화 / 회복 성유물 / 최대 체력 조각 / 기억 파편 / 되감기 핵 | 8 / 8 / 8 / 10 / 10 |
+
+### Props/Animation
+
+| 파일 | 격자 / 셀 | 행 순서 | 권장 FPS |
+|---|---|---|---|
+| `ShortcutOperations_Animation_v1.png` | 8×4 / 222×222 | 도르래 작동 / 승강기 출발·정지 / 관문 개방 / 사슬다리 안정 | 10 / 12 / 12 / 10 |
+| `SecretEntrances_Animation_v1.png` | 8×4 / 222×222 | S1 먼지 암시 / S1 바닥 붕괴 / S2 역방향 사슬문 / S3 감춰진 눈 | 6 / 14 / 12 / 10 |
 
 ## PNG와 부드러움
 

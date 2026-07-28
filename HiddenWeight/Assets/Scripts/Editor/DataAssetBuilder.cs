@@ -80,7 +80,9 @@ namespace HiddenWeight.EditorTools
                 d.id = ZoneId.Prologue;
                 d.displayName = "몽환의 우주";
                 d.sceneName = "Zone_Prologue";
-                d.nextSceneName = "Zone_Residue";
+                // 잔재는 15룸 재설계 씬(Zone_Residue_Full)이 정식이다. 옛 4룸 씬은 남겨 두되
+                // 정식 동선에서는 더 이상 지나가지 않는다.
+                d.nextSceneName = "Zone_Residue_Full";
                 d.grantedSkill = EmotionId.None;
                 d.grantsAwareness = false; // 명시적으로 적어 둔다 (기본값과 같지만 의도를 드러내기 위함)
                 d.awarenessStable = true;
@@ -91,7 +93,7 @@ namespace HiddenWeight.EditorTools
             {
                 d.id = ZoneId.Residue;
                 d.displayName = "잔재";
-                d.sceneName = "Zone_Residue";
+                d.sceneName = "Zone_Residue_Full";
                 d.nextSceneName = "Zone_Gaze";
                 d.grantedSkill = EmotionId.Rewind;
                 d.grantsAwareness = false;
@@ -119,7 +121,8 @@ namespace HiddenWeight.EditorTools
                 // 기획서 5.3절 백트래킹: 균열을 클리어하면 잔재로 되돌아간다.
                 // 잔재를 두 번째로 밟았을 때 엔딩으로 보내는 판단은 ZoneTrigger가
                 // Progress.HasClearedFracture로 한다(Task 6에서 이미 구현됨).
-                d.nextSceneName = "Zone_Residue";
+                // 균열 클리어 후 되돌아오는 곳도 15룸 씬이다(S3 재방문 동선).
+                d.nextSceneName = "Zone_Residue_Full";
                 d.grantedSkill = EmotionId.Foresight;
                 d.grantsAwareness = false;
                 d.awarenessStable = false; // 균열만 불안정

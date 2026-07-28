@@ -43,7 +43,15 @@ namespace HiddenWeight.World
             if (!progress.TakeReward(rewardId)) return; // 이미 받은 보상이면 아무것도 하지 않는다
 
             if (currency > 0) progress.AddCurrency(currency);
-            if (healthShard) progress.AddHealthShard();
+            if (healthShard)
+            {
+                progress.AddHealthShard();
+                // 그 자리에서 최대 체력에 반영한다.
+                var health = HiddenWeight.Player.PlayerController.Instance != null
+                    ? HiddenWeight.Player.PlayerController.Instance.GetComponent<HiddenWeight.Player.PlayerHealth>()
+                    : null;
+                if (health != null) health.RefreshMaxHealth();
+            }
 
             _given = true;
             if (visual != null) visual.SetActive(false);

@@ -16,7 +16,13 @@ namespace HiddenWeight.Enemies
         public enum Move { GroundSweep, Charge, Slam }
 
         [SerializeField] Move[] moves = { Move.GroundSweep, Move.Charge, Move.Slam };
-        [SerializeField] float telegraphSeconds = 0.9f;
+        // 공격별 예고 시간(R10 명세: 지상 쓸기 0.7 / 돌진 1.0 / 낙하 1.2).
+        // 단계가 올라가도 이 값은 줄이지 않는다 — 난도는 조합으로만 올린다.
+        [SerializeField] float sweepTelegraph = 0.7f;
+        [SerializeField] float chargeTelegraph = 1.0f;
+        [SerializeField] float slamTelegraph = 1.2f;
+        [SerializeField] float sweepHeight = 1.2f;   // 이 높이 위로 뛰면 쓸기를 넘는다
+        [SerializeField] Sprite shadowSprite;        // 낙하 예고용 바닥 그림자
         [SerializeField] float recoverSeconds = 1.0f;
         [SerializeField] float sweepRange = 5f;
         [SerializeField] float chargeSpeed = 12f;
@@ -78,16 +84,28 @@ namespace HiddenWeight.Enemies
             var player = PlayerController.Instance;
             if (player == null) yield break;
 
-            // 예고는 어떤 단계에서도 같은 길이다.
+            // 예고는 어떤 단계에서도 같은 길이다. 공격마다 길이가 다르다(명세 표).
+            float telegraph = move == Move.GroundSweep ? sweepTelegraph
+                            : move == Move.Charge ? chargeTelegraph
+                            : slamTelegraph;
+
+            // 낙하는 떨어질 자리를 바닥 그림자로 먼저 보여준다 — 좌우로 비키면 피할 수 있어야 한다.
+            GameObject shadow = null;
+            if (move == Move.Slam) shadow = ShowDropShadow(player.transform.position);
+
             Telegraph(true);
-            yield return new WaitForSeconds(telegraphSeconds);
+            yield return new WaitForSeconds(telegraph);
             Telegraph(false);
+            if (shadow != null) Destroy(shadow);
 
             switch (move)
             {
                 case Move.GroundSweep:
-                    // 지상 쓸기 — 점프나 벽점프로 넘는다.
-                    HitPlayersInCircle(transform.position, sweepRange);
+                    // 지상 쓸기 — 바닥에 붙은 납작한 판정이라 점프로 넘을 수 있다.
+                    // 예전에는 반경 5의 원이라 가까이 있으면 점프해도 맞았다.
+                    HitPlayersInBox(
+                        new Vector2(transform.position.x, transform.position.y - 0.5f + sweepHeight * 0.5f),
+                        new Vector2(sweepRange * 2f, sweepHeight));
                     break;
 
                 case Move.Charge:
@@ -125,6 +143,31 @@ namespace HiddenWeight.Enemies
                     break;
                 }
             }
+        }
+
+        // 떨어질 자리를 바닥에 그려 준다. 예고 동안 위치가 고정이라 비키면 확실히 피한다.
+        GameObject ShowDropShadow(Vector3 target)
+        {
+            if (shadowSprite == null) return null;
+
+            var go = new GameObject("BossDropShadow");
+            go.transform.position = new Vector3(target.x, target.y - 0.6f, 0f);
+            go.transform.localScale = new Vector3(3f, 0.4f, 1f);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = shadowSprite;
+            renderer.color = new Color(0f, 0f, 0f, 0.55f);
+            renderer.sortingOrder = 4;
+            return go;
+        }
+
+        void HitPlayersInBox(Vector2 center, Vector2 size)
+        {
+            var hit = Physics2D.OverlapBox(center, size, 0f, playerMask);
+            if (hit == null) return;
+
+            var health = hit.GetComponentInParent<PlayerHealth>();
+            if (health != null) health.TakeDamage(_self.Data.contactDamage, center);
         }
 
         void HitPlayersInCircle(Vector2 center, float radius)

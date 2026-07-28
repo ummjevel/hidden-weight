@@ -83,6 +83,11 @@ namespace HiddenWeight.Core
         {
             Progress.CurrentZone = id;
             CurrentZoneData = balance.GetZone(id);
+
+            // 같은 곡이면 AudioManager가 알아서 무시한다. 그래서 EnterZone이 여러 번 불려도
+            // (씬 로드 훅 + ZoneMarker) 곡이 처음부터 다시 시작되지 않는다.
+            if (AudioManager.Instance != null && CurrentZoneData != null)
+                AudioManager.Instance.PlayBgm(CurrentZoneData.bgm, 1.5f);
             // grantedSkill 해금은 여기서 하지 않는다. 지역 안의 픽업(StoryFragment)에서 처리한다.
         }
 

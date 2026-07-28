@@ -8,6 +8,9 @@ namespace HiddenWeight.Core
     {
         public static AudioManager Instance { get; private set; }
 
+        // 지금 재생 중이거나 재생하려는 BGM. "같은 곡이면 다시 틀지 않는다" 판단에 쓴다.
+        public AudioClip CurrentBgm { get; private set; }
+
         AudioSource _bgmSource;
         AudioSource _sfxSource;
         Coroutine _bgmFade;
@@ -34,14 +37,16 @@ namespace HiddenWeight.Core
 
         public void PlayBgm(AudioClip clip, float fadeSeconds = 1f)
         {
-            if (clip == null) return;
+            if (clip == null || clip == CurrentBgm) return;
 
+            CurrentBgm = clip;
             if (_bgmFade != null) StopCoroutine(_bgmFade);
             _bgmFade = StartCoroutine(FadeToClip(clip, fadeSeconds));
         }
 
         public void StopBgm(float fadeSeconds = 1f)
         {
+            CurrentBgm = null;
             if (_bgmFade != null) StopCoroutine(_bgmFade);
             _bgmFade = StartCoroutine(FadeOutAndStop(fadeSeconds));
         }

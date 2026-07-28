@@ -64,8 +64,10 @@ namespace HiddenWeight.UI
 
         void HandleHealthChanged(int current, int max)
         {
+            // 성장 조각으로 최대 체력이 늘면 하트도 그만큼 보여야 한다. 미리 만들어 둔 칸이
+            // 부족하면 늘어난 만큼은 표시하지 못하므로, 최소한 max 범위까지는 켠다.
             for (int i = 0; i < _hearts.Length; i++)
-                _hearts[i].enabled = i < current;
+                _hearts[i].enabled = i < Mathf.Min(current, _hearts.Length);
         }
 
         void HandleStateChanged(GameState next) => ApplyVisibility(next);

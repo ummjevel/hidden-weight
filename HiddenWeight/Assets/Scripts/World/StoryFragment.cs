@@ -18,6 +18,15 @@ namespace HiddenWeight.World
 
         protected virtual bool IsCollectable => true;
 
+        protected virtual void Start()
+        {
+            // 이미 먹은 파편은 오브젝트째 감춘다. 남겨 두면 지급은 막히지만 화면에는 계속 보여
+            // "아직 안 먹은 것"처럼 읽힌다(재방문 시 혼란).
+            if (GameManager.Instance != null && !string.IsNullOrEmpty(fragmentId)
+                && GameManager.Instance.Progress.HasFragment(fragmentId))
+                gameObject.SetActive(false);
+        }
+
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;

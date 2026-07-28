@@ -61,6 +61,14 @@ namespace HiddenWeight.EditorTools
             EditorSceneManager.SaveScene(scene, $"{ScenesFolder}/{name}.unity");
         }
 
+        // 잔재 전용 아트를 이름으로 집는다. 잔재 이외 지역(프롤로그·응시·균열)에서는 없을 수도
+        // 있으므로 null이면 호출부가 기존 플레이스홀더로 넘어간다.
+        static Sprite ResidueArt(string spriteName) => Art(spriteName);
+
+        // 스프라이트를 원하는 월드 크기에 맞춰 늘린다.
+        static void FitRenderer(SpriteRenderer renderer, float width, float height)
+            => FitSprite(renderer, width, height);
+
         static Sprite LoadSprite(string name) => AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtFolder}/{name}.png");
         static T LoadData<T>(string name) where T : Object => AssetDatabase.LoadAssetAtPath<T>($"{DataFolder}/{name}.asset");
 
@@ -196,7 +204,9 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Ground");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite("Platform");
+            sr.sprite = ResidueArt("Platform_r1_c1") ?? LoadSprite("Platform");
+            sr.sortingOrder = 2;
+            FitRenderer(sr, 3f, 0.8f);
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(3f, 0.5f);
@@ -321,9 +331,10 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Interactable");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite("Fragment");
-            sr.color = new Color(0.95f, 0.86f, 0.6f);
+            sr.sprite = ResidueArt("Item_Currency") ?? LoadSprite("Fragment");
+            if (sr.sprite.name == "Fragment") sr.color = new Color(0.95f, 0.86f, 0.6f);
             sr.sortingOrder = 5; // Art/Residue/README.md의 Interactables 레이어 기준
+            FitRenderer(sr, 1.6f, 1.6f); // localScale 0.5가 곱해져 실제 0.8유닛
 
             var col = go.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
@@ -387,6 +398,47 @@ namespace HiddenWeight.EditorTools
         static GameObject BuildResidueEnemy(Transform parent, Vector2 pos, ResidueEnemyKind kind)
         {
             var go = BuildEnemy(parent, pos, ResidueEnemyData(kind));
+
+            // 종류별 실루엣으로 바꾼다. CONTENT_SYSTEM.md가 "실루엣과 행동 목적이 분명한 적"을
+            // 요구하므로, 네 종류가 같은 사각형으로 보이면 안 된다.
+            string artName = kind == ResidueEnemyKind.Walker ? "Enemy_Walker"
+                           : kind == ResidueEnemyKind.Carrier ? "Enemy_Carrier"
+                           : kind == ResidueEnemyKind.Finger ? "Enemy_Finger"
+                           : "Enemy_Hardened";
+            var enemyArt = ResidueArt(artName);
+            if (enemyArt != null)
+            {
+                // 루트 스케일은 건드리지 않는다. 예전에는 여기서 0.076배까지 줄여 콜라이더까지
+                // 같이 작아졌다 — 겉모습만 줄이려던 것이 판정을 통째로 망가뜨렸다.
+                var rootRenderer = go.GetComponent<SpriteRenderer>();
+                if (rootRenderer != null) rootRenderer.enabled = false;
+
+                var artObject = new GameObject("Art");
+                artObject.transform.SetParent(go.transform, false);
+
+                var artRenderer = artObject.AddComponent<SpriteRenderer>();
+                artRenderer.sprite = enemyArt;
+                artRenderer.color = Color.white;
+                artRenderer.sortingOrder = 8;
+
+                // 종류별 화면 크기. 애니메이터가 프레임마다 이 높이로 맞춘다.
+                float displayHeight = kind == ResidueEnemyKind.Hardened ? 1.7f : 1.2f;
+                var artSize = enemyArt.bounds.size;
+                if (artSize.y > 0f)
+                {
+                    float scale = displayHeight / artSize.y;
+                    artObject.transform.localScale = new Vector3(scale, scale, 1f);
+                }
+
+                string prefix = kind == ResidueEnemyKind.Walker ? "Walker"
+                              : kind == ResidueEnemyKind.Carrier ? "Carrier"
+                              : kind == ResidueEnemyKind.Finger ? "Finger"
+                              : "Hardened";
+                AttachAnimator(artObject, artRenderer, EnemyClips(prefix), displayHeight);
+                SetField(go.GetComponent<HiddenWeight.Enemies.Enemy>(), "clipPrefix",
+                    p => p.stringValue = prefix);
+            }
+
             int groundMask = 1 << LayerMask.NameToLayer("Ground");
             int playerMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 
@@ -454,12 +506,47 @@ namespace HiddenWeight.EditorTools
             var go = BuildEnemy(parent, pos, data);
             go.transform.localScale = Vector3.one * 2f;
 
+            var bossArt = ResidueArt("Watcher_Idle");
+            if (bossArt != null)
+            {
+                var rootRenderer = go.GetComponent<SpriteRenderer>();
+                if (rootRenderer != null) rootRenderer.enabled = false;
+
+                var artObject = new GameObject("Art");
+                artObject.transform.SetParent(go.transform, false);
+
+                var artRenderer = artObject.AddComponent<SpriteRenderer>();
+                artRenderer.sprite = bossArt;
+                artRenderer.color = Color.white;
+                artRenderer.sortingOrder = 9;
+
+                const float bossHeight = 3.2f;
+                var bossSize = bossArt.bounds.size;
+                if (bossSize.y > 0f)
+                {
+                    float scale = bossHeight / bossSize.y;
+                    artObject.transform.localScale = new Vector3(scale, scale, 1f);
+                }
+
+                AttachAnimator(artObject, artRenderer, new[]
+                {
+                    ("WatcherAnimIdle",  8f,  true),
+                    ("WatcherAnimSweep", 12f, false),
+                    ("WatcherAnimCharge",14f, false),
+                    ("WatcherAnimStun",  10f, false),
+                    ("WatcherAnimDrop",  14f, false),
+                    ("WatcherAnimHurt",  12f, false),
+                    ("WatcherAnimDeath", 10f, false),
+                }, bossHeight);
+            }
+
             var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
             if (patrol != null) patrol.enabled = false;
 
             var boss = go.AddComponent<BossController>();
             SetField(boss, "playerMask", p => p.intValue =
                 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed"));
+            SetField(boss, "shadowSprite", p => p.objectReferenceValue = LoadSprite("Tile"));
             SetField(boss, "obstacleMask", p => p.intValue =
                 1 << LayerMask.NameToLayer("Ground") | 1 << LayerMask.NameToLayer("Wall"));
             SetField(boss, "moves", p =>
@@ -488,9 +575,10 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Interactable");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite("Fragment");
-            sr.color = new Color(0.6f, 0.9f, 0.75f);
+            sr.sprite = ResidueArt("Item_Healing") ?? LoadSprite("Fragment");
+            if (sr.sprite.name == "Fragment") sr.color = new Color(0.6f, 0.9f, 0.75f);
             sr.sortingOrder = 5;
+            FitRenderer(sr, 1.4f, 1.4f);
 
             var col = go.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
@@ -512,6 +600,11 @@ namespace HiddenWeight.EditorTools
             var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", tint * 0.5f);
             var opened = BuildSolidBlock(go.transform, "Opened", center, size, "Ground", tint);
             opened.SetActive(false);
+
+            // 끊어진 상태와 복원된 상태를 각각 다른 그림으로 보여준다. 승강기(숏컷 B)는 별도 세트다.
+            bool isLift = id.EndsWith("_b");
+            ApplyArtOverlay(blocker, isLift ? "Shortcut_LiftDormant" : "Shortcut_ChainBroken", size, 5);
+            ApplyArtOverlay(opened, isLift ? "Shortcut_LiftActive" : "Shortcut_ChainRestored", size, 5);
 
             var shortcut = go.AddComponent<Shortcut>();
             SetField(shortcut, "shortcutId", p => p.stringValue = id);
@@ -649,6 +742,14 @@ namespace HiddenWeight.EditorTools
         }
 
         // 보이지 않는 지역 경계벽. Ground 레이어라 벽잡기(Wall 레이어 전용)는 되지 않는다.
+        // 잔재 지역의 보이는 벽(굴뚝·전장 벽). 충돌은 BuildSolidBlock 그대로 두고 겉모습만 덮는다.
+        static GameObject BuildResidueWall(Transform parent, string name, Vector2 center, Vector2 size)
+        {
+            var go = BuildSolidBlock(parent, name, center, size, "Wall");
+            ApplyArtOverlay(go, "Terrain_r3_c1", size, 3); // 3행 = 세로 벽
+            return go;
+        }
+
         static void BuildBoundary(Transform parent, string name, float x)
         {
             var go = BuildSolidBlock(parent, name, new Vector2(x, 6f), new Vector2(1f, 26f), "Ground");

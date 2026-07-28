@@ -20,6 +20,31 @@ namespace HiddenWeight.Enemies
         Rigidbody2D _rb;
         SpriteRenderer _sprite;
         Coroutine _flashRoutine;
+        HiddenWeight.World.SpriteAnimator _animator;
+
+        // 행동 모듈이 "지금 뭘 하는지"를 알려 주면 그에 맞는 클립을 재생한다.
+        // 클립 이름은 종류별 접두사 + 동작(예: WalkerWalk)이고, 접두사는 빌더가 넣어 준다.
+        [SerializeField] string clipPrefix = "";
+
+        // Encounter가 관리하는 적은 죽어도 파괴하지 않는다(되살릴 수 있어야 하므로).
+        bool _managedByEncounter;
+
+        public void SetManagedByEncounter(bool managed) => _managedByEncounter = managed;
+
+        // 조우 재시작용. 체력을 되돌리고 다시 세운다.
+        public void ResetForEncounter()
+        {
+            Health = data.maxHealth;
+            if (_sprite != null) _sprite.color = data.tint;
+        }
+
+        public void PlayClip(string action)
+        {
+            if (_animator == null || string.IsNullOrEmpty(clipPrefix)) return;
+
+            string clip = clipPrefix + action;
+            if (_animator.Has(clip)) _animator.Play(clip);
+        }
 
         public EnemyData Data => data;
         public int Health { get; private set; }
@@ -30,7 +55,10 @@ namespace HiddenWeight.Enemies
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
-            _sprite = GetComponentInChildren<SpriteRenderer>();
+            _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            _sprite = _animator != null && _animator.Renderer != null
+                ? _animator.Renderer
+                : GetComponentInChildren<SpriteRenderer>();
 
             Health = data.maxHealth;
             if (_sprite != null) _sprite.color = data.tint;
@@ -63,11 +91,17 @@ namespace HiddenWeight.Enemies
 
             if (_flashRoutine != null) StopCoroutine(_flashRoutine);
             _flashRoutine = StartCoroutine(FlashRoutine());
+            PlayClip("Hit");
 
             if (Health <= 0)
             {
                 Died?.Invoke(this);
-                Destroy(gameObject);
+
+                // 조우에 속한 적은 지우지 않고 재운다. 지워 버리면 사망 후 재도전할 때
+                // 이미 잡은 적이 영영 돌아오지 않아, 반복 사망으로 보스·조우를 조금씩 깎는
+                // 흐름이 생긴다(CONTENT_SYSTEM.md 3.2절: 일반 적은 사망 후 재생성).
+                if (_managedByEncounter) gameObject.SetActive(false);
+                else Destroy(gameObject);
             }
         }
 

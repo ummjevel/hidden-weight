@@ -46,6 +46,19 @@ namespace HiddenWeight.Enemies
         {
             SetLocks(false);
 
+            // 이 조우가 관리하는 적은 죽어도 파괴되지 않게 표시한다.
+            if (waves != null)
+                foreach (var wave in waves)
+                    foreach (var member in wave.members)
+                    {
+                        if (member == null) continue;
+                        var enemy = member.GetComponent<Enemy>();
+                        if (enemy != null) enemy.SetManagedByEncounter(true);
+                    }
+
+            // 플레이어가 죽어 체크포인트로 돌아가면 이 조우도 처음 상태로 되돌린다.
+            if (GameManager.Instance != null) GameManager.Instance.RespawnRequested += HandlePlayerRespawn;
+
             // 이미 클리어한 일회성 조우는 적을 아예 두지 않는다. 숏컷은 열린 채로 시작한다
             // (Shortcut 자신도 저장 상태를 보지만, 보상 상자와 순서를 맞추기 위해 여기서도 연다).
             if (oneTime && GameManager.Instance != null
@@ -58,6 +71,17 @@ namespace HiddenWeight.Enemies
             }
 
             DeactivateAll();
+        }
+
+        void OnDestroy()
+        {
+            if (GameManager.Instance != null) GameManager.Instance.RespawnRequested -= HandlePlayerRespawn;
+        }
+
+        void HandlePlayerRespawn(Vector3 _)
+        {
+            if (_finished) return; // 이미 클리어한 일회성 조우는 되돌리지 않는다
+            ResetEncounter();
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -142,16 +166,20 @@ namespace HiddenWeight.Enemies
             DeactivateAll();
         }
 
-        // 한계: 이미 쓰러진 적은 되살리지 않는다(Enemy가 죽으면서 자신을 Destroy한다).
-        // 나갔다 들어오면 "남아 있던 적만" 다시 비활성 상태로 돌아간다. 부분 클리어를 들고
-        // 나가 이득을 보는 문제는 일회성 조우(oneTime)가 아닌 곳에서만 생기고, 잔재의 일반
-        // 조우는 모두 재진입 시 다시 싸우는 것이 기본이라 지금 범위에서는 문제가 되지 않는다.
+        // 조우를 처음 상태로 되돌린다. 쓰러진 적도 체력을 채워 다시 세운다 — Enemy가
+        // 조우 소속임을 알고 파괴 대신 비활성화되기 때문에 가능하다.
         void DeactivateAll()
         {
             if (waves == null) return;
             foreach (var wave in waves)
                 foreach (var member in wave.members)
-                    if (member != null) member.SetActive(false);
+                {
+                    if (member == null) continue;
+
+                    var enemy = member.GetComponent<Enemy>();
+                    if (enemy != null) enemy.ResetForEncounter();
+                    member.SetActive(false);
+                }
         }
 
         void SetLocks(bool locked)

@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1231935437432259909}
   - component: {fileID: 2818551159389949557}
   - component: {fileID: 5210107960482842228}
+  - component: {fileID: 8195200818773486360}
   m_Layer: 0
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -97,3 +98,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.World.RoomCamera
   followLerp: 8
+--- !u!81 &8195200818773486360
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 436541274193670599}
+  m_Enabled: 1

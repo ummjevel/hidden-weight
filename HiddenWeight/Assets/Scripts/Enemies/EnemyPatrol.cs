@@ -13,12 +13,14 @@ namespace HiddenWeight.Enemies
 
         Rigidbody2D _rb;
         EnemyData _data;
+        Enemy _enemy;
         int _dir = 1;
 
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
-            _data = GetComponent<Enemy>().Data;
+            _enemy = GetComponent<Enemy>();
+            _data = _enemy.Data;
         }
 
         void FixedUpdate()
@@ -32,6 +34,7 @@ namespace HiddenWeight.Enemies
                 : Mathf.Sin(Time.time * _data.wobbleFrequency) * _data.wobbleAmplitude;
 
             _rb.linearVelocity = new Vector2(_dir * _data.moveSpeed, _rb.linearVelocity.y + wobble * Time.fixedDeltaTime);
+            if (_enemy != null) _enemy.PlayClip(Mathf.Abs(_data.moveSpeed) > 0.05f ? "Walk" : "Idle");
         }
 
         void Flip()

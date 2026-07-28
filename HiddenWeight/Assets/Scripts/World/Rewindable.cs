@@ -24,6 +24,12 @@ namespace HiddenWeight.World
 
         public Transform Transform => transform;
 
+        // 이 대상을 되감으면 함께 열리는 숏컷. R05 사슬장치 → 숏컷 A, R08 도르래 → 숏컷 B처럼
+        // "복원이 세계를 바꾼다"는 연결을 만든다(RESIDUE_LEVEL_DESIGN.md 숏컷 A/B).
+        // 여러 개를 요구하는 숏컷(R08 도르래 2개)은 requiredSiblings로 함께 묶는다.
+        [SerializeField] Shortcut linkedShortcut;
+        [SerializeField] Rewindable[] requiredSiblings;
+
         // 이미 초기 상태면 false. 위치 변화만 비교한다.
         public bool CanRewind => Vector3.SqrMagnitude(transform.position - _initialPosition) > 0.0001f;
 
@@ -42,6 +48,7 @@ namespace HiddenWeight.World
             if (GameManager.Instance != null && GameManager.Instance.Progress.IsRewound(persistentId))
             {
                 Freeze();
+                TryOpenLinkedShortcut(); // 이전 방문에서 이미 복원했다면 숏컷도 열린 채로 시작한다
             }
         }
 
@@ -63,8 +70,22 @@ namespace HiddenWeight.World
 
             if (GameManager.Instance != null) GameManager.Instance.Progress.MarkRewound(persistentId);
 
+            TryOpenLinkedShortcut();
+
             if (_bounceRoutine != null) StopCoroutine(_bounceRoutine);
             _bounceRoutine = StartCoroutine(BounceRoutine());
+        }
+
+        // 묶인 대상이 전부 복원됐을 때만 숏컷을 연다.
+        void TryOpenLinkedShortcut()
+        {
+            if (linkedShortcut == null) return;
+
+            if (requiredSiblings != null)
+                foreach (var sibling in requiredSiblings)
+                    if (sibling != null && sibling.CanRewind) return; // 아직 안 돌아온 것이 있다
+
+            linkedShortcut.Open();
         }
 
         void Freeze()

@@ -16,6 +16,11 @@ namespace HiddenWeight.Core
 
             GameManager.Instance.Progress.LastCheckpoint = transform.position;
             _used = true;
+
+            // 체크포인트는 복귀 지점이자 휴식처다. 밟는 순간 체력을 채운다
+            // (CONTENT_SYSTEM.md 6절 "체크포인트 휴식").
+            var health = other.GetComponentInParent<HiddenWeight.Player.PlayerHealth>();
+            if (health != null) health.RestoreFull();
         }
     }
 }

@@ -40,14 +40,7 @@ namespace HiddenWeight.World
         void OnCollisionEnter2D(Collision2D collision)
         {
             if (HasCrumbled || _crumbleRoutine != null) return;
-            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
-
-            bool fromAbove = false;
-            foreach (var contact in collision.contacts)
-            {
-                if (contact.normal.y > 0.5f) { fromAbove = true; break; }
-            }
-            if (!fromAbove) return;
+            if (!PlayerLayers.SteppedOnFromAbove(collision, transform)) return;
 
             _crumbleRoutine = StartCoroutine(CrumbleRoutine());
         }

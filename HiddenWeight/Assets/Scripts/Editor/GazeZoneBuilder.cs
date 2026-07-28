@@ -774,14 +774,23 @@ namespace HiddenWeight.EditorTools
             c.O = G08;
             c.Floor(0, 24, 2);
 
-            // 층마다 폭 3 이상의 안전 포켓. 승강 중에도 숨 돌릴 자리가 있어야 한다.
-            c.Tiles(2, 8, 12, 13);
-            c.Tiles(16, 22, 20, 21);
-            c.Tiles(18, 24, 25, 26);   // 북동 출구 (22,26)
+            // 승강기가 지나갈 기둥(x 4.5~7.5)에는 아무 지형도 두지 않는다. 예전에는 안전
+            // 포켓을 그 위에 깔아 두어, 타고 올라가던 플레이어가 천장에 끼여 떨어졌다.
+            c.Tiles(10, 16, 12, 13);   // 중간 안전 포켓
+            c.Tiles(10, 16, 19, 20);   // 상단 안전 포켓
+            c.Tiles(8, 24, 25, 26);    // 북동 출구 선반 (22,26)
 
-            var lift = BuildLift(c.Root.transform, "G08_Lift", c.P(6f, 3f),
-                new[] { new Vector2(0f, 11f), new Vector2(9f, 23f) },
+            // 승강기는 바닥에 붙여 두고 곧게 위로만 올린다. 1유닛 띄우면 걸어오다 옆면에
+            // 부딪혀 지나쳐 버리고, 대각선 구간을 두면 타고 가던 중에 미끄러진다(봇이 둘 다 겪었다).
+            var lift = BuildLift(c.Root.transform, "G08_Lift", c.P(6f, 2.6f),
+                new[] { new Vector2(0f, 22.6f) },
                 _gazeShortcutB, new Color(0.5f, 0.7f, 0.8f));
+
+            // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공으로 떨어지지 않게 막는다.
+            // 이 방의 출구는 위(22,26)뿐이라 바닥 오른쪽 바깥에는 아무것도 없다.
+            var edge = BuildSolidBlock(c.Root.transform, "G08_RightEdge",
+                c.P(24.5f, 12f), new Vector2(1f, 26f), "Ground");
+            edge.GetComponent<SpriteRenderer>().enabled = false;
 
             // 승강 경로를 훑는 회전 시선. 승강기 그림자 안에 서 있으면 지나간다.
             PlaceGaze(c.Root.transform, c.P(12f, 15f), 0f, 45f);
@@ -837,28 +846,38 @@ namespace HiddenWeight.EditorTools
         static void BuildG10(RoomCtx c)
         {
             c.O = G10;
-            c.Floor(0, 20, 3);
+            // 출구 선반(y=7)까지 한 칸씩 오르는 계단으로 만든다. 예전에는 +4를 한 번에
+            // 올라야 해서 실측 점프 높이(2.72)로는 아무도 나갈 수 없었고, 떠 있는 발판
+            // 두 장으로 고쳤더니 이번에는 선반 옆면에 걸렸다. 지형 계단이 가장 확실하다.
+            c.Floor(0, 16, 3);
+            c.Floor(16, 18, 4);
+            c.Floor(18, 19, 5);
+            c.Floor(19, 20, 6);
             c.Floor(20, 24, 7);   // 출구 (24,7)
-            BuildSafePlatform(c.Root.transform, c.P(18.5f, 5.5f)); // 출구로 오르는 중간 발판
 
             // 체크포인트는 전장 바깥이다 — 재도전 20초 목표를 지키려면 문 앞이어야 한다.
-            BuildCheckpoint(c.Root.transform, c.P(2f, 4f));
+            BuildCheckpoint(c.Root.transform, c.P(1.5f, 4f));
 
-            // 눈꺼풀 닫기에 쓰이는 좌우 벽. 보스가 이 둘을 안쪽으로 옮긴다.
-            var lidL = BuildPlainWall(c.Root.transform, "G10_Lid_L", c.P(1f, 8f), new Vector2(1.2f, 9f), GazeStone);
-            var lidR = BuildPlainWall(c.Root.transform, "G10_Lid_R", c.P(19f, 8f), new Vector2(1.2f, 9f), GazeStone);
+            // 눈꺼풀 닫기에 쓰이는 좌우 벽. 천장에서 내려온 셔터라 바닥에 닿지 않는다.
+            // 바닥까지 세우면 입구와 출구를 통째로 막아 방을 지나갈 수 없다(봇이 잡아냈다).
+            // 이 공격에는 애초에 피해 판정이 없고(명세 7.1절 "기본 이동으로 대응") 압박은
+            // 안전지대가 좁아 보이는 것으로만 만들므로, 발밑을 비워도 의도가 살아 있다.
+            var lidL = BuildPlainWall(c.Root.transform, "G10_Lid_L", c.P(5f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
+            var lidR = BuildPlainWall(c.Root.transform, "G10_Lid_R", c.P(13f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
 
             // 중앙 엄폐 기둥. 홍채 훑기를 숨죽이기 대신 엄폐로도 넘길 수 있게 한다.
             BuildCoverPillar(c.Root.transform, "G10_Cover_A", c.P(7f, 5f), new Vector2(1.4f, 3f));
-            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(13f, 5f), new Vector2(1.4f, 3f));
+            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(12f, 5f), new Vector2(1.4f, 3f));
 
-            var boss = BuildBoss(c.Root.transform, c.P(14f, 5f), "Enemy_Gaze_Gatekeeper", 14,
+            var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Gaze_Gatekeeper", 14,
                 new[] { BossController.Move.GazeSweep, BossController.Move.WallClose, BossController.Move.Charge },
                 new[] { 0.5f }, new Color(0.55f, 0.45f, 0.7f));
             ConfigureGazeBoss(boss, new[] { lidL, lidR });
 
-            var reward = BuildRewardChest(c.Root.transform, "gaze_g10_boss", c.P(10f, 4.5f), 45, false);
-            BuildEncounter(c.Root.transform, "gaze_g10_boss", c.P(10f, 8f), new Vector2(18f, 12f), true,
+            // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
+            // 돌진이 벽에 박히는 것도 그것으로 성립하므로 상시 벽을 따로 두지 않는다.
+            var reward = BuildRewardChest(c.Root.transform, "gaze_g10_boss", c.P(6f, 4.5f), 45, false);
+            BuildEncounter(c.Root.transform, "gaze_g10_boss", c.P(10f, 7f), new Vector2(14f, 10f), true,
                 new[] { new[] { boss } }, new int[0], reward, _gazeShortcutC);
 
             c.Room("GazeRoom10", 24f, 18f);
@@ -923,8 +942,10 @@ namespace HiddenWeight.EditorTools
         {
             c.O = G12;
             c.Floor(0, 30, 4);
-            BuildPlainWall(c.Root.transform, "G12_Wall_L", c.P(1f, 9f), new Vector2(1.2f, 10f), GazeStone);
-            BuildPlainWall(c.Root.transform, "G12_Wall_R", c.P(29f, 9f), new Vector2(1.2f, 10f), GazeStone);
+
+            // 전장을 가두는 벽은 조우(Encounter)가 전투 중에만 세운다. 상시 벽을 방 양끝에
+            // 두면 입구와 출구를 그대로 막아 버린다 — 봇이 왼쪽 벽을 벽점프로 넘어야만
+            // 들어올 수 있는 상태였다.
 
             // 전장을 관객석·중앙 무대·좌우 엄폐막 세 층으로 읽히게 만든다(4.12절).
             BuildDecor(c.Root.transform, "G12_Gallery", c.P(15f, 14f), new Vector2(26f, 3f),

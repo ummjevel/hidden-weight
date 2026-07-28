@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using HiddenWeight.Data;
 using HiddenWeight.World;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.Enemies
 {
@@ -35,6 +36,7 @@ namespace HiddenWeight.Enemies
         public void ResetForEncounter()
         {
             Health = data.maxHealth;
+            HealthChanged?.Invoke(Health, data.maxHealth);
             if (_sprite != null) _sprite.color = data.tint;
         }
 
@@ -51,6 +53,7 @@ namespace HiddenWeight.Enemies
         public bool IsAlive => Health > 0;
 
         public event System.Action<Enemy> Died;
+        public event System.Action<int, int> HealthChanged;
 
         void Awake()
         {
@@ -85,6 +88,7 @@ namespace HiddenWeight.Enemies
             }
 
             Health -= amount;
+            HealthChanged?.Invoke(Mathf.Max(0, Health), data.maxHealth);
 
             // 공격 방향의 반대쪽(자신 위치 - 공격 원점)으로 밀려난다.
             var direction = ((Vector2)transform.position - sourcePosition).normalized;
@@ -111,7 +115,7 @@ namespace HiddenWeight.Enemies
             if (_sprite != null)
             {
                 var original = data.tint;
-                _sprite.color = Color.white;
+                _sprite.color = UISettings.ReduceFlash ? Color.Lerp(original, Color.white, 0.25f) : Color.white;
                 yield return new WaitForSeconds(0.1f);
                 _sprite.color = original;
             }

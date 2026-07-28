@@ -169,12 +169,17 @@ namespace HiddenWeight.EditorTools
             // 골라 쓴다 — 방이 다 똑같아 보이면 랜드마크로 길을 기억할 수 없다(GAME_DESIGN.md).
             public int Variant = 1;
 
+            // 지형 표면을 잔재 전용 아트로 덮을지. 응시·균열은 전용 아트가 아직 없어서 끄고,
+            // 대신 타일맵 자체를 지역 색으로 물들여 구분한다(각 지역 빌더의 TintTerrain).
+            // 잔재 아트를 그대로 씌우면 세 지역이 같은 폐허로 보인다.
+            public bool FloorArt = true;
+
             public void Floor(int x0, int x1, int top, int depth = 8)
             {
                 ZoneSceneBuilder.Floor(Map, O.x + x0, O.x + x1, O.y + top, depth);
                 // 충돌은 타일맵이 그대로 맡고, 보이는 표면만 잔재 지형 아트로 덮는다
                 // (Environment/README.md: 지형 시트는 "충돌 Tilemap을 대체하지 않는 장식형 전경 모듈").
-                PlaceFloorArt(Root.transform, P((x0 + x1) * 0.5f, top), x1 - x0, Variant);
+                if (FloorArt) PlaceFloorArt(Root.transform, P((x0 + x1) * 0.5f, top), x1 - x0, Variant);
             }
 
             public void Tiles(int x0, int x1, int y0, int y1)

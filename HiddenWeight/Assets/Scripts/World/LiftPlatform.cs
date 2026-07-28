@@ -1,0 +1,122 @@
+using UnityEngine;
+using HiddenWeight.Data;
+
+namespace HiddenWeight.World
+{
+    // 웨이포인트를 따라 한 번 올라가는 승강기. 응시 G08 "시선 승강정"과 균열 F08 "역행 승강축"이
+    // 같은 컴포넌트를 쓰고 경로만 다르게 준다 — 균열 쪽은 첫 웨이포인트를 아래로 두면 그대로
+    // "먼저 내려갔다가 올라가는" 역행 승강기가 된다(FRACTURE_LEVEL_DESIGN.md 4.8절).
+    //
+    // MovingPlatform과 나누는 이유: 저쪽은 시간만으로 위치가 정해지는 무한 왕복이고, 이쪽은
+    // 플레이어가 올라타야 시작해서 끝에서 멈추고 숏컷을 여는 1회성 장치다. 두 성질을 한
+    // 컴포넌트에 넣으면 예지 예측식이 상태에 의존하게 되어 고스트가 어긋난다.
+    [RequireComponent(typeof(Rigidbody2D))]
+    public class LiftPlatform : MonoBehaviour, IForeseeable
+    {
+        [Tooltip("시작 위치 기준 상대 좌표. 순서대로 이동한다.")]
+        [SerializeField] Vector2[] waypoints = { new Vector2(0f, 10f) };
+        [SerializeField] float speed = 3f;
+        [SerializeField] float startDelay = 0.6f;   // 올라탄 뒤 출발까지. 예지를 쓸 시간을 준다
+        [SerializeField] Shortcut linkedShortcut;   // 종점에 닿으면 열린다(숏컷 B)
+
+        Rigidbody2D _rb;
+        SpriteRenderer _sprite;
+        Vector3 _origin;
+        Transform _riderOnTop;
+
+        int _leg = -1;      // -1이면 아직 출발 전
+        float _delayTimer;
+        bool _finished;
+
+        public bool IsRunning => _leg >= 0 && !_finished;
+        public bool IsFinished => _finished;
+
+        public Transform Transform => transform;
+        public Sprite CurrentSprite => _sprite != null ? _sprite.sprite : null;
+
+        void Awake()
+        {
+            _rb = GetComponent<Rigidbody2D>();
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _sprite = GetComponent<SpriteRenderer>();
+            _origin = transform.position;
+        }
+
+        Vector3 Target(int leg)
+            => _origin + (Vector3)waypoints[Mathf.Clamp(leg, 0, waypoints.Length - 1)];
+
+        void FixedUpdate()
+        {
+            if (_finished || _leg < 0) return;
+
+            if (_delayTimer > 0f)
+            {
+                _delayTimer -= Time.fixedDeltaTime;
+                return;
+            }
+
+            var target = Target(_leg);
+            var next = Vector3.MoveTowards(transform.position, target, speed * Time.fixedDeltaTime);
+            var delta = next - transform.position;
+
+            _rb.MovePosition(next);
+            if (_riderOnTop != null) _riderOnTop.position += delta;
+
+            if ((next - target).sqrMagnitude > 0.0001f) return;
+
+            _leg++;
+            if (_leg < waypoints.Length) return;
+
+            // 종점 도착. 여기서만 숏컷이 열린다 — 도중에 내려도 열리지 않아야
+            // "승강기를 상층까지 작동시키면"이라는 조건이 성립한다.
+            _finished = true;
+            _leg = waypoints.Length - 1;
+            if (linkedShortcut != null) linkedShortcut.Open();
+        }
+
+        // 예지: 남은 경로를 그대로 따라가 lead초 뒤 위치를 계산한다. 아직 출발 전이면
+        // 제자리 — "타면 어디로 갈지"가 아니라 "곧 어디에 있을지"를 보여주는 것이 규칙이다.
+        public Vector3 PredictPosition(float leadSeconds)
+        {
+            if (_finished || _leg < 0) return transform.position;
+
+            var position = transform.position;
+            float remaining = leadSeconds - Mathf.Max(0f, _delayTimer);
+            for (int leg = _leg; leg < waypoints.Length && remaining > 0f; leg++)
+            {
+                var target = Target(leg);
+                float distance = Vector3.Distance(position, target);
+                float travel = speed * remaining;
+                if (travel < distance) return Vector3.MoveTowards(position, target, travel);
+
+                position = target;
+                remaining -= distance / speed;
+            }
+            return position;
+        }
+
+        public bool PredictActive(float leadSeconds) => true;
+
+        void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
+
+            bool fromAbove = false;
+            foreach (var contact in collision.contacts)
+                if (contact.normal.y > 0.5f) { fromAbove = true; break; }
+            if (!fromAbove) return;
+
+            _riderOnTop = collision.transform;
+            if (_leg < 0 && !_finished)
+            {
+                _leg = 0;
+                _delayTimer = startDelay;
+            }
+        }
+
+        void OnCollisionExit2D(Collision2D collision)
+        {
+            if (collision.transform == _riderOnTop) _riderOnTop = null;
+        }
+    }
+}

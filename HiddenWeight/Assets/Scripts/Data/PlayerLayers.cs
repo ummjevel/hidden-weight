@@ -16,12 +16,24 @@ namespace HiddenWeight.Data
 
         public static bool IsPlayer(GameObject go)
         {
-            if (_player < 0)
-            {
-                _player = LayerMask.NameToLayer("Player");
-                _hushed = LayerMask.NameToLayer("PlayerHushed");
-            }
+            Cache();
             return go.layer == _player || go.layer == _hushed;
+        }
+
+        // 지금 숨죽이기 중인가. 응시 지역의 적 3종이 전부 "숨죽인 플레이어에게는 다르게
+        // 반응한다"(GAZE_LEVEL_DESIGN.md 6.1절)라서, 레이어 비교를 각 행동 모듈이 따로
+        // 하지 않도록 여기 한 곳에 둔다.
+        public static bool IsHushed(GameObject go)
+        {
+            Cache();
+            return go.layer == _hushed;
+        }
+
+        static void Cache()
+        {
+            if (_player >= 0) return;
+            _player = LayerMask.NameToLayer("Player");
+            _hushed = LayerMask.NameToLayer("PlayerHushed");
         }
     }
 }

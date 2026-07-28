@@ -12,6 +12,34 @@
 | `EnemyPatrol.cs` | 지형 위 왕복 이동, 낭떠러지·벽 감지 후 반전, 균열 지역 전용 상하 흔들림 | 5.4 "구역별 이동 속도/지터" |
 | `ContactDamage.cs` | 플레이어와의 접촉 판정(Collision/Trigger Stay) 시 `PlayerHealth.TakeDamage` 호출 | 5.4 "접촉 피해 1" |
 
+### 지역별 행동 모듈
+
+`Enemy`는 체력·피격만 맡고, "무엇을 하는 적인가"는 `EnemyBehavior`를 상속한 모듈을
+갈아끼워 정한다. 적 종류가 늘어도 프리팹은 하나다 — 빌더가 `EnemyData`와 행동 모듈만
+붙인다.
+
+| 파일 | 적 | 핵심 행동 |
+|---|---|---|
+| `ChargerBehavior.cs` | 잔재 애도 운반자 | 0.8초 예고 후 직선 돌진. 벽에 박으면 1.5초 경직 |
+| `AmbusherBehavior.cs` | 잔재 매달린 손가락 / 응시 매달린 관객 | 그림자 예고 뒤 낙하. `ignoreHushedPlayer`를 켜면 숨죽인 아래는 그냥 보낸다 |
+| `GuardBehavior.cs` | 잔재 굳은 잔재 | 정면 방어 + 느린 강공격. `IGuard` 구현 |
+| `StalkerBehavior.cs` | 응시 눈먼 순례자 | 소리로 추적. 숨죽인 플레이어에게는 감지 반경이 `hushedDetectMultiplier`배로 줄어든다 |
+| `ScreamerBehavior.cs` | 응시 밀고하는 입 | 예고 후 연결된 휴면 `GazeHazard`를 켠다. 예고 중 숨으면 취소 |
+| `JudgeBehavior.cs` | 응시 얼굴 없는 재판관(정예) | 정면 방어. 감시 중인 시선이 모두 꺼지면 등을 보이고, 숨죽이면 출구를 막는다. `IGuard` 구현 |
+| `FeintPatrol.cs` | 균열 불안 새싹 | 시간 함수 왕복 + 가짜 방향 전환. `IForeseeable`로 정확한 2초 뒤 위치 제공 |
+| `PrecursorBehavior.cs` | 균열 선행 그림자 | 타격 지점을 2초 먼저 바닥에 그리고, 그린 뒤에는 지점을 바꾸지 않는다 |
+| `CollectorBehavior.cs` | 균열 가능성 수집자 | 플레이어의 수평 속도를 연장한 착지 예정 지점에 `DelayedBlast` 배치 |
+| `SplitSelfBehavior.cs` | 균열 갈라진 자아(정예) | 본체 + 콜라이더 없는 거울상. 본체가 맞으면 두 위치를 맞바꾼다 |
+
+`IGuard.cs`는 "이 방향에서 들어온 공격은 막는다"만 선언하는 계약이다. 원래 `Enemy`가
+`GuardBehavior` 구현 타입을 직접 알고 있었는데, 방어 판정을 가진 적이 둘이 되면서
+인터페이스로 뺐다 — 이제 방어형 적이 늘어도 `Enemy`는 손대지 않는다.
+
+`BossController`는 지역마다 새로 만들지 않고 무브 목록만 바꾼다. 잔재는
+`GroundSweep`/`Charge`/`Slam`, 응시는 `GazeSweep`/`WallClose`, 균열은 `TimeSkip`을 더 쓴다.
+`GazeSweep`만 `gazeMask`(= `Player` 레이어만)를 쓰는데, 이 한 줄이 "숨죽이기는 시선
+공격만 피하고 물리 돌진은 그대로 맞는다"는 규칙의 전부다.
+
 ## 핵심 규칙 구현
 
 - **HP**: `EnemyData.maxHealth` 기본값 2 (`Enemy_Residue`/`Enemy_Gaze`/`Enemy_Fracture` 세 에셋 모두 2로 동일).

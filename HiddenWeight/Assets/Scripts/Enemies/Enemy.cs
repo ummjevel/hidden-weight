@@ -74,8 +74,9 @@ namespace HiddenWeight.Enemies
 
             // 방어형 정예는 정면에서 들어온 공격을 막는다(CONTENT_SYSTEM.md 3.1절 "방어형" —
             // 후방 이동 또는 스킬 활용을 요구하는 적). 막혀도 피격 반응은 보여줘야 플레이어가
-            // "안 통한다"를 읽는다.
-            var guard = GetComponent<GuardBehavior>();
+            // "안 통한다"를 읽는다. 구현 타입이 아니라 IGuard를 묻는다 — 잔재의 굳은 잔재와
+            // 응시의 얼굴 없는 재판관이 서로 다른 조건으로 같은 판정을 쓰기 때문이다.
+            var guard = GetComponent<IGuard>();
             if (guard != null && guard.BlocksFrom(sourcePosition))
             {
                 if (_flashRoutine != null) StopCoroutine(_flashRoutine);

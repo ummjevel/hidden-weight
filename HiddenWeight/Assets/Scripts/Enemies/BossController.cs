@@ -13,7 +13,12 @@ namespace HiddenWeight.Enemies
     [RequireComponent(typeof(Enemy))]
     public class BossController : MonoBehaviour
     {
-        public enum Move { GroundSweep, Charge, Slam }
+        // 잔재는 앞의 셋만 쓴다. 뒤의 셋은 응시·균열이 추가로 쓴다 — 보스 클래스를 지역마다
+        // 새로 만들지 않고 무브 목록만 갈아끼운다.
+        //   GazeSweep : 시선 공격. 숨죽인 플레이어에게는 닿지 않는다(응시 7.1절).
+        //   WallClose : 눈꺼풀 닫기. 좌우 벽이 좁아지고 중앙 안전지대만 남는다(응시 7.1절).
+        //   TimeSkip  : 시간 건너뛰기. 사라졌다가 예고 지점에 나타나 낙하한다(균열 7.1절).
+        public enum Move { GroundSweep, Charge, Slam, GazeSweep, WallClose, TimeSkip }
 
         [SerializeField] Move[] moves = { Move.GroundSweep, Move.Charge, Move.Slam };
         // 공격별 예고 시간(R10 명세: 지상 쓸기 0.7 / 돌진 1.0 / 낙하 1.2).
@@ -29,6 +34,24 @@ namespace HiddenWeight.Enemies
         [SerializeField] float slamHeight = 6f;
         [SerializeField] LayerMask playerMask;
         [SerializeField] LayerMask obstacleMask;
+
+        [Header("시선 공격 — 숨죽이기로 회피된다")]
+        // playerMask와 달리 PlayerHushed를 넣지 않는다. 숨죽이면 시선 공격만 통하지 않고
+        // 물리 돌진은 그대로 맞는다는 규칙(GAZE_LEVEL_DESIGN.md 7.1절)이 이 한 줄로 성립한다.
+        [SerializeField] LayerMask gazeMask;
+        [SerializeField] float gazeSweepTelegraph = 1.0f;
+        [SerializeField] float gazeSweepSeconds = 2.5f;  // 명세: 바닥을 2.5초에 걸쳐 훑는다
+        [SerializeField] float gazeSweepWidth = 3f;
+
+        [Header("눈꺼풀 닫기")]
+        [SerializeField] Transform[] closingWalls;       // 좌우 벽 2개
+        [SerializeField] float wallCloseTelegraph = 1.2f;
+        [SerializeField] float wallCloseDistance = 4f;   // 안쪽으로 이 거리만큼 좁힌다
+        [SerializeField] float wallCloseHoldSeconds = 1.5f;
+
+        [Header("시간 건너뛰기")]
+        [SerializeField] float timeSkipTelegraph = 1.0f;
+        [SerializeField] float timeSkipLead = 2f;        // 예지 선행 시간과 같은 값
 
         // 체력 비율이 이 값 아래로 내려가면 다음 단계. 명세의 R12 3단계(1.0 → 0.6 → 0.3)를 기본값으로.
         [SerializeField] float[] phaseThresholds = { 0.6f, 0.3f };
@@ -85,13 +108,24 @@ namespace HiddenWeight.Enemies
             if (player == null) yield break;
 
             // 예고는 어떤 단계에서도 같은 길이다. 공격마다 길이가 다르다(명세 표).
-            float telegraph = move == Move.GroundSweep ? sweepTelegraph
-                            : move == Move.Charge ? chargeTelegraph
-                            : slamTelegraph;
+            float telegraph;
+            switch (move)
+            {
+                case Move.GroundSweep: telegraph = sweepTelegraph; break;
+                case Move.Charge: telegraph = chargeTelegraph; break;
+                case Move.GazeSweep: telegraph = gazeSweepTelegraph; break;
+                case Move.WallClose: telegraph = wallCloseTelegraph; break;
+                case Move.TimeSkip: telegraph = timeSkipTelegraph; break;
+                default: telegraph = slamTelegraph; break;
+            }
 
-            // 낙하는 떨어질 자리를 바닥 그림자로 먼저 보여준다 — 좌우로 비키면 피할 수 있어야 한다.
+            // 낙하 계열은 떨어질 자리를 바닥 그림자로 먼저 보여준다 — 좌우로 비키면 피할 수
+            // 있어야 한다. 시간 건너뛰기는 예고 시점의 위치를 그대로 쓴다(균열 7.2절:
+            // 고스트가 보여준 위치와 실제가 항상 일치한다).
             GameObject shadow = null;
-            if (move == Move.Slam) shadow = ShowDropShadow(player.transform.position);
+            if (move == Move.Slam || move == Move.TimeSkip)
+                shadow = ShowDropShadow(player.transform.position);
+            Vector3 skipTarget = player.transform.position;
 
             Telegraph(true);
             yield return new WaitForSeconds(telegraph);
@@ -142,6 +176,101 @@ namespace HiddenWeight.Enemies
                     HitPlayersInCircle(transform.position, sweepRange * 0.8f);
                     break;
                 }
+
+                case Move.GazeSweep:
+                {
+                    // 홍채 훑기 — 시선이 바닥을 한 방향으로 지나간다. 숨거나(숨죽이기) 훑는
+                    // 선 바깥으로 비키면(엄폐·이동) 둘 다 정답이 되도록, 판정은 좁은 세로
+                    // 띠 하나가 천천히 움직이는 형태다.
+                    int direction = player.transform.position.x >= transform.position.x ? 1 : -1;
+                    float distance = sweepRange * 2f;
+                    float elapsed = 0f;
+                    var sweep = ShowDropShadow(transform.position);
+
+                    while (elapsed < gazeSweepSeconds)
+                    {
+                        float t = elapsed / gazeSweepSeconds;
+                        float x = transform.position.x + direction * distance * t;
+                        var center = new Vector2(x, transform.position.y - 0.5f);
+
+                        if (sweep != null)
+                        {
+                            sweep.transform.position = new Vector3(x, transform.position.y - 1.1f, 0f);
+                            sweep.transform.localScale = new Vector3(gazeSweepWidth, 0.4f, 1f);
+                        }
+
+                        var seen = Physics2D.OverlapBox(center, new Vector2(gazeSweepWidth, sweepHeight), 0f, gazeMask);
+                        if (seen != null)
+                        {
+                            var health = seen.GetComponentInParent<PlayerHealth>();
+                            if (health != null) health.TakeDamage(_self.Data.contactDamage, center);
+                        }
+
+                        elapsed += Time.deltaTime;
+                        yield return null;
+                    }
+
+                    if (sweep != null) Destroy(sweep);
+                    break;
+                }
+
+                case Move.WallClose:
+                {
+                    // 눈꺼풀 닫기 — 좌우 벽이 안쪽으로 좁아지고 중앙 안전지대만 남는다.
+                    // 피해 판정이 없다. 기본 이동만으로 대응할 수 있어야 한다는 명세대로,
+                    // 위험은 "이 동안 다른 공격을 피할 공간이 줄어든다"는 것뿐이다.
+                    if (closingWalls == null || closingWalls.Length == 0) break;
+
+                    var origins = new Vector3[closingWalls.Length];
+                    for (int i = 0; i < closingWalls.Length; i++)
+                        if (closingWalls[i] != null) origins[i] = closingWalls[i].position;
+
+                    yield return MoveWalls(origins, wallCloseDistance, 0.4f);
+                    yield return new WaitForSeconds(wallCloseHoldSeconds);
+                    yield return MoveWalls(origins, 0f, 0.6f);
+                    break;
+                }
+
+                case Move.TimeSkip:
+                {
+                    // 시간 건너뛰기 — 지금 위치에서 사라지고, 예고해 둔 자리에 나타나 떨어진다.
+                    // 사라져 있는 동안 위치가 바뀌지 않으므로 예지 고스트와 실제가 어긋나지 않는다.
+                    var mark = ShowDropShadow(skipTarget);
+                    if (_sprite != null) _sprite.enabled = false;
+                    _body.linearVelocity = Vector2.zero;
+
+                    yield return new WaitForSeconds(timeSkipLead);
+
+                    transform.position = new Vector3(skipTarget.x, skipTarget.y + slamHeight, 0f);
+                    if (_sprite != null) _sprite.enabled = true;
+                    if (mark != null) Destroy(mark);
+
+                    _body.linearVelocity = new Vector2(0f, -18f);
+                    yield return new WaitForSeconds(0.5f);
+                    HitPlayersInCircle(transform.position, sweepRange * 0.8f);
+                    break;
+                }
+            }
+        }
+
+        // 좌우 벽을 안쪽으로 inset만큼 옮긴다. 0을 주면 원래 자리로 돌아온다.
+        IEnumerator MoveWalls(Vector3[] origins, float inset, float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                float t = seconds <= 0f ? 1f : elapsed / seconds;
+                for (int i = 0; i < closingWalls.Length; i++)
+                {
+                    if (closingWalls[i] == null) continue;
+
+                    // 전장 중심(보스 기준)을 향해 좁힌다.
+                    float direction = origins[i].x >= transform.position.x ? -1f : 1f;
+                    var target = origins[i] + new Vector3(direction * inset, 0f, 0f);
+                    closingWalls[i].position = Vector3.Lerp(closingWalls[i].position, target, t);
+                }
+                elapsed += Time.deltaTime;
+                yield return null;
             }
         }
 

@@ -6,6 +6,38 @@ namespace HiddenWeight.Tests
 {
     public class ProgressStateTests
     {
+        [Test]
+        public void UI_진행_이벤트와_기억_텍스트는_중복없이_보존된다()
+        {
+            var progress = new ProgressState();
+            int currencyEvents = 0;
+            int fragmentEvents = 0;
+            int roomEvents = 0;
+            progress.CurrencyChanged += (amount, total) =>
+            {
+                Assert.AreEqual(3, amount);
+                Assert.AreEqual(3, total);
+                currencyEvents++;
+            };
+            progress.FragmentCollected += (id, text) =>
+            {
+                Assert.AreEqual("memory-1", id);
+                Assert.AreEqual("잊힌 목소리", text);
+                fragmentEvents++;
+            };
+            progress.RoomVisited += _ => roomEvents++;
+
+            progress.AddCurrency(3);
+            Assert.IsTrue(progress.CollectFragment("memory-1", "잊힌 목소리"));
+            Assert.IsFalse(progress.CollectFragment("memory-1", "중복"));
+            progress.VisitRoom("Room_A");
+            progress.VisitRoom("Room_A");
+
+            Assert.AreEqual(1, currencyEvents);
+            Assert.AreEqual(1, fragmentEvents);
+            Assert.AreEqual(1, roomEvents);
+            Assert.AreEqual("잊힌 목소리", progress.FragmentTexts["memory-1"]);
+        }
         ProgressState _p;
 
         [SetUp]

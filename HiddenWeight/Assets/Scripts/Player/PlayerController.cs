@@ -224,9 +224,19 @@ namespace HiddenWeight.Player
 
         void ApplyFallGravity()
         {
-            _rb.gravityScale = _rb.linearVelocity.y < 0f
-                ? _data.gravityScale * _data.fallGravityMultiplier
-                : _data.gravityScale;
+            float vy = _rb.linearVelocity.y;
+            if (Mathf.Abs(vy) < _data.jumpApexThreshold)
+            {
+                _rb.gravityScale = _data.gravityScale * _data.jumpApexGravityMultiplier; // 정점 hang time
+            }
+            else if (vy < 0f)
+            {
+                _rb.gravityScale = _data.gravityScale * _data.fallGravityMultiplier;
+            }
+            else
+            {
+                _rb.gravityScale = _data.gravityScale;
+            }
         }
 
         void DetermineState(bool wallClinging)

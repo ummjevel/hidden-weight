@@ -53,7 +53,9 @@ namespace HiddenWeight.UI
             _text.fontSize = 28;
             _text.alignment = TextAnchor.MiddleCenter;
             _text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _text.color = new Color(1f, 1f, 1f, 0f);
+            var textColor = UIBuilder.TextPrimary;
+            textColor.a = 0f; // 평소엔 투명 — Show()가 페이드 인 시킨다
+            _text.color = textColor;
             _text.text = string.Empty;
 
             var rt = _text.rectTransform;

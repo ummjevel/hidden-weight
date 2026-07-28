@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
@@ -10,7 +11,11 @@ namespace HiddenWeight.UI
     // 닫힐 때 Playing + PlayerInput.Enabled = true.
     public class PauseMenu : MonoBehaviour
     {
+        const float FadeDuration = 0.18f;
+
         GameObject _root;
+        CanvasGroup _rootGroup;
+        Coroutine _fadeRoutine;
 
         void Awake()
         {
@@ -20,7 +25,9 @@ namespace HiddenWeight.UI
         void Start()
         {
             // 이미 Paused 상태로 씬이 시작하는 경우는 없지만, 방어적으로 현재 상태를 반영한다.
-            _root.SetActive(GameManager.Instance != null && GameManager.Instance.State == GameState.Paused);
+            bool paused = GameManager.Instance != null && GameManager.Instance.State == GameState.Paused;
+            _root.SetActive(paused);
+            _rootGroup.alpha = paused ? 1f : 0f;
         }
 
         void Update()
@@ -36,16 +43,41 @@ namespace HiddenWeight.UI
 
         void Open()
         {
-            _root.SetActive(true);
             PlayerInput.Enabled = false;
             GameManager.Instance.SetState(GameState.Paused);
+
+            // GameManager.SetState가 Time.timeScale을 0으로 만들므로 페이드는 반드시
+            // unscaledDeltaTime 기준으로 돌아야 한다(FragmentLog.Fade와 같은 이유).
+            _root.SetActive(true);
+            if (_fadeRoutine != null) StopCoroutine(_fadeRoutine);
+            _fadeRoutine = StartCoroutine(FadeTo(1f));
         }
 
         void Close()
         {
-            _root.SetActive(false);
             PlayerInput.Enabled = true;
             GameManager.Instance.SetState(GameState.Playing);
+
+            if (_fadeRoutine != null) StopCoroutine(_fadeRoutine);
+            _fadeRoutine = StartCoroutine(FadeTo(0f));
+        }
+
+        IEnumerator FadeTo(float target)
+        {
+            float start = _rootGroup.alpha;
+            float t = 0f;
+            while (t < FadeDuration)
+            {
+                t += Time.unscaledDeltaTime;
+                _rootGroup.alpha = Mathf.Lerp(start, target, t / FadeDuration);
+                yield return null;
+            }
+            _rootGroup.alpha = target;
+
+            // 꺼질 때만 마지막에 비활성화한다 — 켜질 때 미리 SetActive(true) 해 둬야
+            // 알파가 실제로 0→1로 보간되는 걸 볼 수 있다(꺼진 오브젝트는 코루틴이 안 돈다).
+            if (target <= 0f) _root.SetActive(false);
+            _fadeRoutine = null;
         }
 
         void GoToTitle()
@@ -77,54 +109,21 @@ namespace HiddenWeight.UI
             panelRt.offsetMax = Vector2.zero;
 
             var bg = _root.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.6f);
+            bg.color = UIBuilder.PanelBackground;
 
-            var title = CreateText(_root.transform, "일시정지", 36);
+            _rootGroup = _root.AddComponent<CanvasGroup>();
+            _rootGroup.alpha = 0f;
+
+            var title = UIBuilder.CreateText(_root.transform, "일시정지", 36);
             var titleRt = title.rectTransform;
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.65f);
             titleRt.sizeDelta = new Vector2(400f, 60f);
             titleRt.anchoredPosition = Vector2.zero;
 
-            CreateButton(_root.transform, "계속하기", -20f, Close);
-            CreateButton(_root.transform, "타이틀로", -90f, GoToTitle);
+            UIBuilder.CreateButton(_root.transform, "계속하기", -20f, Close);
+            UIBuilder.CreateButton(_root.transform, "타이틀로", -90f, GoToTitle);
 
             _root.SetActive(false);
-        }
-
-        static Text CreateText(Transform parent, string content, int fontSize)
-        {
-            var go = new GameObject("Text_" + content);
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = Color.white;
-            text.text = content;
-            return text;
-        }
-
-        static void CreateButton(Transform parent, string label, float yPos, UnityEngine.Events.UnityAction onClick)
-        {
-            var go = new GameObject("Button_" + label, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var rt = (RectTransform)go.transform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(220f, 56f);
-            rt.anchoredPosition = new Vector2(0f, yPos);
-
-            var img = go.AddComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.15f);
-
-            var button = go.AddComponent<Button>();
-            button.onClick.AddListener(onClick);
-
-            var text = CreateText(go.transform, label, 24);
-            var textRt = text.rectTransform;
-            textRt.anchorMin = Vector2.zero;
-            textRt.anchorMax = Vector2.one;
-            textRt.offsetMin = Vector2.zero;
-            textRt.offsetMax = Vector2.zero;
         }
     }
 }

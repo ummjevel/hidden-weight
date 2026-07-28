@@ -16,6 +16,8 @@ namespace HiddenWeight.Data
         public float coyoteTime = 0.1f; // 발판 이탈 후 점프 허용 시간
         public float jumpBufferTime = 0.1f; // 착지 전 입력 기억 시간
         public float variableJumpCut = 0.5f; // 상승 중 키를 떼면 곱할 속도 배수
+        public float jumpApexThreshold = 1.5f; // |수직 속도|가 이보다 작으면 정점(hang)으로 간주
+        public float jumpApexGravityMultiplier = 0.4f; // 정점 구간에서 곱할 중력 배수(작을수록 붕 뜸)
 
         [Header("대시")]
         public float dashDistance = 4f;

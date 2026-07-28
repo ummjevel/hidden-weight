@@ -182,6 +182,150 @@ namespace HiddenWeight.EditorTools
             }
         }
 
+        // 착지·벽점프 더스트 파티클용 언릿 머티리얼. FrictionlessPlayerMaterial()과 같은
+        // "있으면 재사용, 없으면 생성" 패턴.
+        static Material DustParticleMaterial()
+        {
+            const string path = "Assets/Settings/DustParticle.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                ?? Shader.Find("Universal Render Pipeline/Unlit")
+                ?? Shader.Find("Particles/Standard Unlit")
+                ?? Shader.Find("Sprites/Default");
+            var mat = new Material(shader);
+            var sprite = LoadSprite("Dust");
+            if (sprite == null)
+            {
+                PlaceholderArtBuilder.Run(); // Dust 스프라이트가 아직 없으면 플레이스홀더 세트를 생성
+                sprite = LoadSprite("Dust");
+            }
+            if (sprite != null) mat.mainTexture = sprite.texture;
+
+            if (!AssetDatabase.IsValidFolder("Assets/Settings"))
+                AssetDatabase.CreateFolder("Assets", "Settings");
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
+        // 착지("LandDust")·벽점프("WallDust") 더스트 프리팹을 만든다. playOnAwake +
+        // stopAction=Destroy라 Instantiate만 하면 재생 후 스스로 파괴된다 — 호출부(PlayerJuice)에서
+        // 별도 타이머를 둘 필요가 없다.
+        [MenuItem("Hidden Weight/Fix/Build Dust Prefabs")]
+        public static void BuildDustPrefabs()
+        {
+            EnsureFolder();
+            BuildDustPrefab("LandDust");
+            BuildDustPrefab("WallDust");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[PrefabBuilder] 더스트 프리팹 2종 생성 완료");
+        }
+
+        static GameObject BuildDustPrefab(string name)
+        {
+            string path = $"{Folder}/{name}.prefab";
+            var root = new GameObject(name);
+            var ps = root.AddComponent<ParticleSystem>();
+
+            var main = ps.main;
+            main.loop = false;
+            main.playOnAwake = true;
+            main.duration = 0.3f;
+            main.startLifetime = 0.3f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.15f);
+            main.startColor = new Color(0.85f, 0.82f, 0.75f, 0.9f);
+            main.gravityModifier = 0.3f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 8) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.1f;
+            shape.arc = 180f; // 위쪽 반원으로만 퍼진다
+
+            var psRenderer = root.GetComponent<ParticleSystemRenderer>();
+            psRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+            psRenderer.sharedMaterial = DustParticleMaterial();
+            psRenderer.sortingOrder = 11; // Player(10)보다 위
+
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+            Object.DestroyImmediate(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        }
+
+        // 프리팹 13종을 전부 다시 짓지 않고 Player 프리팹에만 손맛 이펙트(PlayerJuice)를 붙인다.
+        // ApplyPlayerPhysicsMaterial()과 같은 이유로 부분 패치한다(전체 재생성은 인스턴스 오버라이드가 끊김).
+        [MenuItem("Hidden Weight/Fix/Apply Player Juice")]
+        public static void ApplyPlayerJuice()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/LandDust.prefab") == null
+                || AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/WallDust.prefab") == null)
+            {
+                BuildDustPrefabs();
+            }
+
+            string path = $"{Folder}/Player.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                var juice = root.GetComponent<PlayerJuice>();
+                if (juice == null) juice = root.AddComponent<PlayerJuice>();
+
+                var groundCheck = root.transform.Find("GroundCheck");
+                var wallCheck = root.transform.Find("WallCheck");
+
+                var so = new SerializedObject(juice);
+                so.FindProperty("groundCheck").objectReferenceValue = groundCheck;
+                so.FindProperty("wallCheck").objectReferenceValue = wallCheck;
+                so.FindProperty("landDustPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/LandDust.prefab");
+                so.FindProperty("wallDustPrefab").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameObject>($"{Folder}/WallDust.prefab");
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Debug.Log("[PrefabBuilder] Player 프리팹에 PlayerJuice(손맛 이펙트) 추가 완료");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // HUD 프리팹만 부분 패치한다(전체 재생성은 인스턴스 오버라이드가 끊기므로 지양 —
+        // ApplyPlayerPhysicsMaterial()과 같은 이유). 하트를 단색 사각형이 아니라 픽셀아트
+        // 하트 모양으로 보여주기 위해 PlaceholderArtBuilder가 만든 Heart 스프라이트를 연결한다.
+        [MenuItem("Hidden Weight/Fix/Apply HUD Theme")]
+        public static void ApplyHudTheme()
+        {
+            if (LoadSprite("Heart") == null)
+            {
+                PlaceholderArtBuilder.Run();
+            }
+
+            string path = $"{Folder}/HUD.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                var hud = root.GetComponent<HUD>();
+                var so = new SerializedObject(hud);
+                so.FindProperty("heartSprite").objectReferenceValue = LoadSprite("Heart");
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Debug.Log("[PrefabBuilder] HUD 프리팹에 하트 스프라이트 연결 완료");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
         // 카메라에 AudioListener가 없으면 Unity가 씬마다 경고를 내고 사운드가 전혀 재생되지 않는다.
         static void PatchMainCamera()
         {

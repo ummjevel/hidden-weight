@@ -18,6 +18,7 @@ namespace HiddenWeight.Emotions
         float _channel;
         PlayerHealth _health;
         public float ChannelProgress => Data.channelTime <= 0f ? 1f : _channel / Data.channelTime;
+        public Transform CurrentTarget => _target?.Transform;
 
         void Start()
         {

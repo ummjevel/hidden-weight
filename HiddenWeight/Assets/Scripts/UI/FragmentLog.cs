@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
@@ -20,6 +21,16 @@ namespace HiddenWeight.UI
 
         Text _text;
         Coroutine _routine;
+        readonly Queue<Entry> _queue = new Queue<Entry>();
+
+        struct Entry
+        {
+            public string text;
+            public float seconds;
+        }
+
+        public int PendingCount => _queue.Count + (_routine != null ? 1 : 0);
+        public string CurrentText => _text != null ? _text.text : string.Empty;
 
         void Awake()
         {
@@ -37,6 +48,26 @@ namespace HiddenWeight.UI
             GameManager.FragmentPresenter = s => Show(s);
         }
 
+        void OnEnable()
+        {
+            if (GameManager.Instance == null) return;
+            GameManager.Instance.Progress.CurrencyChanged += HandleCurrencyChanged;
+            GameManager.Instance.Progress.HealthShardsChanged += HandleHealthShardsChanged;
+        }
+
+        void OnDisable()
+        {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.Progress.CurrencyChanged -= HandleCurrencyChanged;
+                GameManager.Instance.Progress.HealthShardsChanged -= HandleHealthShardsChanged;
+            }
+            if (Instance == this) GameManager.FragmentPresenter = null;
+        }
+
+        void HandleCurrencyChanged(int amount, int _) => Show($"+{amount} 재화", 1.5f);
+        void HandleHealthShardsChanged(int _) => Show("체력 조각을 품었습니다.", 2.5f);
+
         void BuildHierarchy()
         {
             var canvasGO = new GameObject("FragmentLogCanvas");
@@ -44,7 +75,7 @@ namespace HiddenWeight.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 500;
-            canvasGO.AddComponent<CanvasScaler>();
+            UIBuilder.ConfigureScaler(canvasGO.AddComponent<CanvasScaler>());
 
             var textGO = new GameObject("FragmentText");
             textGO.transform.SetParent(canvasGO.transform, false);
@@ -65,24 +96,38 @@ namespace HiddenWeight.UI
             rt.offsetMax = Vector2.zero;
         }
 
-        // 연달아 호출되면 앞의 것을 즉시 끝내고 새 것을 띄운다(코루틴 교체).
+        // 연속 획득도 앞 문장을 취소하지 않는다. 중요 메시지는 들어온 순서대로 모두 보여 준다.
         public void Show(string text, float seconds = 4f)
         {
-            if (_routine != null) StopCoroutine(_routine);
-            _routine = StartCoroutine(ShowRoutine(text, seconds));
+            if (string.IsNullOrWhiteSpace(text)) return;
+            float readingTime = Mathf.Max(seconds, text.Length * 0.12f) * UISettings.MessageDuration;
+            _queue.Enqueue(new Entry { text = text, seconds = readingTime });
+            if (_routine == null) _routine = StartCoroutine(ShowQueue());
         }
 
-        IEnumerator ShowRoutine(string text, float seconds)
+        IEnumerator ShowQueue()
         {
-            _text.text = text;
-            yield return Fade(1f, 0.3f);
-            yield return new WaitForSecondsRealtime(seconds);
-            yield return Fade(0f, 0.5f);
+            while (_queue.Count > 0)
+            {
+                var entry = _queue.Dequeue();
+                _text.text = entry.text;
+                yield return Fade(1f, 0.3f);
+                yield return new WaitForSecondsRealtime(entry.seconds);
+                yield return Fade(0f, 0.35f);
+            }
+            _text.text = string.Empty;
             _routine = null;
         }
 
         IEnumerator Fade(float target, float duration)
         {
+            if (UISettings.ReduceMotion)
+            {
+                var immediate = _text.color;
+                immediate.a = target;
+                _text.color = immediate;
+                yield break;
+            }
             float start = _text.color.a;
             float t = 0f;
             while (t < duration)

@@ -33,6 +33,7 @@ namespace HiddenWeight.Enemies
         [SerializeField] GameObject[] lockObjects;  // 전투 중에만 켜지는 잠금 콜라이더
         [SerializeField] RewardChest victoryReward;
         [SerializeField] Shortcut victoryShortcut;
+        [SerializeField] string displayName = "보스";
 
         int _activeWave = -1;
         float _waveStartTime;
@@ -41,6 +42,10 @@ namespace HiddenWeight.Enemies
 
         public bool IsRunning => _running;
         public bool IsFinished => _finished;
+        public string DisplayName => string.IsNullOrEmpty(displayName) ? "보스" : displayName;
+        public Enemy BossEnemy { get; private set; }
+
+        public static event System.Action<Encounter, bool> EncounterStateChanged;
 
         void Start()
         {
@@ -53,7 +58,11 @@ namespace HiddenWeight.Enemies
                     {
                         if (member == null) continue;
                         var enemy = member.GetComponent<Enemy>();
-                        if (enemy != null) enemy.SetManagedByEncounter(true);
+                        if (enemy != null)
+                        {
+                            enemy.SetManagedByEncounter(true);
+                            if (enemy.GetComponent<BossController>() != null) BossEnemy = enemy;
+                        }
                     }
 
             // 플레이어가 죽어 체크포인트로 돌아가면 이 조우도 처음 상태로 되돌린다.
@@ -75,6 +84,7 @@ namespace HiddenWeight.Enemies
 
         void OnDestroy()
         {
+            if (_running) EncounterStateChanged?.Invoke(this, false);
             if (GameManager.Instance != null) GameManager.Instance.RespawnRequested -= HandlePlayerRespawn;
         }
 
@@ -111,6 +121,7 @@ namespace HiddenWeight.Enemies
 
             SetLocks(true);
             ActivateWave(0);
+            if (BossEnemy != null) EncounterStateChanged?.Invoke(this, true);
         }
 
         void Update()
@@ -148,6 +159,7 @@ namespace HiddenWeight.Enemies
         {
             _finished = true;
             _running = false;
+            if (BossEnemy != null) EncounterStateChanged?.Invoke(this, false);
             SetLocks(false);
 
             if (oneTime && GameManager.Instance != null)
@@ -159,11 +171,13 @@ namespace HiddenWeight.Enemies
 
         void ResetEncounter()
         {
+            bool wasRunning = _running;
             StopAllCoroutines();
             _running = false;
             _activeWave = -1;
             SetLocks(false);
             DeactivateAll();
+            if (wasRunning && BossEnemy != null) EncounterStateChanged?.Invoke(this, false);
         }
 
         // 조우를 처음 상태로 되돌린다. 쓰러진 적도 체력을 채워 다시 세운다 — Enemy가

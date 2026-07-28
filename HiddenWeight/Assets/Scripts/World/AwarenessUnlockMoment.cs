@@ -70,7 +70,7 @@ namespace HiddenWeight.World
 
             var progress = GameManager.Instance.Progress;
             progress.GrantAwareness();
-            progress.CollectFragment(fragmentId);
+            progress.CollectFragment(fragmentId, fragmentText);
             if (!string.IsNullOrEmpty(fragmentText)) GameManager.FragmentPresenter?.Invoke(fragmentText);
 
             PlayerInput.Enabled = true;

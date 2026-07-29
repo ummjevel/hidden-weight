@@ -21,7 +21,7 @@ namespace HiddenWeight.UI
             go.transform.SetParent(transform, false);
 
             _text = go.AddComponent<TextMesh>();
-            _text.text = message;
+            RefreshPrompt(InputPrompts.CurrentDevice);
             _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _text.fontSize = 48;
             _text.characterSize = 0.06f;
@@ -32,7 +32,13 @@ namespace HiddenWeight.UI
             var renderer = go.GetComponent<MeshRenderer>();
             renderer.material = _text.font.material;
             renderer.sortingOrder = 40; // 플레이어(10)·고스트(50) 사이, 항상 배경 위
+
+            InputPrompts.DeviceChanged += RefreshPrompt;
         }
+
+        void OnDestroy() => InputPrompts.DeviceChanged -= RefreshPrompt;
+
+        void RefreshPrompt(InputDeviceKind _) => _text.text = InputPrompts.Format(message);
 
         void Update()
         {

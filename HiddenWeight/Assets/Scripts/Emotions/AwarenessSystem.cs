@@ -79,13 +79,24 @@ namespace HiddenWeight.Emotions
         {
             PlayerController.Instance.ExternalSpeedMultiplier = slowMultiplier;
             StartWeightRamp(1f);
+
+            // 눈과 보석이 켜졌다가, 지연된 이중 윤곽이 따라오는 지각 루프를 유지한다.
+            // 자각은 홀드하는 내내 유지되므로 상태 클립 위에 덮어쓴다(PlayerAnimator 참고).
+            Animator?.BeginOverride("AwarenessBegin", "AwarenessLoop");
         }
 
         void Deactivate()
         {
             PlayerController.Instance.ExternalSpeedMultiplier = 1f;
             StartWeightRamp(0f);
+
+            // 마무리 클립이 따로 없다. 윤곽이 사라지면 그대로 원래 자세로 돌아간다.
+            Animator?.EndOverride();
         }
+
+        PlayerAnimator _animator;
+        PlayerAnimator Animator
+            => _animator != null ? _animator : (_animator = GetComponent<PlayerAnimator>());
 
         void Broadcast(bool active)
         {

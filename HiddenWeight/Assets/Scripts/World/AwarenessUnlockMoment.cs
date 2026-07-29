@@ -68,9 +68,14 @@ namespace HiddenWeight.World
                 yield return new WaitForSeconds(buildUpSeconds + holdSeconds);
             }
 
+            // 윤곽이 모이고 마지막에 정면을 마주 보는 한 컷. 해금 순간에만 쓰는 클립이라
+            // 상태 클립 위에 한 번 얹는다(Player_Awareness_v1의 AwarenessUnlock 행).
+            if (PlayerController.Instance != null)
+                PlayerController.Instance.GetComponent<PlayerAnimator>()?.PlayOnce("AwarenessUnlock");
+
             var progress = GameManager.Instance.Progress;
             progress.GrantAwareness();
-            progress.CollectFragment(fragmentId);
+            progress.CollectFragment(fragmentId, fragmentText);
             if (!string.IsNullOrEmpty(fragmentText)) GameManager.FragmentPresenter?.Invoke(fragmentText);
 
             PlayerInput.Enabled = true;

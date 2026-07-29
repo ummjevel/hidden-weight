@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
@@ -10,7 +11,20 @@ namespace HiddenWeight.UI
     // 닫힐 때 Playing + PlayerInput.Enabled = true.
     public class PauseMenu : MonoBehaviour
     {
+        const float FadeDuration = 0.18f;
+
         GameObject _root;
+        CanvasGroup _rootGroup;
+        Coroutine _fadeRoutine;
+        Button _resumeButton;
+        Button _checkpointButton;
+        Button _titleButton;
+        ConfirmDialog _dialog;
+        PauseSectionPanel _sections;
+
+        public bool IsOpen => _root != null && _root.activeSelf;
+        public bool IsConfirming => _dialog != null && _dialog.IsVisible;
+        public PauseSection? CurrentSection => _sections != null && _sections.IsVisible ? _sections.CurrentSection : (PauseSection?)null;
 
         void Awake()
         {
@@ -20,12 +34,46 @@ namespace HiddenWeight.UI
         void Start()
         {
             // 이미 Paused 상태로 씬이 시작하는 경우는 없지만, 방어적으로 현재 상태를 반영한다.
-            _root.SetActive(GameManager.Instance != null && GameManager.Instance.State == GameState.Paused);
+            bool paused = GameManager.Instance != null && GameManager.Instance.State == GameState.Paused;
+            _root.SetActive(paused);
+            _rootGroup.alpha = paused ? 1f : 0f;
         }
 
         void Update()
         {
+            if (PlayerInput.MapPressed && GameManager.Instance != null)
+            {
+                if (GameManager.Instance.State == GameState.Playing)
+                {
+                    Open();
+                    _sections.Show(PauseSection.Map);
+                }
+                else if (GameManager.Instance.State == GameState.Paused && _sections.IsVisible
+                    && _sections.CurrentSection == PauseSection.Map)
+                {
+                    Close();
+                }
+                else if (GameManager.Instance.State == GameState.Paused)
+                {
+                    _sections.Show(PauseSection.Map);
+                }
+                return;
+            }
+
             if (!PlayerInput.PausePressed) return;
+
+            if (_dialog != null && _dialog.IsVisible)
+            {
+                _dialog.Cancel();
+                return;
+            }
+
+            if (_sections != null && _sections.IsVisible)
+            {
+                _sections.Hide();
+                UIBuilder.Select(_resumeButton);
+                return;
+            }
 
             var gm = GameManager.Instance;
             if (gm == null) return;
@@ -34,28 +82,112 @@ namespace HiddenWeight.UI
             else if (gm.State == GameState.Paused) Close();
         }
 
-        void Open()
+        public void Open()
         {
-            _root.SetActive(true);
             PlayerInput.Enabled = false;
             GameManager.Instance.SetState(GameState.Paused);
+
+            // GameManager.SetState가 Time.timeScale을 0으로 만들므로 페이드는 반드시
+            // unscaledDeltaTime 기준으로 돌아야 한다(FragmentLog.Fade와 같은 이유).
+            _root.SetActive(true);
+            if (_fadeRoutine != null) StopCoroutine(_fadeRoutine);
+            _fadeRoutine = StartCoroutine(FadeTo(1f));
+            StartCoroutine(SelectResumeNextFrame());
         }
 
-        void Close()
+        public void OpenSection(PauseSection section)
         {
-            _root.SetActive(false);
+            if (!IsOpen) Open();
+            _sections.Show(section);
+        }
+
+        IEnumerator SelectResumeNextFrame()
+        {
+            yield return null;
+            UIBuilder.Select(_resumeButton);
+        }
+
+        public void Close()
+        {
+            if (_dialog != null) _dialog.Hide(false);
+            if (_sections != null) _sections.Hide();
             PlayerInput.Enabled = true;
             GameManager.Instance.SetState(GameState.Playing);
+
+            if (_fadeRoutine != null) StopCoroutine(_fadeRoutine);
+            _fadeRoutine = StartCoroutine(FadeTo(0f));
+        }
+
+        IEnumerator FadeTo(float target)
+        {
+            if (UISettings.ReduceMotion)
+            {
+                _rootGroup.alpha = target;
+                if (target <= 0f) _root.SetActive(false);
+                _fadeRoutine = null;
+                yield break;
+            }
+            float start = _rootGroup.alpha;
+            float t = 0f;
+            while (t < FadeDuration)
+            {
+                t += Time.unscaledDeltaTime;
+                _rootGroup.alpha = Mathf.Lerp(start, target, t / FadeDuration);
+                yield return null;
+            }
+            _rootGroup.alpha = target;
+
+            // 꺼질 때만 마지막에 비활성화한다 — 켜질 때 미리 SetActive(true) 해 둬야
+            // 알파가 실제로 0→1로 보간되는 걸 볼 수 있다(꺼진 오브젝트는 코루틴이 안 돈다).
+            if (target <= 0f) _root.SetActive(false);
+            _fadeRoutine = null;
+        }
+
+        public void RequestReturnToCheckpoint()
+        {
+            _dialog.ShowConfirm(
+                "최근 기억으로 돌아가기",
+                "현재 방의 일시적인 변화가 초기화됩니다.\n최근 체크포인트로 돌아갈까요?",
+                "돌아가기",
+                ReturnToCheckpoint,
+                _checkpointButton);
+        }
+
+        void ReturnToCheckpoint()
+        {
+            Close();
+            GameManager.Instance.RespawnPlayer();
+        }
+
+        public void RequestGoToTitle()
+        {
+            _dialog.ShowConfirm(
+                "타이틀로 돌아가기",
+                "아직 저장 기능이 없어 현재 세션이 사라집니다.\n타이틀로 돌아갈까요?",
+                "타이틀로",
+                GoToTitle,
+                _titleButton);
         }
 
         void GoToTitle()
         {
+            _dialog.Hide(false);
             _root.SetActive(false);
             PlayerInput.Enabled = true;
             GameManager.Instance.Progress.ResetAll();
             // 타이틀 씬으로 넘어가므로 timeScale을 되돌리는 의미로도 상태를 Title로 되돌린다.
             GameManager.Instance.SetState(GameState.Title);
             SceneFlow.LoadWithFade(SceneFlow.Title);
+        }
+
+        void OnDestroy()
+        {
+            // 일시정지 중 예외적으로 씬이 내려가도 다음 씬의 입력과 timeScale을 잠그지 않는다.
+            if (GameManager.Instance != null && GameManager.Instance.State == GameState.Paused)
+            {
+                PlayerInput.Enabled = true;
+                GameManager.Instance.SetState(GameState.Playing);
+            }
         }
 
         void BuildHierarchy()
@@ -65,7 +197,7 @@ namespace HiddenWeight.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 800;
-            canvasGO.AddComponent<CanvasScaler>();
+            UIBuilder.ConfigureScaler(canvasGO.AddComponent<CanvasScaler>());
             canvasGO.AddComponent<GraphicRaycaster>();
 
             _root = new GameObject("PausePanel", typeof(RectTransform));
@@ -77,54 +209,39 @@ namespace HiddenWeight.UI
             panelRt.offsetMax = Vector2.zero;
 
             var bg = _root.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.6f);
+            bg.color = UIBuilder.PanelBackground;
 
-            var title = CreateText(_root.transform, "일시정지", 36);
+            _rootGroup = _root.AddComponent<CanvasGroup>();
+            _rootGroup.alpha = 0f;
+
+            var title = UIBuilder.CreateText(_root.transform, "일시정지", 36);
             var titleRt = title.rectTransform;
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.65f);
             titleRt.sizeDelta = new Vector2(400f, 60f);
             titleRt.anchoredPosition = Vector2.zero;
 
-            CreateButton(_root.transform, "계속하기", -20f, Close);
-            CreateButton(_root.transform, "타이틀로", -90f, GoToTitle);
+            _resumeButton = UIBuilder.CreateButton(_root.transform, "계속하기", 10f, Close);
+            _checkpointButton = UIBuilder.CreateButton(
+                _root.transform, "체크포인트로 돌아가기", -60f, RequestReturnToCheckpoint);
+            _titleButton = UIBuilder.CreateButton(_root.transform, "타이틀로", -130f, RequestGoToTitle);
+
+            CreateSectionButton("지도", -330f, PauseSection.Map);
+            CreateSectionButton("기억 기록", -110f, PauseSection.Journal);
+            CreateSectionButton("조작법", 110f, PauseSection.Controls);
+            CreateSectionButton("설정", 330f, PauseSection.Settings);
+
+            _dialog = _root.AddComponent<ConfirmDialog>();
+            _sections = _root.AddComponent<PauseSectionPanel>();
 
             _root.SetActive(false);
         }
 
-        static Text CreateText(Transform parent, string content, int fontSize)
+        void CreateSectionButton(string label, float x, PauseSection section)
         {
-            var go = new GameObject("Text_" + content);
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = Color.white;
-            text.text = content;
-            return text;
-        }
-
-        static void CreateButton(Transform parent, string label, float yPos, UnityEngine.Events.UnityAction onClick)
-        {
-            var go = new GameObject("Button_" + label, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var rt = (RectTransform)go.transform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(220f, 56f);
-            rt.anchoredPosition = new Vector2(0f, yPos);
-
-            var img = go.AddComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.15f);
-
-            var button = go.AddComponent<Button>();
-            button.onClick.AddListener(onClick);
-
-            var text = CreateText(go.transform, label, 24);
-            var textRt = text.rectTransform;
-            textRt.anchorMin = Vector2.zero;
-            textRt.anchorMax = Vector2.one;
-            textRt.offsetMin = Vector2.zero;
-            textRt.offsetMax = Vector2.zero;
+            var button = UIBuilder.CreateButton(_root.transform, label, 240f, () => _sections.Show(section));
+            var rt = (RectTransform)button.transform;
+            rt.anchoredPosition = new Vector2(x, 240f);
+            rt.sizeDelta = new Vector2(190f, 48f);
         }
     }
 }

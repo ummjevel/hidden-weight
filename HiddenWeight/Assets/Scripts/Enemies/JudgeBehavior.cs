@@ -20,6 +20,9 @@ namespace HiddenWeight.Enemies
         [SerializeField] GazeHazard[] watchedGazes;  // 이들이 모두 꺼지면 등을 보인다
         [SerializeField] Transform exitBlockPoint;   // 숨죽인 플레이어를 상대로 이동할 자리
 
+        // 느린 강공격이 남기는 참격. 등을 보이기 전에는 정면으로 붙지 말라는 신호다.
+        [SerializeField] string heavyProjectile = "GazeProjVerdict";
+
         bool _attacking;
 
         // 주변 시선이 전부 꺼진 순간. 지정된 시선이 없으면 항상 정면을 지킨다.
@@ -113,6 +116,10 @@ namespace HiddenWeight.Enemies
             Self.PlayClip("Attack");
             yield return new WaitForSeconds(Data.telegraphSeconds);
             ShowTelegraph(false);
+
+            int facing = (int)Mathf.Sign(transform.localScale.x);
+            HiddenWeight.World.ProjectileSpawner.Fire(heavyProjectile,
+                transform.position + new Vector3(facing * 0.9f, 0f, 0f), new Vector2(facing, 0f));
 
             var center = (Vector2)transform.position
                 + new Vector2(Mathf.Sign(transform.localScale.x) * Data.attackRange * 0.5f, 0f);

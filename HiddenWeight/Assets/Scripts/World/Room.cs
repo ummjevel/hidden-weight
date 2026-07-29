@@ -33,6 +33,9 @@ namespace HiddenWeight.World
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             RoomCamera.Instance.SetRoom(this);
+            if (HiddenWeight.Core.GameManager.Instance != null)
+                HiddenWeight.Core.GameManager.Instance.Progress.VisitRoom(
+                    HiddenWeight.Core.GameManager.Instance.Progress.CurrentZone + "/" + gameObject.name);
         }
 
         void OnDrawGizmos()

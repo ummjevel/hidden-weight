@@ -10,6 +10,8 @@ namespace HiddenWeight.Core
         readonly HashSet<EmotionId> _skills = new HashSet<EmotionId>();
         readonly HashSet<string> _fragments = new HashSet<string>();
         readonly HashSet<string> _rewound = new HashSet<string>();
+        readonly Dictionary<string, string> _fragmentTexts = new Dictionary<string, string>();
+        readonly HashSet<string> _visitedRooms = new HashSet<string>();
 
         // 아래 셋은 CONTENT_SYSTEM.md 6절 "초기화 규칙"이 영구 유지라고 정한 것들이다.
         // 정예·중간 보스·지역 보스 조우, 물리적으로 열린 숏컷, 한 번만 주는 고정 보상.
@@ -27,6 +29,17 @@ namespace HiddenWeight.Core
         public Vector3 LastCheckpoint { get; set; }
         public int FragmentCount => _fragments.Count;
 
+        public IReadOnlyCollection<string> Fragments => _fragments;
+        public IReadOnlyDictionary<string, string> FragmentTexts => _fragmentTexts;
+        public IReadOnlyCollection<string> VisitedRooms => _visitedRooms;
+        public int OpenedShortcutCount => _openedShortcuts.Count;
+
+        public event System.Action<int, int> CurrencyChanged; // 획득량, 현재 총량
+        public event System.Action<int> HealthShardsChanged;
+        public event System.Action<string, string> FragmentCollected; // id, 표시 문장
+        public event System.Action<string> RoomVisited;
+        public event System.Action<string> ShortcutOpened;
+
         public void UnlockSkill(EmotionId id)
         {
             if (id != EmotionId.None) _skills.Add(id);
@@ -36,13 +49,19 @@ namespace HiddenWeight.Core
 
         public void AddCurrency(int amount)
         {
-            if (amount > 0) Currency += amount;
+            if (amount <= 0) return;
+            Currency += amount;
+            CurrencyChanged?.Invoke(amount, Currency);
         }
 
         // 영구 성장 조각. 먹을 때마다 최대 체력이 1 늘어난다(CONTENT_SYSTEM.md 5절).
         public int HealthShards { get; private set; }
 
-        public void AddHealthShard() => HealthShards++;
+        public void AddHealthShard()
+        {
+            HealthShards++;
+            HealthShardsChanged?.Invoke(HealthShards);
+        }
 
         // 일회성 조우(정예·보스). 한 번 클리어하면 방을 다시 와도 다시 싸우지 않는다.
         public void MarkEncounterCleared(string id)
@@ -56,7 +75,7 @@ namespace HiddenWeight.Core
         // 물리적으로 열린 숏컷. 지역을 다시 들어와도 열린 채로 시작한다.
         public void MarkShortcutOpen(string id)
         {
-            if (!string.IsNullOrEmpty(id)) _openedShortcuts.Add(id);
+            if (!string.IsNullOrEmpty(id) && _openedShortcuts.Add(id)) ShortcutOpened?.Invoke(id);
         }
 
         public bool IsShortcutOpen(string id)
@@ -73,9 +92,23 @@ namespace HiddenWeight.Core
 
         public void MarkFractureCleared() => HasClearedFracture = true;
 
-        public bool CollectFragment(string id) => _fragments.Add(id);
+        public bool CollectFragment(string id, string text = null)
+        {
+            if (string.IsNullOrEmpty(id) || !_fragments.Add(id)) return false;
+            _fragmentTexts[id] = text ?? string.Empty;
+            FragmentCollected?.Invoke(id, text ?? string.Empty);
+            return true;
+        }
 
         public bool HasFragment(string id) => _fragments.Contains(id);
+
+        public void VisitRoom(string id)
+        {
+            if (!string.IsNullOrEmpty(id) && _visitedRooms.Add(id)) RoomVisited?.Invoke(id);
+        }
+
+        public bool HasVisitedRoom(string id)
+            => !string.IsNullOrEmpty(id) && _visitedRooms.Contains(id);
 
         // 기획서 EMOTION_SYSTEM 1.2절: 되감기는 영구 — 한 번 되돌리면 재방문(씬 재로드) 시에도
         // 유지된다. World의 Rewindable이 자기 persistentId로 기록하고 로드 시 복원한다.
@@ -99,6 +132,8 @@ namespace HiddenWeight.Core
             _skills.Clear();
             _fragments.Clear();
             _rewound.Clear();
+            _fragmentTexts.Clear();
+            _visitedRooms.Clear();
             _clearedEncounters.Clear();
             _openedShortcuts.Clear();
             _takenRewards.Clear();

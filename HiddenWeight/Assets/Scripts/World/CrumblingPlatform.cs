@@ -17,6 +17,18 @@ namespace HiddenWeight.World
         Coroutine _crumbleRoutine;
         float _crumbleTimer;
 
+        // 상태 애니메이션(ResiduePlatformStates_v1: 균열 → 붕괴 → 파손 정착 → 되감기 복구).
+        // 시트가 붙어 있지 않으면 지금까지처럼 스프라이트를 끄고 켜는 것으로 대신한다 —
+        // 아트가 없는 지역(응시·균열)에서도 발판은 그대로 동작해야 한다.
+        SpriteAnimator _animator;
+
+        bool PlayState(string clip)
+        {
+            if (_animator == null || !_animator.Has(clip)) return false;
+            _animator.Play(clip, true);
+            return true;
+        }
+
         public bool HasCrumbled { get; private set; }
 
         // 스스로 되살아나기까지의 시간. 0이면 되감기로만 복구된다 — 되감기가 없는 지역
@@ -32,6 +44,7 @@ namespace HiddenWeight.World
         {
             _collider = GetComponent<Collider2D>();
             _sprite = GetComponent<SpriteRenderer>();
+            _animator = GetComponentInChildren<SpriteAnimator>();
         }
 
         // 위치를 바꾸지 않는 발판이라 되돌릴 상태는 HasCrumbled 하나뿐이다.
@@ -40,14 +53,7 @@ namespace HiddenWeight.World
         void OnCollisionEnter2D(Collision2D collision)
         {
             if (HasCrumbled || _crumbleRoutine != null) return;
-            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
-
-            bool fromAbove = false;
-            foreach (var contact in collision.contacts)
-            {
-                if (contact.normal.y > 0.5f) { fromAbove = true; break; }
-            }
-            if (!fromAbove) return;
+            if (!PlayerLayers.SteppedOnFromAbove(collision, transform)) return;
 
             _crumbleRoutine = StartCoroutine(CrumbleRoutine());
         }
@@ -57,19 +63,40 @@ namespace HiddenWeight.World
             _crumbleTimer = crumbleDelay;
             var originalLocalPos = transform.localPosition;
 
+            // 1행: 밟은 직후의 금과 미세한 흔들림. 아직 밟고 서 있을 수 있는 단계다.
+            bool animated = PlayState("PlatformCrack");
+
             while (_crumbleTimer > 0f)
             {
-                // 무너지기 전 흔들림 연출
-                float shakeX = Random.Range(-0.05f, 0.05f);
-                transform.localPosition = originalLocalPos + new Vector3(shakeX, 0f, 0f);
+                // 무너지기 전 흔들림 연출. 전용 아트가 있으면 흔들림은 프레임이 맡으므로
+                // 위치를 흔들지 않는다 — 둘을 겹치면 그림이 두 번 떨린다.
+                if (!animated)
+                {
+                    float shakeX = Random.Range(-0.05f, 0.05f);
+                    transform.localPosition = originalLocalPos + new Vector3(shakeX, 0f, 0f);
+                }
                 _crumbleTimer -= Time.deltaTime;
                 yield return null;
             }
 
             transform.localPosition = originalLocalPos;
             _collider.enabled = false;
-            _sprite.enabled = false;
             HasCrumbled = true;
+
+            // 2행 붕괴 → 3행 파손 정착. 파손 상태를 그림으로 보여줄 수 있으면 스프라이트를
+            // 끄지 않는다. 발판이 있던 자리가 눈에 남아야 되감기로 되돌릴 대상이 읽힌다.
+            if (PlayState("PlatformCollapse"))
+            {
+                // 붕괴가 끝나야 파손 정착으로 넘어간다. 이 동안에도 _crumbleRoutine을 들고
+                // 있으므로 다시 밟아도 붕괴가 두 번 시작되지 않는다.
+                while (_animator != null && !_animator.IsFinished) yield return null;
+                PlayState("PlatformBroken");
+            }
+            else if (!PlayState("PlatformBroken"))
+            {
+                _sprite.enabled = false;
+            }
+
             _crumbleTimer = 0f;
             _crumbleRoutine = null;
 
@@ -94,6 +121,10 @@ namespace HiddenWeight.World
             _collider.enabled = true;
             _sprite.enabled = true;
             HasCrumbled = false;
+
+            // 4행: 되감기 복구. 붕괴의 역순으로 다시 쌓인다(명세의 "reverse visual order").
+            // 없으면 스프라이트를 그냥 켜는 것으로 끝난다.
+            if (!PlayState("PlatformRestore")) PlayState("PlatformCrack");
         }
 
         public Vector3 PredictPosition(float leadSeconds) => transform.position; // 움직이지 않는다

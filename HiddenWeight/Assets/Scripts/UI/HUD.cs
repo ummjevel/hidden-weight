@@ -1,53 +1,61 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
-using HiddenWeight.Player;
+using HiddenWeight.Data;
 using HiddenWeight.Emotions;
+using HiddenWeight.Enemies;
+using HiddenWeight.Player;
 
 namespace HiddenWeight.UI
 {
-    // 플레이 중 상단에 HP·현재 감정 스킬(쿨타임 포함)·되감기 채널링 게이지·수집 파편 수를 보여준다.
-    // GameManager.State가 Playing이 아니면 캔버스를 감춘다.
+    // 생존에 필요한 체력과 현재 감정만 상시 표시하고, 채널링·보스 정보는 상황 중에만 띄운다.
+    // 파편·재화 총량은 전투 판단 정보가 아니므로 기억 기록/토스트로 이동한다.
     public class HUD : MonoBehaviour
     {
-        const int HeartCount = 3;
+        [SerializeField] Sprite heartSprite;
 
         GameObject _canvasGO;
-        Image[] _hearts;
+        RectTransform _canvasRect;
+        readonly List<Image> _hearts = new List<Image>();
+
         GameObject _skillGroup;
-        Text _skillText;
-        GameObject _rewindGaugeGO;
-        Image _rewindGaugeFill;
-        Text _fragmentText;
+        Text _skillGlyph;
+        Text _skillName;
+        Image _cooldownFill;
+
+        GameObject _channelGroup;
+        Image _channelFill;
+
+        GameObject _bossGroup;
+        Text _bossName;
+        Image _bossHealthFill;
 
         PlayerHealth _health;
+        Enemy _boss;
 
-        void Awake()
-        {
-            BuildHierarchy();
-        }
+        void Awake() => BuildHierarchy();
 
         void OnEnable()
         {
             if (GameManager.Instance != null) GameManager.Instance.StateChanged += HandleStateChanged;
+            Encounter.EncounterStateChanged += HandleEncounterStateChanged;
         }
 
         void OnDisable()
         {
             if (GameManager.Instance != null) GameManager.Instance.StateChanged -= HandleStateChanged;
+            Encounter.EncounterStateChanged -= HandleEncounterStateChanged;
             if (_health != null) _health.HealthChanged -= HandleHealthChanged;
+            UnbindBoss();
         }
 
-        void Start()
-        {
-            ApplyVisibility(GameManager.Instance != null ? GameManager.Instance.State : GameState.Boot);
-        }
+        void Start() => ApplyVisibility(GameManager.Instance != null ? GameManager.Instance.State : GameState.Boot);
 
         void Update()
         {
             if (_health == null) TryBindPlayerHealth();
             UpdateSkillDisplay();
-            UpdateFragmentCount();
         }
 
         void TryBindPlayerHealth()
@@ -59,150 +67,266 @@ namespace HiddenWeight.UI
             if (_health == null) return;
 
             _health.HealthChanged += HandleHealthChanged;
-            HandleHealthChanged(_health.Current, _health.Max); // 초기 상태 동기화
+            HandleHealthChanged(_health.Current, _health.Max);
         }
 
         void HandleHealthChanged(int current, int max)
         {
-            // 성장 조각으로 최대 체력이 늘면 하트도 그만큼 보여야 한다. 미리 만들어 둔 칸이
-            // 부족하면 늘어난 만큼은 표시하지 못하므로, 최소한 max 범위까지는 켠다.
-            for (int i = 0; i < _hearts.Length; i++)
-                _hearts[i].enabled = i < Mathf.Min(current, _hearts.Length);
+            EnsureHeartCount(max);
+            for (int i = 0; i < _hearts.Count; i++)
+            {
+                bool withinMax = i < max;
+                _hearts[i].gameObject.SetActive(withinMax);
+                if (withinMax) _hearts[i].color = i < current ? UIBuilder.HeartFull : UIBuilder.HeartEmpty;
+            }
+        }
+
+        void EnsureHeartCount(int max)
+        {
+            while (_hearts.Count < max)
+            {
+                int index = _hearts.Count;
+                var go = new GameObject($"HealthCore{index}");
+                go.transform.SetParent(_canvasGO.transform, false);
+                var image = go.AddComponent<Image>();
+                image.sprite = heartSprite;
+                image.color = UIBuilder.HeartEmpty;
+
+                var rt = image.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+                rt.pivot = new Vector2(0f, 1f);
+                rt.sizeDelta = new Vector2(34f, 34f);
+                rt.anchoredPosition = new Vector2(32f + index * 42f, -32f);
+                _hearts.Add(image);
+            }
         }
 
         void HandleStateChanged(GameState next) => ApplyVisibility(next);
 
-        void ApplyVisibility(GameState state)
-        {
-            _canvasGO.SetActive(state == GameState.Playing);
-        }
+        void ApplyVisibility(GameState state) => _canvasGO.SetActive(state == GameState.Playing);
 
         void UpdateSkillDisplay()
         {
             var active = EmotionSkillController.Instance != null ? EmotionSkillController.Instance.Active : null;
-
             if (active == null)
             {
                 _skillGroup.SetActive(false);
-                _rewindGaugeGO.SetActive(false);
+                _channelGroup.SetActive(false);
                 return;
             }
 
             _skillGroup.SetActive(true);
-            _skillText.text = active.CooldownRemaining > 0f
-                ? $"{active.Data.displayName} ({active.CooldownRemaining:F1})"
-                : active.Data.displayName;
+            _skillName.text = active.Data.displayName;
+            _skillGlyph.text = GlyphFor(active.Id);
 
-            bool showGauge = active is RewindSkill rewind && rewind.IsActive;
-            _rewindGaugeGO.SetActive(showGauge);
-            if (showGauge) _rewindGaugeFill.fillAmount = ((RewindSkill)active).ChannelProgress;
+            float cooldown = active.Data.cooldown;
+            _cooldownFill.fillAmount = cooldown > 0f
+                ? Mathf.Clamp01(active.CooldownRemaining / cooldown)
+                : 0f;
+
+            if (active is RewindSkill rewind && rewind.IsActive && rewind.CurrentTarget != null)
+            {
+                _channelGroup.SetActive(true);
+                _channelFill.fillAmount = rewind.ChannelProgress;
+                PositionChannel(rewind.CurrentTarget.position);
+            }
+            else
+            {
+                _channelGroup.SetActive(false);
+            }
         }
 
-        void UpdateFragmentCount()
+        static string GlyphFor(EmotionId id)
         {
-            if (GameManager.Instance == null) return;
-            _fragmentText.text = $"파편 {GameManager.Instance.Progress.FragmentCount}   재화 {GameManager.Instance.Progress.Currency}";
+            switch (id)
+            {
+                case EmotionId.Rewind: return "↶";
+                case EmotionId.Hush: return "◉";
+                case EmotionId.Foresight: return "◇";
+                default: return "○";
+            }
+        }
+
+        void PositionChannel(Vector3 worldPosition)
+        {
+            var camera = Camera.main;
+            if (camera == null) return;
+
+            var screen = camera.WorldToScreenPoint(worldPosition);
+            if (screen.z < 0f)
+            {
+                _channelGroup.SetActive(false);
+                return;
+            }
+
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    _canvasRect, screen, null, out var local))
+                ((RectTransform)_channelGroup.transform).anchoredPosition = local;
+        }
+
+        void HandleEncounterStateChanged(Encounter encounter, bool active)
+        {
+            if (!active || encounter == null || encounter.BossEnemy == null)
+            {
+                if (_boss == null || encounter == null || encounter.BossEnemy == _boss) UnbindBoss();
+                return;
+            }
+
+            UnbindBoss();
+            _boss = encounter.BossEnemy;
+            _bossName.text = encounter.DisplayName;
+            _boss.HealthChanged += HandleBossHealthChanged;
+            _bossGroup.SetActive(true);
+            HandleBossHealthChanged(_boss.Health, _boss.Data.maxHealth);
+        }
+
+        void HandleBossHealthChanged(int current, int max)
+        {
+            _bossHealthFill.fillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+        }
+
+        void UnbindBoss()
+        {
+            if (_boss != null) _boss.HealthChanged -= HandleBossHealthChanged;
+            _boss = null;
+            if (_bossGroup != null) _bossGroup.SetActive(false);
         }
 
         void BuildHierarchy()
         {
-            _canvasGO = new GameObject("HUDCanvas");
+            _canvasGO = new GameObject("HUDCanvas", typeof(RectTransform));
             _canvasGO.transform.SetParent(transform, false);
             var canvas = _canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100;
-            _canvasGO.AddComponent<CanvasScaler>();
+            UIBuilder.ConfigureScaler(_canvasGO.AddComponent<CanvasScaler>());
+            _canvasRect = _canvasGO.GetComponent<RectTransform>();
 
-            BuildHearts(_canvasGO.transform);
             BuildSkillGroup(_canvasGO.transform);
-            BuildFragmentText(_canvasGO.transform);
-        }
-
-        void BuildHearts(Transform parent)
-        {
-            _hearts = new Image[HeartCount];
-            for (int i = 0; i < HeartCount; i++)
-            {
-                var go = new GameObject($"Heart{i}");
-                go.transform.SetParent(parent, false);
-                var img = go.AddComponent<Image>();
-                img.color = Color.red;
-
-                var rt = img.rectTransform;
-                rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-                rt.pivot = new Vector2(0f, 1f);
-                rt.sizeDelta = new Vector2(32f, 32f);
-                rt.anchoredPosition = new Vector2(16f + i * 40f, -16f);
-
-                _hearts[i] = img;
-            }
+            BuildChannelGroup(_canvasGO.transform);
+            BuildBossGroup(_canvasGO.transform);
         }
 
         void BuildSkillGroup(Transform parent)
         {
-            // 자식들이 화면 기준으로 앵커링될 수 있도록 화면 전체를 덮는 RectTransform으로 만든다.
-            _skillGroup = new GameObject("SkillGroup", typeof(RectTransform));
+            _skillGroup = new GameObject("EmotionStatus", typeof(RectTransform));
             _skillGroup.transform.SetParent(parent, false);
             var groupRt = (RectTransform)_skillGroup.transform;
-            groupRt.anchorMin = Vector2.zero;
-            groupRt.anchorMax = Vector2.one;
-            groupRt.offsetMin = Vector2.zero;
-            groupRt.offsetMax = Vector2.zero;
+            groupRt.anchorMin = groupRt.anchorMax = new Vector2(1f, 1f);
+            groupRt.pivot = new Vector2(1f, 1f);
+            groupRt.sizeDelta = new Vector2(250f, 72f);
+            groupRt.anchoredPosition = new Vector2(-32f, -32f);
 
-            _skillText = CreateText(_skillGroup.transform, "SkillText", 22, TextAnchor.UpperRight);
-            var textRt = _skillText.rectTransform;
-            textRt.anchorMin = textRt.anchorMax = new Vector2(1f, 1f);
-            textRt.pivot = new Vector2(1f, 1f);
-            textRt.sizeDelta = new Vector2(260f, 32f);
-            textRt.anchoredPosition = new Vector2(-16f, -16f);
+            var panel = _skillGroup.AddComponent<Image>();
+            panel.color = new Color(0.025f, 0.035f, 0.05f, 0.68f);
 
-            _rewindGaugeGO = new GameObject("RewindGauge");
-            _rewindGaugeGO.transform.SetParent(_skillGroup.transform, false);
-            var bgImg = _rewindGaugeGO.AddComponent<Image>();
-            bgImg.color = new Color(0f, 0f, 0f, 0.5f);
-            var bgRt = bgImg.rectTransform;
-            bgRt.anchorMin = bgRt.anchorMax = new Vector2(1f, 1f);
-            bgRt.pivot = new Vector2(1f, 1f);
-            bgRt.sizeDelta = new Vector2(200f, 12f);
-            bgRt.anchoredPosition = new Vector2(-16f, -52f);
+            var glyphBg = new GameObject("EmotionGlyph", typeof(RectTransform));
+            glyphBg.transform.SetParent(_skillGroup.transform, false);
+            var glyphBgImage = glyphBg.AddComponent<Image>();
+            glyphBgImage.color = new Color(0.35f, 0.85f, 0.86f, 0.28f);
+            var glyphRt = glyphBgImage.rectTransform;
+            glyphRt.anchorMin = glyphRt.anchorMax = new Vector2(1f, 0.5f);
+            glyphRt.pivot = new Vector2(1f, 0.5f);
+            glyphRt.sizeDelta = new Vector2(52f, 52f);
+            glyphRt.anchoredPosition = new Vector2(-10f, 0f);
 
-            var fillGO = new GameObject("Fill");
-            fillGO.transform.SetParent(_rewindGaugeGO.transform, false);
-            _rewindGaugeFill = fillGO.AddComponent<Image>();
-            _rewindGaugeFill.color = Color.cyan;
-            _rewindGaugeFill.type = Image.Type.Filled;
-            _rewindGaugeFill.fillMethod = Image.FillMethod.Horizontal;
-            _rewindGaugeFill.fillAmount = 0f;
-            var fillRt = _rewindGaugeFill.rectTransform;
+            _skillGlyph = UIBuilder.CreateText(glyphBg.transform, "GlyphText", 32, TextAnchor.MiddleCenter);
+            var glyphTextRt = _skillGlyph.rectTransform;
+            glyphTextRt.anchorMin = Vector2.zero;
+            glyphTextRt.anchorMax = Vector2.one;
+            glyphTextRt.offsetMin = Vector2.zero;
+            glyphTextRt.offsetMax = Vector2.zero;
+
+            var cooldown = new GameObject("CooldownRing", typeof(RectTransform));
+            cooldown.transform.SetParent(glyphBg.transform, false);
+            _cooldownFill = cooldown.AddComponent<Image>();
+            _cooldownFill.color = new Color(0.02f, 0.025f, 0.035f, 0.72f);
+            _cooldownFill.type = Image.Type.Filled;
+            _cooldownFill.fillMethod = Image.FillMethod.Radial360;
+            _cooldownFill.fillOrigin = 2;
+            _cooldownFill.fillClockwise = false;
+            var cooldownRt = _cooldownFill.rectTransform;
+            cooldownRt.anchorMin = Vector2.zero;
+            cooldownRt.anchorMax = Vector2.one;
+            cooldownRt.offsetMin = Vector2.zero;
+            cooldownRt.offsetMax = Vector2.zero;
+
+            _skillName = UIBuilder.CreateText(_skillGroup.transform, "EmotionName", 24, TextAnchor.MiddleRight);
+            var nameRt = _skillName.rectTransform;
+            nameRt.anchorMin = new Vector2(0f, 0f);
+            nameRt.anchorMax = new Vector2(1f, 1f);
+            nameRt.offsetMin = new Vector2(12f, 8f);
+            nameRt.offsetMax = new Vector2(-72f, -8f);
+            _skillGroup.SetActive(false);
+        }
+
+        void BuildChannelGroup(Transform parent)
+        {
+            _channelGroup = new GameObject("WorldChannel", typeof(RectTransform));
+            _channelGroup.transform.SetParent(parent, false);
+            var rt = (RectTransform)_channelGroup.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(84f, 84f);
+
+            var background = _channelGroup.AddComponent<Image>();
+            background.color = new Color(0.1f, 0.08f, 0.03f, 0.4f);
+
+            var fill = new GameObject("ChannelFill", typeof(RectTransform));
+            fill.transform.SetParent(_channelGroup.transform, false);
+            _channelFill = fill.AddComponent<Image>();
+            _channelFill.color = new Color(1f, 0.78f, 0.28f, 0.9f);
+            _channelFill.type = Image.Type.Filled;
+            _channelFill.fillMethod = Image.FillMethod.Radial360;
+            _channelFill.fillOrigin = 2;
+            _channelFill.fillClockwise = false;
+            var fillRt = _channelFill.rectTransform;
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.one;
+            fillRt.offsetMin = new Vector2(6f, 6f);
+            fillRt.offsetMax = new Vector2(-6f, -6f);
+            _channelGroup.SetActive(false);
+        }
+
+        void BuildBossGroup(Transform parent)
+        {
+            _bossGroup = new GameObject("BossHUD", typeof(RectTransform));
+            _bossGroup.transform.SetParent(parent, false);
+            var groupRt = (RectTransform)_bossGroup.transform;
+            groupRt.anchorMin = groupRt.anchorMax = new Vector2(0.5f, 0f);
+            groupRt.pivot = new Vector2(0.5f, 0f);
+            groupRt.sizeDelta = new Vector2(760f, 70f);
+            groupRt.anchoredPosition = new Vector2(0f, 42f);
+
+            _bossName = UIBuilder.CreateText(_bossGroup.transform, "BossName", 24, TextAnchor.MiddleCenter);
+            var nameRt = _bossName.rectTransform;
+            nameRt.anchorMin = new Vector2(0f, 0.5f);
+            nameRt.anchorMax = Vector2.one;
+            nameRt.offsetMin = new Vector2(0f, 8f);
+            nameRt.offsetMax = Vector2.zero;
+
+            var healthBg = new GameObject("BossHealthBackground", typeof(RectTransform));
+            healthBg.transform.SetParent(_bossGroup.transform, false);
+            var bg = healthBg.AddComponent<Image>();
+            bg.color = new Color(1f, 1f, 1f, 0.14f);
+            var bgRt = bg.rectTransform;
+            bgRt.anchorMin = new Vector2(0f, 0f);
+            bgRt.anchorMax = new Vector2(1f, 0f);
+            bgRt.pivot = new Vector2(0.5f, 0f);
+            bgRt.sizeDelta = new Vector2(0f, 12f);
+            bgRt.anchoredPosition = Vector2.zero;
+
+            var healthFill = new GameObject("BossHealthFill", typeof(RectTransform));
+            healthFill.transform.SetParent(healthBg.transform, false);
+            _bossHealthFill = healthFill.AddComponent<Image>();
+            _bossHealthFill.color = new Color(0.86f, 0.78f, 0.72f, 0.95f);
+            _bossHealthFill.type = Image.Type.Filled;
+            _bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
+            var fillRt = _bossHealthFill.rectTransform;
             fillRt.anchorMin = Vector2.zero;
             fillRt.anchorMax = Vector2.one;
             fillRt.offsetMin = Vector2.zero;
             fillRt.offsetMax = Vector2.zero;
-
-            _skillGroup.SetActive(false);
-        }
-
-        void BuildFragmentText(Transform parent)
-        {
-            _fragmentText = CreateText(parent, "FragmentText", 22, TextAnchor.LowerLeft);
-            var rt = _fragmentText.rectTransform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
-            rt.pivot = new Vector2(0f, 0f);
-            rt.sizeDelta = new Vector2(200f, 32f);
-            rt.anchoredPosition = new Vector2(16f, 16f);
-        }
-
-        static Text CreateText(Transform parent, string name, int fontSize, TextAnchor alignment)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.text = string.Empty;
-            return text;
+            _bossGroup.SetActive(false);
         }
     }
 }

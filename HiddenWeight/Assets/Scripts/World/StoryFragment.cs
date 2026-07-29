@@ -37,7 +37,7 @@ namespace HiddenWeight.World
         {
             if (!IsCollectable) return;
             var p = GameManager.Instance.Progress;
-            if (!p.CollectFragment(fragmentId)) return; // 이미 먹은 것
+            if (!p.CollectFragment(fragmentId, text)) return; // 이미 먹은 것
             if (grantsSkill != EmotionId.None) p.UnlockSkill(grantsSkill);
             if (grantsAwareness) p.GrantAwareness();
             GameManager.FragmentPresenter?.Invoke(text);

@@ -204,7 +204,7 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Ground");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = ResidueArt("Platform_r1_c1") ?? LoadSprite("Platform");
+            sr.sprite = ZoneArt("Platform_r1_c1") ?? LoadSprite("Platform");
             sr.sortingOrder = 2;
             FitRenderer(sr, 3f, 0.8f);
 
@@ -369,6 +369,7 @@ namespace HiddenWeight.EditorTools
                 case ResidueEnemyKind.Walker: // 잔재 보행자 — 기본 순찰
                     data.maxHealth = 2; data.moveSpeed = 1.5f; data.contactDamage = 1;
                     data.tint = new Color(0.55f, 0.5f, 0.6f);
+                    data.turnHesitationSeconds = 0.35f; // 죄책감처럼 발이 무겁게, 방향 전환 전 잠깐 멈칫
                     break;
                 case ResidueEnemyKind.Carrier: // 애도 운반자 — 직선 돌진
                     data.maxHealth = 3; data.moveSpeed = 2f; data.contactDamage = 1;
@@ -445,7 +446,11 @@ namespace HiddenWeight.EditorTools
             switch (kind)
             {
                 case ResidueEnemyKind.Walker:
-                    break; // 기본 프리팹이 이미 EnemyPatrol을 들고 있다
+                    // 순찰은 기본 프리팹의 EnemyPatrol이 그대로 맡고, 거리를 둔 플레이어에게는
+                    // 석재 파편을 던진다(ResidueEnemyProjectiles_v1 1행). 붙어 있을 때는
+                    // 던지지 않으므로 근접 전투의 성격은 그대로다.
+                    go.AddComponent<RangedAttackBehavior>();
+                    break;
 
                 case ResidueEnemyKind.Carrier:
                 {
@@ -489,8 +494,12 @@ namespace HiddenWeight.EditorTools
         }
 
         // 보스. 체력·패턴만 다르고 나머지는 같은 BossController를 쓴다.
+        // clips/idleSprite를 주면 그 지역 보스 아트를 쓰고, 비우면 잔재의 감시자 시트를 쓴다.
+        // 지역마다 보스 빌더를 따로 만들지 않기 위한 선택적 인자다.
         static GameObject BuildBoss(Transform parent, Vector2 pos, string assetName, int health,
-                                    BossController.Move[] moves, float[] phases, Color tint)
+                                    BossController.Move[] moves, float[] phases, Color tint,
+                                    (string clip, float fps, bool loop)[] clips = null,
+                                    string idleSprite = null)
         {
             var data = LoadData<EnemyData>(assetName);
             if (data == null)
@@ -506,7 +515,7 @@ namespace HiddenWeight.EditorTools
             var go = BuildEnemy(parent, pos, data);
             go.transform.localScale = Vector3.one * 2f;
 
-            var bossArt = ResidueArt("Watcher_Idle");
+            var bossArt = idleSprite != null ? Art(idleSprite) : ResidueArt("Watcher_Idle");
             if (bossArt != null)
             {
                 var rootRenderer = go.GetComponent<SpriteRenderer>();
@@ -528,7 +537,7 @@ namespace HiddenWeight.EditorTools
                     artObject.transform.localScale = new Vector3(scale, scale, 1f);
                 }
 
-                AttachAnimator(artObject, artRenderer, new[]
+                AttachAnimator(artObject, artRenderer, clips ?? new[]
                 {
                     ("WatcherAnimIdle",  8f,  true),
                     ("WatcherAnimSweep", 12f, false),
@@ -603,8 +612,8 @@ namespace HiddenWeight.EditorTools
 
             // 끊어진 상태와 복원된 상태를 각각 다른 그림으로 보여준다. 승강기(숏컷 B)는 별도 세트다.
             bool isLift = id.EndsWith("_b");
-            ApplyArtOverlay(blocker, isLift ? "Shortcut_LiftDormant" : "Shortcut_ChainBroken", size, 5);
-            ApplyArtOverlay(opened, isLift ? "Shortcut_LiftActive" : "Shortcut_ChainRestored", size, 5);
+            ApplyArtOverlay(blocker, isLift ? _shortcutLiftClosedArt : _shortcutClosedArt, size, 5);
+            ApplyArtOverlay(opened, isLift ? _shortcutLiftOpenArt : _shortcutOpenArt, size, 5);
 
             var shortcut = go.AddComponent<Shortcut>();
             SetField(shortcut, "shortcutId", p => p.stringValue = id);
@@ -746,7 +755,7 @@ namespace HiddenWeight.EditorTools
         static GameObject BuildResidueWall(Transform parent, string name, Vector2 center, Vector2 size)
         {
             var go = BuildSolidBlock(parent, name, center, size, "Wall");
-            ApplyArtOverlay(go, "Terrain_r3_c1", size, 3); // 3행 = 세로 벽
+            ApplyArtOverlay(go, _artPrefix + "Terrain_r3_c1", size, 3); // 3행 = 세로 벽
             return go;
         }
 

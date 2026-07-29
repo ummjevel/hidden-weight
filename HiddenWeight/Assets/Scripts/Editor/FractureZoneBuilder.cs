@@ -218,7 +218,9 @@ namespace HiddenWeight.EditorTools
             if (existing != null) return existing;
 
             var data = ScriptableObject.CreateInstance<EnemyData>();
-            data.wobbleAmplitude = 0.2f; // 균열의 모든 것은 조금씩 흔들린다
+            // 이름 붙은 균열 몬스터 4종은 전부 EnemyPatrol을 꺼버리고 시간 함수로 직접 움직이므로
+            // wobbleAmplitude(EnemyPatrol 전용 수직 흔들림)는 적용되지 않는다(Enemies/README.md 참고).
+            // 다른 지역과 같이 0으로 둔다.
 
             switch (kind)
             {
@@ -373,7 +375,7 @@ namespace HiddenWeight.EditorTools
             BuildShaft(parent, map, "Shaft_FS2", F06.x + 4, F06.y + 0, FS2.y + 2);
 
             // FS3 — F11 바닥의 뚫린 자리 아래. 세 번 본 미래 문이 현재에 고정되면 열린다.
-            BuildShaft(parent, map, "Shaft_FS3", F11.x + 9, F11.y + 1, FS3.y + 2);
+            BuildShaft(parent, map, "Shaft_FS3", F11.x + 8, F11.y + 1, FS3.y + 2);
         }
 
         [MenuItem("Hidden Weight/Build Fracture Zone (Full)")]
@@ -662,18 +664,22 @@ namespace HiddenWeight.EditorTools
         static void BuildF07(RoomCtx c)
         {
             c.O = F07;
-            c.Floor(0, 8, 4);
+            // 건축물 사이 간격을 전부 3유닛 이하로 둔다. 예전에는 6유닛·8유닛 구덩이를
+            // 세로로 움직이는 발판 하나로만 건너게 해서, 타이밍을 놓치면 그대로 추락했다
+            // (봇이 x=12에서 떨어졌다). 예지는 "언제 뛸지"를 고르게 하는 능력이지
+            // 없으면 못 건너게 만드는 장치가 아니다(명세 1.1절).
+            c.Floor(0, 10, 4);
             c.Floor(14, 20, 4);    // 중간의 넓은 건축물 = 복귀 지점
             c.Floor(28, 34, 4);    // 출구 (34,4)
 
-            // 수평·수직 경로가 교차하지만 실제 충돌 시점은 겹치지 않는다.
-            BuildMovingPlatform(c.Root.transform, c.P(10f, 5f), new Vector2(0f, 4f), 4f);
-            BuildOrbitPlatform(c.Root.transform, "F07_Orbit_A", c.P(24f, 5f), new Vector2(0f, 3f), 60f, 0f);
-            BuildMovingPlatform(c.Root.transform, c.P(24f, 10f), new Vector2(3f, 0f), 5f);
+            BuildFractureSafePlatform(c.Root.transform, c.P(12f, 5f));    // 10.5~13.5
+            BuildFractureSafePlatform(c.Root.transform, c.P(22f, 5f));    // 20.5~23.5
+            BuildFractureCrumbling(c.Root.transform, c.P(25.5f, 5.5f));   // 24~27
 
-            // 곧 사라지는 착지면. 예지로 보면 고스트가 없다.
-            BuildFractureCrumbling(c.Root.transform, c.P(12f, 6f));
-            BuildFractureCrumbling(c.Root.transform, c.P(26f, 6f));
+            // 수평·수직 경로가 교차하지만 실제 충돌 시점은 겹치지 않는다.
+            // 이 둘은 큰 재화로 가는 위쪽 선택 경로다 — 주 동선의 필수 발판이 아니다.
+            BuildMovingPlatform(c.Root.transform, c.P(10f, 8f), new Vector2(0f, 4f), 4f);
+            BuildOrbitPlatform(c.Root.transform, "F07_Orbit_A", c.P(24f, 9f), new Vector2(0f, 3f), 60f, 0f);
 
             BuildFractureEnemy(c.Root.transform, c.P(17f, 5f), FractureEnemyKind.Sprout);
             BuildFractureEnemy(c.Root.transform, c.P(30f, 5f), FractureEnemyKind.Collector);
@@ -698,14 +704,20 @@ namespace HiddenWeight.EditorTools
             c.O = F08;
             c.Floor(0, 24, 2);
 
-            c.Tiles(2, 8, 12, 13);
-            c.Tiles(16, 22, 20, 21);
-            c.Tiles(18, 24, 25, 26);   // 북동 출구 (22,26)
+            // 응시 G08과 같은 이유로 승강 기둥(x 4.5~7.5) 위는 비워 둔다.
+            c.Tiles(10, 16, 12, 13);
+            c.Tiles(10, 16, 19, 20);
+            c.Tiles(8, 24, 25, 26);    // 북동 출구 선반 (22,26)
 
-            // 첫 웨이포인트가 아래를 향한다 — 이것이 "역행"의 전부다.
-            BuildLift(c.Root.transform, "F08_Lift", c.P(6f, 4f),
-                new[] { new Vector2(0f, -1f), new Vector2(0f, 10f), new Vector2(9f, 22f) },
+            // 첫 웨이포인트가 아래를 향한다 — 이것이 "역행"의 전부다. 그다음은 곧게 위로만.
+            BuildLift(c.Root.transform, "F08_Lift", c.P(6f, 2.6f),
+                new[] { new Vector2(0f, -0.5f), new Vector2(0f, 22.6f) },
                 _fractureShortcutB, new Color(0.7f, 0.9f, 0.85f));
+
+            // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공에 떨어지지 않게 막는다.
+            var edge = BuildSolidBlock(c.Root.transform, "F08_RightEdge",
+                c.P(24.5f, 12f), new Vector2(1f, 26f), "Ground");
+            edge.GetComponent<SpriteRenderer>().enabled = false;
 
             BuildFractureSafePlatform(c.Root.transform, c.P(12f, 16f));
             BuildFractureSafePlatform(c.Root.transform, c.P(12f, 23f));
@@ -758,22 +770,27 @@ namespace HiddenWeight.EditorTools
         static void BuildF10(RoomCtx c)
         {
             c.O = F10;
-            c.Floor(0, 20, 3);
+            // 응시 G10과 같은 이유로 출구까지 한 칸씩 오르는 계단을 둔다(+4를 한 번에
+            // 오르는 구조는 실측 점프 높이 2.72로 통과 불가).
+            c.Floor(0, 16, 3);
+            c.Floor(16, 18, 4);
+            c.Floor(18, 19, 5);
+            c.Floor(19, 20, 6);
             c.Floor(20, 24, 7);   // 출구 (24,7)
-            BuildFractureSafePlatform(c.Root.transform, c.P(18.5f, 5.5f));
 
             BuildCheckpoint(c.Root.transform, c.P(2f, 4f)); // 체크포인트 3 — 전장 바깥
 
             // 시계바늘 발판. 일정한 주기라 관찰로 배울 수 있고, 예지 고스트와 정확히 일치한다.
-            BuildOrbitPlatform(c.Root.transform, "F10_Hand_Long", c.P(10f, 9f), new Vector2(0f, -3f), 40f, 0f);
-            BuildOrbitPlatform(c.Root.transform, "F10_Hand_Short", c.P(14f, 11f), new Vector2(-2f, -4f), 25f, 90f);
+            BuildOrbitPlatform(c.Root.transform, "F10_Hand_Long", c.P(9f, 9f), new Vector2(0f, -3f), 40f, 0f);
+            BuildOrbitPlatform(c.Root.transform, "F10_Hand_Short", c.P(13f, 11f), new Vector2(-2f, -4f), 25f, 90f);
 
-            var boss = BuildBoss(c.Root.transform, c.P(14f, 5f), "Enemy_Fracture_SecondHand", 15,
+            var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Fracture_SecondHand", 15,
                 new[] { BossController.Move.GroundSweep, BossController.Move.TimeSkip, BossController.Move.Charge },
                 new[] { 0.5f }, new Color(0.8f, 0.76f, 0.92f));
 
-            var reward = BuildRewardChest(c.Root.transform, "fracture_f10_boss", c.P(10f, 4.5f), 45, false);
-            BuildEncounter(c.Root.transform, "fracture_f10_boss", c.P(10f, 8f), new Vector2(18f, 12f), true,
+            // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
+            var reward = BuildRewardChest(c.Root.transform, "fracture_f10_boss", c.P(6f, 4.5f), 45, false);
+            BuildEncounter(c.Root.transform, "fracture_f10_boss", c.P(10f, 7f), new Vector2(14f, 10f), true,
                 new[] { new[] { boss } }, new int[0], reward, _fractureShortcutC);
 
             c.Room("FractureRoom10", 24f, 18f);
@@ -784,9 +801,11 @@ namespace HiddenWeight.EditorTools
         static void BuildF11(RoomCtx c)
         {
             c.O = F11;
-            // 로컬 8~10을 비워 FS3로 내려가는 자리를 만든다. 그 위를 "아직 없는 문"이 막는다.
+            // 로컬 8~9를 비워 FS3로 내려가는 자리를 만든다. 그 위를 "아직 없는 문"이 막는다.
+            // 폭을 1로 좁혀 둔 이유: 문이 한 번 열리면 이 구멍은 계속 열린 채로 남는데,
+            // 주 동선이 바로 위를 지나가므로 넓으면 지날 때마다 빠진다.
             c.Floor(0, 8, 3, 2);
-            c.Floor(10, 24, 3, 2);
+            c.Floor(9, 24, 3, 2);
             c.Floor(24, 28, 4, 2);  // 출구 (28,4)
 
             BuildStoryFragment(c.Root.transform, c.P(4f, 4f), "fracture_f11",
@@ -803,9 +822,9 @@ namespace HiddenWeight.EditorTools
                     0, null, false, new Vector2(0.15f * (i % 2 == 0 ? 1f : -1f), 0.2f));
 
             // FS3 입구를 막는 벽. 세 번의 예지에서 같은 자리에 나타난 문이 현재에 고정되면 열린다.
-            _fractureSecretDoor = BuildBlockingDoor(c.Root.transform, "fracture_secret_door", c.P(9f, 2.75f),
-                new Vector2(2f, 0.5f), FractureStone);
-            BuildFutureEcho(c.Root.transform, "F11_UnchosenDoor", c.P(9f, 5.5f), new Vector2(2.2f, 4f),
+            _fractureSecretDoor = BuildBlockingDoor(c.Root.transform, "fracture_secret_door", c.P(8.5f, 2.75f),
+                new Vector2(1f, 0.5f), FractureStone);
+            BuildFutureEcho(c.Root.transform, "F11_UnchosenDoor", c.P(8.5f, 5.5f), new Vector2(2.2f, 4f),
                 3, _fractureSecretDoor, false);
 
             // 방 끝에서 F12 전장이 한 번 무너졌다 돌아오는 모습을 안전하게 본다.

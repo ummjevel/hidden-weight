@@ -18,10 +18,11 @@ namespace HiddenWeight.World
 
         Rigidbody2D _rb;
         SpriteRenderer _sprite;
+        BoxCollider2D _box;
         Vector3 _center;
         float _radius;
         float _startAngle;
-        Transform _riderOnTop;
+        int _riderMask;
 
         public Transform Transform => transform;
         public Sprite CurrentSprite => _sprite != null ? _sprite.sprite : null;
@@ -31,6 +32,8 @@ namespace HiddenWeight.World
             _rb = GetComponent<Rigidbody2D>();
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _sprite = GetComponent<SpriteRenderer>();
+            _box = GetComponent<BoxCollider2D>();
+            _riderMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 
             _center = transform.position + (Vector3)pivot;
             var arm = transform.position - _center;
@@ -49,23 +52,25 @@ namespace HiddenWeight.World
             var next = PositionAt(Time.time);
             var delta = next - transform.position;
             _rb.MovePosition(next);
-            if (_riderOnTop != null) _riderOnTop.position += delta;
+            CarryRiders(delta);
+        }
+
+        // 발판 바로 위를 매 스텝 훑어 탑승자를 옮긴다. 이 발판은 위아래로도 움직이므로
+        // LiftPlatform과 같은 이유로 충돌 이벤트에 기대지 않는다(주석은 그쪽 참고).
+        void CarryRiders(Vector3 delta)
+        {
+            if (delta.sqrMagnitude <= 0f) return;
+
+            var size = _box != null ? _box.size : new Vector2(3f, 0.5f);
+            var center = (Vector2)transform.position + new Vector2(0f, size.y * 0.5f + 0.45f);
+            var area = new Vector2(size.x * 0.95f, 1f);
+
+            foreach (var hit in Physics2D.OverlapBoxAll(center, area, 0f, _riderMask))
+                hit.transform.position += delta;
         }
 
         public Vector3 PredictPosition(float leadSeconds) => PositionAt(Time.time + leadSeconds);
         public bool PredictActive(float leadSeconds) => true;
 
-        void OnCollisionEnter2D(Collision2D collision)
-        {
-            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
-
-            foreach (var contact in collision.contacts)
-                if (contact.normal.y > 0.5f) { _riderOnTop = collision.transform; return; }
-        }
-
-        void OnCollisionExit2D(Collision2D collision)
-        {
-            if (collision.transform == _riderOnTop) _riderOnTop = null;
-        }
     }
 }

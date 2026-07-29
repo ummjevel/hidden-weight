@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.Core
 {
@@ -33,6 +34,21 @@ namespace HiddenWeight.Core
             _sfxSource = gameObject.AddComponent<AudioSource>();
             _sfxSource.loop = false;
             _sfxSource.playOnAwake = false;
+
+            ApplySettings();
+            UISettings.Changed += ApplySettings;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) UISettings.Changed -= ApplySettings;
+        }
+
+        void ApplySettings()
+        {
+            AudioListener.volume = UISettings.MasterVolume;
+            if (_bgmSource != null) _bgmSource.volume = UISettings.BgmVolume;
+            if (_sfxSource != null) _sfxSource.volume = UISettings.SfxVolume;
         }
 
         public void PlayBgm(AudioClip clip, float fadeSeconds = 1f)
@@ -64,7 +80,7 @@ namespace HiddenWeight.Core
             _bgmSource.clip = clip;
             _bgmSource.Play();
 
-            yield return FadeVolume(_bgmSource, _bgmSource.volume, 1f, fadeSeconds * 0.5f);
+            yield return FadeVolume(_bgmSource, _bgmSource.volume, UISettings.BgmVolume, fadeSeconds * 0.5f);
 
             _bgmFade = null;
         }

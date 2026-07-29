@@ -49,14 +49,9 @@ namespace HiddenWeight.World
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
-
-            bool fromAbove = false;
-            foreach (var contact in collision.contacts)
-            {
-                if (contact.normal.y > 0.5f) { fromAbove = true; break; }
-            }
-            if (fromAbove) _riderOnTop = collision.transform;
+            // 부호 규약 때문에 예전에는 이 판정이 영영 참이 되지 않아, 발판이 플레이어를
+            // 태우지 않고 발밑에서 미끄러지기만 했다(PlayerLayers.SteppedOnFromAbove 주석 참고).
+            if (PlayerLayers.SteppedOnFromAbove(collision, transform)) _riderOnTop = collision.transform;
         }
 
         void OnCollisionExit2D(Collision2D collision)

@@ -136,7 +136,10 @@ namespace HiddenWeight.Tests
             float bestX = player.transform.position.x;
 
             // 좌우로 달리며 계속 점프해 본다(벽에 붙으면 벽점프도 시도).
-            for (int attempt = 0; attempt < 8; attempt++)
+            // 탈출 여부만 확인하면 되므로, 탈출이 확인되는 즉시 멈춘다 — 계속 달리게 두면
+            // 봇이 그 뒤로 이어지는 다른 구간(예: 출구 굴뚝)까지 타고 올라가 씬 전환을 유발할 수 있고,
+            // 그러면 이 씬의 PlayerController가 파괴돼 이후 접근에서 죽은 참조 예외가 난다.
+            for (int attempt = 0; attempt < 8 && !(bestY > 3.7f && bestX > 44f); attempt++)
             {
                 float dir = attempt % 2 == 0 ? 1f : -1f;
                 for (int i = 0; i < 90; i++)
@@ -152,6 +155,7 @@ namespace HiddenWeight.Tests
                     yield return new WaitForFixedUpdate();
                     bestY = Mathf.Max(bestY, player.transform.position.y);
                     bestX = Mathf.Max(bestX, player.transform.position.x);
+                    if (bestY > 3.7f && bestX > 44f) break;
                 }
             }
 

@@ -19,6 +19,20 @@ namespace HiddenWeight.EditorTools
                 if (importer == null)
                     continue;
 
+                bool isTerrainAtlas =
+                    path.EndsWith("Residue_TerrainAtlas.png");
+                bool isInteractablesAtlas =
+                    path.EndsWith("Residue_InteractablesAtlas.png");
+                bool isRoomLayer =
+                    path.Contains("_BG_") || path.Contains("_FG_");
+
+                // Environment/Gameplay 격자 시트는 ResidueArtSlicer가 소유한다.
+                // 방 레이어와 두 레거시 Atlas가 아니면 임포터를 전혀 변경하지 않는다.
+                if (!isTerrainAtlas &&
+                    !isInteractablesAtlas &&
+                    !isRoomLayer)
+                    continue;
+
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spritePixelsPerUnit = 32f;
                 importer.filterMode = FilterMode.Bilinear;
@@ -31,23 +45,15 @@ namespace HiddenWeight.EditorTools
                     path.Contains("_FG_") ||
                     path.Contains("Atlas");
 
-                if (path.EndsWith("Residue_TerrainAtlas.png"))
+                if (isTerrainAtlas)
                     ConfigureGrid(importer, "Terrain", 4, 2, 1672, 941);
-                else if (path.EndsWith(
-                    "Residue_InteractablesAtlas.png"))
+                else if (isInteractablesAtlas)
                     ConfigureGrid(
                         importer, "Interactable", 3, 2, 1536, 1024);
-                else if (path.Contains("_BG_") || path.Contains("_FG_"))
+                else if (isRoomLayer)
                 {
                     // 방 배경·전경은 통짜 한 장이다.
                     importer.spriteImportMode = SpriteImportMode.Single;
-                }
-                else
-                {
-                    // Environment/Gameplay 시트는 ResidueArtSlicer가 격자대로 잘라 이름을 붙여 둔다.
-                    // 여기서 Single로 되돌리면 그 분할이 통째로 날아가고, 맵에 붙인 아트가 전부
-                    // 플레이스홀더로 되돌아간다(실제로 그렇게 됐다). 건드리지 않고 넘어간다.
-                    continue;
                 }
 
                 importer.SaveAndReimport();

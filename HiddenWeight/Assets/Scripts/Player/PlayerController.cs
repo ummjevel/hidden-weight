@@ -224,9 +224,19 @@ namespace HiddenWeight.Player
 
         void ApplyFallGravity()
         {
-            _rb.gravityScale = _rb.linearVelocity.y < 0f
-                ? _data.gravityScale * _data.fallGravityMultiplier
-                : _data.gravityScale;
+            float vy = _rb.linearVelocity.y;
+            if (Mathf.Abs(vy) < _data.jumpApexThreshold)
+            {
+                _rb.gravityScale = _data.gravityScale * _data.jumpApexGravityMultiplier; // 정점 hang time
+            }
+            else if (vy < 0f)
+            {
+                _rb.gravityScale = _data.gravityScale * _data.fallGravityMultiplier;
+            }
+            else
+            {
+                _rb.gravityScale = _data.gravityScale;
+            }
         }
 
         void DetermineState(bool wallClinging)
@@ -253,6 +263,15 @@ namespace HiddenWeight.Player
         void SetState(PlayerState next)
         {
             if (State == next) return;
+
+            // 착지하는 순간 발밑에 먼지를 남긴다. 높은 곳에서 떨어졌으면 더 큰 것으로.
+            if (next == PlayerState.Land)
+            {
+                float fallSpeed = Mathf.Abs(_rb.linearVelocity.y);
+                HiddenWeight.World.ImpactVFX.Play(fallSpeed > 12f ? "ImpactHeavy" : "ImpactLand",
+                    transform.position + new Vector3(0f, -0.7f, 0f), Facing);
+            }
+
             State = next;
             StateChanged?.Invoke(next);
         }

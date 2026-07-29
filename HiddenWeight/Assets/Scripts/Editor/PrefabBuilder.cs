@@ -364,10 +364,20 @@ namespace HiddenWeight.EditorTools
         {
             var definitions = new (string clip, float fps, bool loop)[]
             {
+                // 이동·행동 — PlayerState와 1:1로 대응한다(PlayerAnimator.ClipFor).
                 ("PlayerIdle", 8f, true), ("PlayerWalk", 12f, true), ("PlayerRun", 14f, true),
                 ("PlayerJump", 12f, false), ("PlayerAirMove", 10f, true), ("PlayerFall", 10f, true),
                 ("PlayerLand", 14f, false), ("PlayerAttack", 16f, false), ("PlayerDash", 18f, false),
                 ("PlayerWallCling", 8f, true), ("PlayerWallJump", 14f, false),
+
+                // 반응 VFX — PlayerVFX_v1. 상태가 아니라 사건이라 PlayerAnimator의
+                // 덮어쓰기 계층으로 재생한다(PlayerHealth가 호출).
+                ("PlayerHit", 14f, false), ("PlayerDeath", 10f, false), ("PlayerRespawn", 10f, false),
+
+                // 감정 능력 — Art/Player/Abilities의 두 시트. 시작·유지·마무리 3단이라
+                // 역시 덮어쓰기 계층으로 재생한다(HushSkill / AwarenessSystem).
+                ("HushBegin", 14f, false), ("HushMove", 10f, true), ("HushEnd", 14f, false),
+                ("AwarenessBegin", 14f, false), ("AwarenessLoop", 8f, true), ("AwarenessUnlock", 10f, false),
             };
 
             var valid = new System.Collections.Generic.List<(string, float, bool, Sprite[])>();
@@ -403,10 +413,16 @@ namespace HiddenWeight.EditorTools
             Debug.Log($"[PrefabBuilder] 플레이어 클립 {valid.Count}개 연결");
         }
 
-        // 잘라 둔 잔재 스프라이트를 이름으로 찾는다.
+        // 잘라 둔 스프라이트를 이름으로 찾는다.
+        //
+        // 잔재 폴더만 뒤지면 안 된다. 플레이어 능력 시트(숨죽이기·자각)는 지역이 아니라
+        // 캐릭터에 딸린 아트라 Assets/Art/Player 아래에 있고, 여기를 빠뜨리면 잘라 둔 프레임을
+        // 한 장도 못 찾아 클립이 통째로 비어 버린다.
+        static readonly string[] SlicedArtRoots = { "Assets/Art/Residue", "Assets/Art/Player" };
+
         static Sprite FindResidueSprite(string spriteName)
         {
-            foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { "Assets/Art/Residue" }))
+            foreach (var guid in AssetDatabase.FindAssets("t:Sprite", SlicedArtRoots))
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))

@@ -80,9 +80,14 @@ namespace HiddenWeight.Player
 
             if (Current <= 0)
             {
+                Animator?.PlayOnce("PlayerDeath");
+
                 // 게임오버 화면은 없다. 마지막 체크포인트로 되돌린다.
                 GameManager.Instance.RespawnPlayer();
+                return;
             }
+
+            Animator?.PlayOnce("PlayerHit");
         }
 
         // 성장 조각을 먹은 즉시 최대 체력을 올린다. 다음 씬까지 기다리면 보상을 받은 체감이 없다.
@@ -117,7 +122,14 @@ namespace HiddenWeight.Player
         {
             PlayerController.Instance.TeleportTo(position);
             RestoreFull();
+            Animator?.PlayOnce("PlayerRespawn");
         }
+
+        // 반응 VFX(피격·사망·리스폰)는 PlayerVFX_v1 시트의 클립이다. 상태가 아니라 사건이라
+        // 상태 클립 위에 덮어쓴다 — 자세한 규칙은 PlayerAnimator의 덮어쓰기 계층 주석 참고.
+        PlayerAnimator _animator;
+        PlayerAnimator Animator
+            => _animator != null ? _animator : (_animator = GetComponent<PlayerAnimator>());
 
         // 피격 외의 이유(숨죽이기 해제 등)로 짧은 무적을 걸 때 쓴다. 이미 더 긴 무적이
         // 돌고 있으면 남은 시간을 줄이지 않는다.

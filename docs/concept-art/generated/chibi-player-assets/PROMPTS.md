@@ -34,3 +34,16 @@ python "$HOME/.codex/skills/.system/imagegen/scripts/remove_chroma_key.py" \
 
 Final prompts, source paths, runtime paths, visual audit notes and test results
 are appended here as each atlas is completed.
+
+### Player key poses
+
+- Source: `Player_KeyPoses_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/Player/Player_KeyPoses_v1.png`
+- Grid: 4×2 at 1536×1024
+- Prompt summary: redraw the immutable `chibi.png` identity over the legacy
+  Idle, Walk, Run, Jump / Fall, Land, Attack, Dash layout; exact cream
+  turtleneck costume, charcoal leggings, white boots and cyan ornaments;
+  right-facing, bottom-aligned, one character per cell, attack crescent only
+  in the attack cell, uniform `#00ff00` backdrop.
+- Audit: eight isolated full-body poses, no crop or overlap, transparent
+  runtime corners, identity and costume preserved.

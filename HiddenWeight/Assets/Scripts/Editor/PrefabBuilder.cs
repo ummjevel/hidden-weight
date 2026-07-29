@@ -446,6 +446,71 @@ namespace HiddenWeight.EditorTools
             }
         }
 
+        // 지역별 상태 문양 프레임을 ZoneData에 채운다. HUD 프리팹은 하나뿐이라, 지역이
+        // 바뀔 때 갈아끼울 프레임은 지역 데이터가 들고 있어야 한다.
+        [MenuItem("Hidden Weight/Fix/Apply Zone Status Frames")]
+        public static void ApplyZoneStatusFrames()
+        {
+            int total = 0;
+            total += FillZoneStatus("Zone_Residue", "Assets/Art/Residue",
+                "StatusRewind", "StatusDanger", "StatusProgress");
+            total += FillZoneStatus("Zone_Gaze", "Assets/Art/Gaze",
+                "GazeStatusTruth", "GazeStatusExposed", "GazeStatusProgress");
+
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[PrefabBuilder] 지역 상태 문양 프레임 {total}장 연결");
+        }
+
+        static int FillZoneStatus(string zoneAsset, string artRoot,
+                                  string rewindClip, string dangerClip, string progressClip)
+        {
+            var zone = LoadData<HiddenWeight.Data.ZoneData>(zoneAsset);
+            if (zone == null)
+            {
+                Debug.LogWarning($"[PrefabBuilder] 지역 데이터를 찾지 못했다: {zoneAsset}");
+                return 0;
+            }
+
+            int filled = 0;
+            filled += AssignFramesFrom(zone, "statusRewindFrames", artRoot, rewindClip);
+            filled += AssignFramesFrom(zone, "statusDangerFrames", artRoot, dangerClip);
+            filled += AssignFramesFrom(zone, "statusProgressFrames", artRoot, progressClip);
+            EditorUtility.SetDirty(zone);
+            return filled;
+        }
+
+        static int AssignFramesFrom(UnityEngine.Object target, string propertyName,
+                                    string artRoot, string clipName)
+        {
+            var frames = new System.Collections.Generic.List<Sprite>();
+            for (int i = 0; i < 16; i++)
+            {
+                var frame = FindSpriteIn(artRoot, $"{clipName}_{i:00}");
+                if (frame == null) break;
+                frames.Add(frame);
+            }
+
+            var so = new SerializedObject(target);
+            var property = so.FindProperty(propertyName);
+            property.arraySize = frames.Count;
+            for (int i = 0; i < frames.Count; i++)
+                property.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return frames.Count;
+        }
+
+        static Sprite FindSpriteIn(string root, string spriteName)
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { root }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                    if (asset is Sprite sprite && sprite.name == spriteName) return sprite;
+            }
+            return null;
+        }
+
         static int AssignFrames(UnityEngine.Object target, string propertyName, string clipName)
         {
             var frames = FindFrames(clipName);

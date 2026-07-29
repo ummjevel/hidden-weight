@@ -24,6 +24,7 @@ namespace HiddenWeight.UI
         StatusEmblem _statusEmblem;
         float _lastCooldown;
         bool _dangerShown;
+        ZoneData _statusZone;
 
         GameObject _canvasGO;
         RectTransform _canvasRect;
@@ -65,6 +66,7 @@ namespace HiddenWeight.UI
         void Update()
         {
             if (_health == null) TryBindPlayerHealth();
+            RefreshStatusFramesForZone();
             UpdateSkillDisplay();
         }
 
@@ -119,6 +121,40 @@ namespace HiddenWeight.UI
                 rt.anchoredPosition = new Vector2(32f + index * 42f, -32f);
                 _hearts.Add(image);
             }
+        }
+
+        // 지역이 바뀌면 상태 문양 프레임을 그 지역 것으로 갈아끼운다. ZoneData가 비워 두면
+        // HUD 프리팹의 기본 프레임(잔재)을 그대로 쓴다.
+        void RefreshStatusFramesForZone()
+        {
+            var zone = GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null;
+            if (zone == _statusZone || _statusEmblem == null) return;
+
+            _statusZone = zone;
+            ConfigureStatusEmblem(zone);
+        }
+
+        void ConfigureStatusEmblem(ZoneData zone)
+        {
+            Sprite[] Pick(Sprite[] zoneFrames, Sprite[] fallback)
+                => zoneFrames != null && zoneFrames.Length > 0 ? zoneFrames : fallback;
+
+            _statusEmblem.Configure(
+                new StatusEmblem.Sequence
+                {
+                    name = "StatusRewind", fps = 10f, loop = false,
+                    frames = Pick(zone != null ? zone.statusRewindFrames : null, rewindStatusFrames),
+                },
+                new StatusEmblem.Sequence
+                {
+                    name = "StatusDanger", fps = 12f, loop = true,
+                    frames = Pick(zone != null ? zone.statusDangerFrames : null, dangerStatusFrames),
+                },
+                new StatusEmblem.Sequence
+                {
+                    name = "StatusProgress", fps = 10f, loop = false,
+                    frames = Pick(zone != null ? zone.statusProgressFrames : null, progressStatusFrames),
+                });
         }
 
         void HandleStateChanged(GameState next) => ApplyVisibility(next);
@@ -258,13 +294,7 @@ namespace HiddenWeight.UI
             rt.anchoredPosition = new Vector2(32f, -78f);
 
             _statusEmblem = go.AddComponent<StatusEmblem>();
-            _statusEmblem.Configure(
-                new StatusEmblem.Sequence
-                { name = "StatusRewind", frames = rewindStatusFrames, fps = 10f, loop = false },
-                new StatusEmblem.Sequence
-                { name = "StatusDanger", frames = dangerStatusFrames, fps = 12f, loop = true },
-                new StatusEmblem.Sequence
-                { name = "StatusProgress", frames = progressStatusFrames, fps = 10f, loop = false });
+            ConfigureStatusEmblem(GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null);
         }
 
         void BuildSkillGroup(Transform parent)

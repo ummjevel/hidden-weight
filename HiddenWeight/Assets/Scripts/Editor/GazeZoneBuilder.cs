@@ -76,6 +76,8 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildSolidBlock(parent, name, center, size, "Ground", GazeStone);
             go.GetComponent<SpriteRenderer>().sortingOrder = 3;
+            // 엄폐물 시트 1행 1열. 아트가 없으면 단색 블록 그대로 남는다.
+            ApplyArtOverlay(go, "GazeCover_r1_c1", size, 3);
             return go;
         }
 
@@ -83,6 +85,7 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildSolidBlock(parent, name, center, size, "Wall", tint);
             go.GetComponent<SpriteRenderer>().sortingOrder = 3;
+            ApplyArtOverlay(go, "GazeTerrain_r3_c1", size, 3); // 3행 = 세로 벽
             return go;
         }
 
@@ -100,7 +103,34 @@ namespace HiddenWeight.EditorTools
             SetField(gaze, "dormant", p => p.boolValue = dormant);
             if (retreat != null) SetField(gaze, "retreatPoint", p => p.objectReferenceValue = retreat);
 
+            AttachEyeTransitions(gaze);
             return gaze;
+        }
+
+        // 눈이 뜨고 감기고 빔을 예고하고 쏘는 네 단계(EyeHazardTransitions_v1).
+        // 프리팹의 눈 스프라이트는 그대로 두고, 전환만 별도 자식에서 재생한다 —
+        // 경보 시 본체를 확대·적색화하는 기존 연출과 겹치지 않게 하기 위해서다.
+        static void AttachEyeTransitions(GazeHazard gaze)
+        {
+            var go = new GameObject("EyeTransitions");
+            go.transform.SetParent(gaze.transform, false);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6;
+
+            AttachAnimator(go, renderer, new[]
+            {
+                ("GazeEyeOpen", 12f, false),
+                ("GazeEyeClose", 12f, false),
+                ("GazeBeamTelegraph", 14f, false),
+                ("GazeBeamDischarge", 16f, false),
+            }, 2.4f);
+
+            var animator = go.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(go); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(gaze, "transitions", p => p.objectReferenceValue = animator);
         }
 
         // 포착당했을 때 되돌아갈 자리. 방마다 "직전 엄폐물 뒤"에 하나씩 둔다(4.2절).
@@ -592,7 +622,11 @@ namespace HiddenWeight.EditorTools
         public static void RunGazeZone()
         {
             EnsureScenesFolder();
-            UseArtRoot("Assets/Art/Gaze");
+            // 응시 시트는 전부 "Gaze" 접두사를 쓴다(GazeTerrain / GazePlatform …).
+            // 숏컷 겉모습은 문 시트(Gaze_DoorsShortcuts_v1)의 1행을 닫힘/열림으로 쓴다.
+            UseArtRoot("Assets/Art/Gaze", "Gaze",
+                "GazeDoor_r1_c1", "GazeDoor_r1_c2",
+                "GazeDoor_r2_c1", "GazeDoor_r2_c2");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Gaze", out var root);
@@ -608,7 +642,8 @@ namespace HiddenWeight.EditorTools
             SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Gaze);
 
             // 잔재 전용 지형 아트를 응시 방에 씌우지 않는다(RoomCtx.FloorArt 주석 참고).
-            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform, FloorArt = false };
+            // 이제 응시 전용 지형 시트가 있으므로 바닥 표면 아트를 켠다.
+            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform, FloorArt = true };
 
             BuildG01(ctx);
             BuildG02(ctx);

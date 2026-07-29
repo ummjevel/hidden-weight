@@ -51,13 +51,37 @@ namespace HiddenWeight.EditorTools
         // 각 지역 빌더가 시작할 때 자기 폴더로 바꾼다.
         static string _artRoot = "Assets/Art/Residue";
 
-        static void UseArtRoot(string root)
+        // 지역마다 시트 접두사가 다르다(잔재 Terrain / 응시 GazeTerrain). 공용 빌더가 쓰는
+        // 논리 이름 앞에 이것을 붙여 실제 스프라이트 이름을 만든다.
+        static string _artPrefix = "";
+
+        // 숏컷 겉모습은 접두사 규칙으로 안 풀린다(잔재는 사슬·승강기, 응시는 문 시트라
+        // 행·열 위치가 다르다). 그래서 이름을 통째로 지역이 정한다.
+        static string _shortcutClosedArt = "Shortcut_ChainBroken";
+        static string _shortcutOpenArt = "Shortcut_ChainRestored";
+        static string _shortcutLiftClosedArt = "Shortcut_LiftDormant";
+        static string _shortcutLiftOpenArt = "Shortcut_LiftActive";
+
+        static void UseArtRoot(string root, string prefix = "",
+                               string shortcutClosed = "Shortcut_ChainBroken",
+                               string shortcutOpen = "Shortcut_ChainRestored",
+                               string liftClosed = "Shortcut_LiftDormant",
+                               string liftOpen = "Shortcut_LiftActive")
         {
+            _artPrefix = prefix;
+            _shortcutClosedArt = shortcutClosed;
+            _shortcutOpenArt = shortcutOpen;
+            _shortcutLiftClosedArt = liftClosed;
+            _shortcutLiftOpenArt = liftOpen;
+
             if (_artRoot == root) return;
 
             _artRoot = root;
             _residueSprites = null; // 폴더가 바뀌었으니 캐시를 버린다
         }
+
+        // 논리 이름 → 지역별 실제 스프라이트.
+        static Sprite ZoneArt(string logicalName) => Art(_artPrefix + logicalName);
 
         static Sprite Art(string spriteName)
         {
@@ -295,7 +319,7 @@ namespace HiddenWeight.EditorTools
         static void PlaceFloorArt(Transform parent, Vector2 surfaceCenter, float width, int variant = 1)
         {
             // 1행 = 직선 바닥. 열을 바꿔 방마다 결을 달리한다.
-            var sprite = Art($"Terrain_r1_c{Mathf.Clamp(variant, 1, 3)}");
+            var sprite = ZoneArt($"Terrain_r1_c{Mathf.Clamp(variant, 1, 3)}");
             if (sprite == null) return;
 
             var go = new GameObject("FloorArt");

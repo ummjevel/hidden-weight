@@ -204,7 +204,7 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Ground");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = ResidueArt("Platform_r1_c1") ?? LoadSprite("Platform");
+            sr.sprite = ZoneArt("Platform_r1_c1") ?? LoadSprite("Platform");
             sr.sortingOrder = 2;
             FitRenderer(sr, 3f, 0.8f);
 
@@ -612,8 +612,8 @@ namespace HiddenWeight.EditorTools
 
             // 끊어진 상태와 복원된 상태를 각각 다른 그림으로 보여준다. 승강기(숏컷 B)는 별도 세트다.
             bool isLift = id.EndsWith("_b");
-            ApplyArtOverlay(blocker, isLift ? "Shortcut_LiftDormant" : "Shortcut_ChainBroken", size, 5);
-            ApplyArtOverlay(opened, isLift ? "Shortcut_LiftActive" : "Shortcut_ChainRestored", size, 5);
+            ApplyArtOverlay(blocker, isLift ? _shortcutLiftClosedArt : _shortcutClosedArt, size, 5);
+            ApplyArtOverlay(opened, isLift ? _shortcutLiftOpenArt : _shortcutOpenArt, size, 5);
 
             var shortcut = go.AddComponent<Shortcut>();
             SetField(shortcut, "shortcutId", p => p.stringValue = id);
@@ -755,7 +755,7 @@ namespace HiddenWeight.EditorTools
         static GameObject BuildResidueWall(Transform parent, string name, Vector2 center, Vector2 size)
         {
             var go = BuildSolidBlock(parent, name, center, size, "Wall");
-            ApplyArtOverlay(go, "Terrain_r3_c1", size, 3); // 3행 = 세로 벽
+            ApplyArtOverlay(go, _artPrefix + "Terrain_r3_c1", size, 3); // 3행 = 세로 벽
             return go;
         }
 

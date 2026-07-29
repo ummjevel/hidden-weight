@@ -41,9 +41,9 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Environment/VFX/Residue_AmbientVFX_v1.png",
                         Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0.5f), Prefix = "AmbientVFX" },
 
-            // --- Gameplay (피벗 Center: 캐릭터·아이템은 가운데가 편하다) ---
+            // --- Gameplay ---
             new Sheet { Path = "Gameplay/Player/Player_KeyPoses_v1.png",
-                        Columns = 4, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 4, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         Names = new[] { "Player_Idle", "Player_Walk", "Player_Run", "Player_Jump",
                                         "Player_Fall", "Player_Land", "Player_Attack", "Player_Dash" } },
             new Sheet { Path = "Gameplay/Enemies/Residue_Enemies_Atlas_v1.png",
@@ -67,17 +67,20 @@ namespace HiddenWeight.EditorTools
             // --- 애니메이션 시트 (행 = 클립, 열 = 프레임) ---
             // 이름은 "클립_00" 형식이라 런타임에서 클립 단위로 모을 수 있다.
             new Sheet { Path = "Gameplay/Player/Animation/Player_Locomotion_v1.png",
-                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerIdle", "PlayerWalk", "PlayerRun" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Aerial_v1.png",
-                        Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerJump", "PlayerAirMove", "PlayerFall", "PlayerLand" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Actions_v1.png",
-                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerAttack", "PlayerDash" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Wall_v1.png",
-                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerWallCling", "PlayerWallJump" } },
+            new Sheet { Path = "Gameplay/VFX/PlayerVFX_v1.png",
+                        Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "PlayerHit", "PlayerDeath", "PlayerRespawn" } },
 
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
@@ -124,20 +127,24 @@ namespace HiddenWeight.EditorTools
                     continue;
                 }
 
-                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-                if (texture == null) continue;
+                importer.GetSourceTextureWidthAndHeight(
+                    out int sourceWidth,
+                    out int sourceHeight);
 
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spritePixelsPerUnit = 32f;
                 importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.spriteImportMode = SpriteImportMode.Multiple;
                 // 원본 해상도 그대로 잘라야 격자가 어긋나지 않는다.
-                importer.maxTextureSize = Mathf.Max(2048, Mathf.Max(texture.width, texture.height));
+                importer.maxTextureSize =
+                    Mathf.Max(2048, Mathf.Max(sourceWidth, sourceHeight));
 
-                importer.spritesheet = BuildRects(texture.width, texture.height, sheet);
+                importer.spritesheet =
+                    BuildRects(sourceWidth, sourceHeight, sheet);
                 importer.SaveAndReimport();
                 sliced++;
             }

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 79360d1131e5c4d1ea61f9b14623186c
+guid: c2aa36638f2234b8691a9d57ef4000eb
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -69,7 +69,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2172
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 0
@@ -110,13 +110,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: PlayerWallCling_00
+      name: HushBegin_00
       rect:
         serializedVersion: 2
         x: 0
-        y: 362
-        width: 362
-        height: 362
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -125,20 +125,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dbe123da8ef29f620800000000000000
-      internalID: 2808328519026876093
+      spriteID: 4ebc85f9f389cb620800000000000000
+      internalID: 2791273268086623204
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_01
+      name: HushBegin_01
       rect:
         serializedVersion: 2
-        x: 362
-        y: 362
-        width: 362
-        height: 362
+        x: 256
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -147,20 +147,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 97af91ee98964de00800000000000000
-      internalID: 1068595052719766137
+      spriteID: 2bbc1df373373db00800000000000000
+      internalID: 852151435634265010
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_02
+      name: HushBegin_02
       rect:
         serializedVersion: 2
-        x: 724
-        y: 362
-        width: 362
-        height: 362
+        x: 512
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -169,20 +169,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 47aa4ec93205d77e0800000000000000
-      internalID: -1766167364973057420
+      spriteID: 653cc1d25f18cb1b0800000000000000
+      internalID: -5639489743350873258
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_03
+      name: HushBegin_03
       rect:
         serializedVersion: 2
-        x: 1086
-        y: 362
-        width: 362
-        height: 362
+        x: 768
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -191,20 +191,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 27efdc79b755d1470800000000000000
-      internalID: 8366937672040447602
+      spriteID: c93968223a4d940c0800000000000000
+      internalID: -4590904548003507300
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_04
+      name: HushBegin_04
       rect:
         serializedVersion: 2
-        x: 1448
-        y: 362
-        width: 362
-        height: 362
+        x: 1024
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -213,20 +213,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d304517748775b830800000000000000
-      internalID: 4086303647725862973
+      spriteID: 9667858eae3a348a0800000000000000
+      internalID: -6322029222582258071
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_05
+      name: HushBegin_05
       rect:
         serializedVersion: 2
-        x: 1810
-        y: 362
-        width: 362
-        height: 362
+        x: 1280
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -235,20 +235,152 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 52e61eb862f7edad0800000000000000
-      internalID: -2675561325079204315
+      spriteID: fa0d2ee82df64d140800000000000000
+      internalID: 4743539257659019439
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_00
+      name: HushMove_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a637b23224055330800000000000000
+      internalID: 3698867213880997540
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushMove_01
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fad7a18c015685b50800000000000000
+      internalID: 6582121978153041327
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushMove_02
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eee97234157ae450800000000000000
+      internalID: 6118831773342887657
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushMove_03
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45c14c8aa2c656b20800000000000000
+      internalID: 3127024446754528340
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushMove_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f50c637974554bc0800000000000000
+      internalID: -3799537830012910089
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushMove_05
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7e130cf9f198af70800000000000000
+      internalID: 9198762741765185151
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HushEnd_00
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -257,20 +389,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ecdf3614a6f2007e0800000000000000
-      internalID: -1801387717538087474
+      spriteID: 98e6db213c2e17580800000000000000
+      internalID: -8831028066835927415
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_01
+      name: HushEnd_01
       rect:
         serializedVersion: 2
-        x: 362
+        x: 256
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -279,20 +411,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6a51ecd3b3ef5c2c0800000000000000
-      internalID: -4411840729546091098
+      spriteID: 9ff57e4cecde70b10800000000000000
+      internalID: 1947786836183572473
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_02
+      name: HushEnd_02
       rect:
         serializedVersion: 2
-        x: 724
+        x: 512
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -301,20 +433,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9536cd94485b0d1e0800000000000000
-      internalID: -2175039040240458919
+      spriteID: 8c385769c1641ab80800000000000000
+      internalID: -8385343942589840440
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_03
+      name: HushEnd_03
       rect:
         serializedVersion: 2
-        x: 1086
+        x: 768
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -323,20 +455,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2ab91df2f2a420ac0800000000000000
-      internalID: -3890465561568502878
+      spriteID: 92e2e9aa79617f920800000000000000
+      internalID: 3023910515460943401
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_04
+      name: HushEnd_04
       rect:
         serializedVersion: 2
-        x: 1448
+        x: 1024
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -345,20 +477,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4300093c900db9a60800000000000000
-      internalID: 7681962329764790324
+      spriteID: 67db74be60a4e91c0800000000000000
+      internalID: -4495073984491569802
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_05
+      name: HushEnd_05
       rect:
         serializedVersion: 2
-        x: 1810
+        x: 1280
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -367,8 +499,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 72e507a79f993a9f0800000000000000
-      internalID: -458353440281567705
+      spriteID: d1654b30dcffb40d0800000000000000
+      internalID: -3437372634571712995
       vertices: []
       indices:
       edges: []
@@ -377,7 +509,7 @@ TextureImporter:
     customData:
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID:
     internalID: 0
     vertices: []
     indices:
@@ -387,18 +519,24 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      PlayerWallCling_00: 2808328519026876093
-      PlayerWallCling_01: 1068595052719766137
-      PlayerWallCling_02: -1766167364973057420
-      PlayerWallCling_03: 8366937672040447602
-      PlayerWallCling_04: 4086303647725862973
-      PlayerWallCling_05: -2675561325079204315
-      PlayerWallJump_00: -1801387717538087474
-      PlayerWallJump_01: -4411840729546091098
-      PlayerWallJump_02: -2175039040240458919
-      PlayerWallJump_03: -3890465561568502878
-      PlayerWallJump_04: 7681962329764790324
-      PlayerWallJump_05: -458353440281567705
+      HushBegin_00: 2791273268086623204
+      HushBegin_01: 852151435634265010
+      HushBegin_02: -5639489743350873258
+      HushBegin_03: -4590904548003507300
+      HushBegin_04: -6322029222582258071
+      HushBegin_05: 4743539257659019439
+      HushEnd_00: -8831028066835927415
+      HushEnd_01: 1947786836183572473
+      HushEnd_02: -8385343942589840440
+      HushEnd_03: 3023910515460943401
+      HushEnd_04: -4495073984491569802
+      HushEnd_05: -3437372634571712995
+      HushMove_00: 3698867213880997540
+      HushMove_01: 6582121978153041327
+      HushMove_02: 6118831773342887657
+      HushMove_03: 3127024446754528340
+      HushMove_04: -3799537830012910089
+      HushMove_05: 9198762741765185151
   mipmapLimitGroupName:
   pSDRemoveMatte: 0
   userData:

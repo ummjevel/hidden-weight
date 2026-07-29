@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 79360d1131e5c4d1ea61f9b14623186c
+guid: 617fe563a2223456293f3e9c94bfcd26
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -69,7 +69,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2172
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 0
@@ -110,13 +110,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: PlayerWallCling_00
+      name: AwarenessBegin_00
       rect:
         serializedVersion: 2
         x: 0
-        y: 362
-        width: 362
-        height: 362
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -125,20 +125,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dbe123da8ef29f620800000000000000
-      internalID: 2808328519026876093
+      spriteID: ff3d1ac50595d2cf0800000000000000
+      internalID: -275465800513367041
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_01
+      name: AwarenessBegin_01
       rect:
         serializedVersion: 2
-        x: 362
-        y: 362
-        width: 362
-        height: 362
+        x: 256
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -147,20 +147,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 97af91ee98964de00800000000000000
-      internalID: 1068595052719766137
+      spriteID: 0429c3fcf6c056240800000000000000
+      internalID: 4784243853508776512
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_02
+      name: AwarenessBegin_02
       rect:
         serializedVersion: 2
-        x: 724
-        y: 362
-        width: 362
-        height: 362
+        x: 512
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -169,20 +169,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 47aa4ec93205d77e0800000000000000
-      internalID: -1766167364973057420
+      spriteID: c677c7030e687fb40800000000000000
+      internalID: 5473992169536386924
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_03
+      name: AwarenessBegin_03
       rect:
         serializedVersion: 2
-        x: 1086
-        y: 362
-        width: 362
-        height: 362
+        x: 768
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -191,20 +191,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 27efdc79b755d1470800000000000000
-      internalID: 8366937672040447602
+      spriteID: 6e71f9042e54ff8b0800000000000000
+      internalID: -5116293813620500506
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_04
+      name: AwarenessBegin_04
       rect:
         serializedVersion: 2
-        x: 1448
-        y: 362
-        width: 362
-        height: 362
+        x: 1024
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -213,20 +213,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d304517748775b830800000000000000
-      internalID: 4086303647725862973
+      spriteID: 00dc86316d2176050800000000000000
+      internalID: 5793620156293369088
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallCling_05
+      name: AwarenessBegin_05
       rect:
         serializedVersion: 2
-        x: 1810
-        y: 362
-        width: 362
-        height: 362
+        x: 1280
+        y: 512
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -235,20 +235,152 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 52e61eb862f7edad0800000000000000
-      internalID: -2675561325079204315
+      spriteID: 60d695d43af68d2b0800000000000000
+      internalID: -5559570992820818682
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_00
+      name: AwarenessLoop_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f486ee112148ec30800000000000000
+      internalID: 4388829447380698359
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessLoop_01
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0726280f3cbefc950800000000000000
+      internalID: 6471650416340918896
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessLoop_02
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51b35f76485ca19d0800000000000000
+      internalID: -2802710645614232811
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessLoop_03
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f60f1b3f6a7b72bb0800000000000000
+      internalID: -4960794536844332945
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessLoop_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9434a472171bdd410800000000000000
+      internalID: 1503552950160212809
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessLoop_05
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 256
+        width: 256
+        height: 256
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36d201e1a56ce23f0800000000000000
+      internalID: -923582783210640029
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: AwarenessUnlock_00
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -257,20 +389,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ecdf3614a6f2007e0800000000000000
-      internalID: -1801387717538087474
+      spriteID: f6826cb9d5da52540800000000000000
+      internalID: 4982579180312340591
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_01
+      name: AwarenessUnlock_01
       rect:
         serializedVersion: 2
-        x: 362
+        x: 256
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -279,20 +411,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6a51ecd3b3ef5c2c0800000000000000
-      internalID: -4411840729546091098
+      spriteID: f8b3af7145ba34f90800000000000000
+      internalID: -6970539420571518065
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_02
+      name: AwarenessUnlock_02
       rect:
         serializedVersion: 2
-        x: 724
+        x: 512
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -301,20 +433,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9536cd94485b0d1e0800000000000000
-      internalID: -2175039040240458919
+      spriteID: 946df63aa75998db0800000000000000
+      internalID: -4789132374771247543
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_03
+      name: AwarenessUnlock_03
       rect:
         serializedVersion: 2
-        x: 1086
+        x: 768
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -323,20 +455,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2ab91df2f2a420ac0800000000000000
-      internalID: -3890465561568502878
+      spriteID: 2e33418e6bc4277a0800000000000000
+      internalID: -6380953373569174558
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_04
+      name: AwarenessUnlock_04
       rect:
         serializedVersion: 2
-        x: 1448
+        x: 1024
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -345,20 +477,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4300093c900db9a60800000000000000
-      internalID: 7681962329764790324
+      spriteID: 4ba931ad88a7a6d20800000000000000
+      internalID: 3272562807430945460
       vertices: []
       indices:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: PlayerWallJump_05
+      name: AwarenessUnlock_05
       rect:
         serializedVersion: 2
-        x: 1810
+        x: 1280
         y: 0
-        width: 362
-        height: 362
+        width: 256
+        height: 256
       alignment: 9
       pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -367,8 +499,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 72e507a79f993a9f0800000000000000
-      internalID: -458353440281567705
+      spriteID: 4537d0ceeb39570e0800000000000000
+      internalID: -2272747988725173420
       vertices: []
       indices:
       edges: []
@@ -377,7 +509,7 @@ TextureImporter:
     customData:
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID:
     internalID: 0
     vertices: []
     indices:
@@ -387,18 +519,24 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      PlayerWallCling_00: 2808328519026876093
-      PlayerWallCling_01: 1068595052719766137
-      PlayerWallCling_02: -1766167364973057420
-      PlayerWallCling_03: 8366937672040447602
-      PlayerWallCling_04: 4086303647725862973
-      PlayerWallCling_05: -2675561325079204315
-      PlayerWallJump_00: -1801387717538087474
-      PlayerWallJump_01: -4411840729546091098
-      PlayerWallJump_02: -2175039040240458919
-      PlayerWallJump_03: -3890465561568502878
-      PlayerWallJump_04: 7681962329764790324
-      PlayerWallJump_05: -458353440281567705
+      AwarenessBegin_00: -275465800513367041
+      AwarenessBegin_01: 4784243853508776512
+      AwarenessBegin_02: 5473992169536386924
+      AwarenessBegin_03: -5116293813620500506
+      AwarenessBegin_04: 5793620156293369088
+      AwarenessBegin_05: -5559570992820818682
+      AwarenessLoop_00: 4388829447380698359
+      AwarenessLoop_01: 6471650416340918896
+      AwarenessLoop_02: -2802710645614232811
+      AwarenessLoop_03: -4960794536844332945
+      AwarenessLoop_04: 1503552950160212809
+      AwarenessLoop_05: -923582783210640029
+      AwarenessUnlock_00: 4982579180312340591
+      AwarenessUnlock_01: -6970539420571518065
+      AwarenessUnlock_02: -4789132374771247543
+      AwarenessUnlock_03: -6380953373569174558
+      AwarenessUnlock_04: 3272562807430945460
+      AwarenessUnlock_05: -2272747988725173420
   mipmapLimitGroupName:
   pSDRemoveMatte: 0
   userData:

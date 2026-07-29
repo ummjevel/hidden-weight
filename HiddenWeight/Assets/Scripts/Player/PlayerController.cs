@@ -149,6 +149,7 @@ namespace HiddenWeight.Player
             {
                 _dashTimer = _data.dashDuration;
                 _dashCooldownTimer = _data.dashCooldown;
+                AudioManager.Instance?.PlaySfx(SfxCue.Dash, 0.5f);
             }
 
             if (_dashTimer > 0f)
@@ -212,6 +213,7 @@ namespace HiddenWeight.Player
 
             _jumpBufferTimer = 0f;
             _coyoteTimer = 0f;
+            AudioManager.Instance?.PlaySfx(SfxCue.Jump, 0.45f);
         }
 
         void ApplyVariableJumpCut()

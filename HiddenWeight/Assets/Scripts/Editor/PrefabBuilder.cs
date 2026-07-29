@@ -462,9 +462,32 @@ namespace HiddenWeight.EditorTools
                 "StatusRewind", "StatusDanger", "StatusProgress");
             total += FillZoneStatus("Zone_Gaze", "Assets/Art/Gaze",
                 "GazeStatusTruth", "GazeStatusExposed", "GazeStatusProgress");
+            total += FillZoneMapIcons("Zone_Residue", "Assets/Art/Residue/UI", "UIIcon_r4_c");
+            total += FillZoneMapIcons("Zone_Gaze", "Assets/Art/Gaze/UI", "GazeUIIcon_r4_c");
 
             AssetDatabase.SaveAssets();
             Debug.Log($"[PrefabBuilder] 지역 상태 문양 프레임 {total}장 연결");
+        }
+
+        static int FillZoneMapIcons(string zoneAsset, string artRoot, string prefix)
+        {
+            var zone = LoadData<HiddenWeight.Data.ZoneData>(zoneAsset);
+            if (zone == null) return 0;
+
+            var so = new SerializedObject(zone);
+            var property = so.FindProperty("mapStateIcons");
+            if (property == null) return 0;
+            property.arraySize = 8;
+            int filled = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                var sprite = FindSpriteIn(artRoot, prefix + (i + 1));
+                property.GetArrayElementAtIndex(i).objectReferenceValue = sprite;
+                if (sprite != null) filled++;
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(zone);
+            return filled;
         }
 
         static int FillZoneStatus(string zoneAsset, string artRoot,

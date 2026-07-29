@@ -6,6 +6,7 @@ using HiddenWeight.Data;
 using HiddenWeight.Emotions;
 using HiddenWeight.Enemies;
 using HiddenWeight.Player;
+using HiddenWeight.World;
 
 namespace HiddenWeight.UI
 {
@@ -14,6 +15,16 @@ namespace HiddenWeight.UI
     public class HUD : MonoBehaviour
     {
         [SerializeField] Sprite heartSprite;
+        [SerializeField] Sprite[] rewindStatusFrames;
+        [SerializeField] Sprite[] dangerStatusFrames;
+        [SerializeField] Sprite[] progressStatusFrames;
+
+        StatusEmblem _statusEmblem;
+        ZoneData _statusZone;
+        float _lastCooldown;
+        bool _dangerShown;
+        AwarenessSystem _awareness;
+        readonly Dictionary<GazeHazard, float> _gazeExposure = new Dictionary<GazeHazard, float>();
 
         GameObject _canvasGO;
         RectTransform _canvasRect;
@@ -40,12 +51,15 @@ namespace HiddenWeight.UI
         {
             if (GameManager.Instance != null) GameManager.Instance.StateChanged += HandleStateChanged;
             Encounter.EncounterStateChanged += HandleEncounterStateChanged;
+            GazeHazard.ExposureChanged += HandleGazeExposureChanged;
         }
 
         void OnDisable()
         {
             if (GameManager.Instance != null) GameManager.Instance.StateChanged -= HandleStateChanged;
             Encounter.EncounterStateChanged -= HandleEncounterStateChanged;
+            GazeHazard.ExposureChanged -= HandleGazeExposureChanged;
+            UnbindAwareness();
             if (_health != null) _health.HealthChanged -= HandleHealthChanged;
             UnbindBoss();
         }
@@ -55,6 +69,8 @@ namespace HiddenWeight.UI
         void Update()
         {
             if (_health == null) TryBindPlayerHealth();
+            TryBindAwareness();
+            RefreshStatusFramesForZone();
             UpdateSkillDisplay();
         }
 
@@ -72,6 +88,15 @@ namespace HiddenWeight.UI
 
         void HandleHealthChanged(int current, int max)
         {
+            bool usesHealthDanger = _statusZone == null || _statusZone.id != ZoneId.Gaze;
+            bool critical = usesHealthDanger && current > 0 && current <= 1;
+            if (critical != _dangerShown && _statusEmblem != null)
+            {
+                _dangerShown = critical;
+                if (critical) _statusEmblem.Play("StatusDanger");
+                else _statusEmblem.Stop("StatusDanger");
+            }
+
             EnsureHeartCount(max);
             for (int i = 0; i < _hearts.Count; i++)
             {
@@ -79,6 +104,79 @@ namespace HiddenWeight.UI
                 _hearts[i].gameObject.SetActive(withinMax);
                 if (withinMax) _hearts[i].color = i < current ? UIBuilder.HeartFull : UIBuilder.HeartEmpty;
             }
+        }
+
+        void RefreshStatusFramesForZone()
+        {
+            var zone = GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null;
+            if (zone == _statusZone || _statusEmblem == null) return;
+
+            _statusZone = zone;
+            _gazeExposure.Clear();
+            _dangerShown = false;
+            ConfigureStatusEmblem(zone);
+        }
+
+        void ConfigureStatusEmblem(ZoneData zone)
+        {
+            Sprite[] Pick(Sprite[] regional, Sprite[] fallback)
+                => regional != null && regional.Length > 0 ? regional : fallback;
+
+            bool gaze = zone != null && zone.id == ZoneId.Gaze;
+            _statusEmblem.Configure(
+                new StatusEmblem.Sequence
+                {
+                    name = gaze ? "Awareness" : "Ability", fps = 10f, loop = false,
+                    frames = Pick(zone != null ? zone.statusRewindFrames : null, rewindStatusFrames),
+                },
+                new StatusEmblem.Sequence
+                {
+                    name = gaze ? "Exposure" : "Danger", fps = 12f, loop = true,
+                    frames = Pick(zone != null ? zone.statusDangerFrames : null, dangerStatusFrames),
+                },
+                new StatusEmblem.Sequence
+                {
+                    name = "Progress", fps = 10f, loop = false,
+                    frames = Pick(zone != null ? zone.statusProgressFrames : null, progressStatusFrames),
+                });
+
+            // 기존 에셋 검증과 저장된 프리팹 이름을 깨지 않기 위한 호환 별칭.
+            _statusEmblem.RegisterAlias("StatusRewind", gaze ? "Awareness" : "Ability");
+            _statusEmblem.RegisterAlias("StatusDanger", gaze ? "Exposure" : "Danger");
+            _statusEmblem.RegisterAlias("StatusProgress", "Progress");
+        }
+
+        void TryBindAwareness()
+        {
+            if (_awareness != null || AwarenessSystem.Instance == null) return;
+            _awareness = AwarenessSystem.Instance;
+            _awareness.AwarenessChanged += HandleAwarenessChanged;
+        }
+
+        void UnbindAwareness()
+        {
+            if (_awareness != null) _awareness.AwarenessChanged -= HandleAwarenessChanged;
+            _awareness = null;
+        }
+
+        void HandleAwarenessChanged(bool active)
+        {
+            if (!active || _statusZone == null || _statusZone.id != ZoneId.Gaze || _dangerShown) return;
+            _statusEmblem?.Play("Awareness");
+        }
+
+        void HandleGazeExposureChanged(GazeHazard hazard, float exposure, bool alarmed)
+        {
+            if (hazard == null) return;
+            if (exposure <= 0f) _gazeExposure.Remove(hazard);
+            else _gazeExposure[hazard] = exposure;
+
+            if (_statusZone == null || _statusZone.id != ZoneId.Gaze || _statusEmblem == null) return;
+            bool exposed = alarmed || _gazeExposure.Count > 0;
+            if (exposed == _dangerShown) return;
+            _dangerShown = exposed;
+            if (exposed) _statusEmblem.Play("Exposure");
+            else _statusEmblem.Stop("Exposure");
         }
 
         void EnsureHeartCount(int max)
@@ -123,6 +221,12 @@ namespace HiddenWeight.UI
             _cooldownFill.fillAmount = cooldown > 0f
                 ? Mathf.Clamp01(active.CooldownRemaining / cooldown)
                 : 0f;
+
+            if (_statusEmblem != null && !_dangerShown
+                && (_statusZone == null || _statusZone.id != ZoneId.Gaze)
+                && _lastCooldown <= 0.01f && active.CooldownRemaining > 0.01f)
+                _statusEmblem.Play("StatusRewind");
+            _lastCooldown = active.CooldownRemaining;
 
             if (active is RewindSkill rewind && rewind.IsActive && rewind.CurrentTarget != null)
             {
@@ -172,6 +276,11 @@ namespace HiddenWeight.UI
                 return;
             }
 
+
+            if (_statusEmblem != null && !_dangerShown)
+                _statusEmblem.Play(_statusZone != null && _statusZone.id == ZoneId.Gaze
+                    ? "Progress" : "StatusProgress");
+
             UnbindBoss();
             _boss = encounter.BossEnemy;
             _bossName.text = encounter.DisplayName;
@@ -205,6 +314,23 @@ namespace HiddenWeight.UI
             BuildSkillGroup(_canvasGO.transform);
             BuildChannelGroup(_canvasGO.transform);
             BuildBossGroup(_canvasGO.transform);
+            BuildStatusEmblem(_canvasGO.transform);
+        }
+
+        void BuildStatusEmblem(Transform parent)
+        {
+            var go = new GameObject("StatusEmblem", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var image = go.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            var rt = image.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.sizeDelta = new Vector2(56f, 56f);
+            rt.anchoredPosition = new Vector2(32f, -78f);
+            _statusEmblem = go.AddComponent<StatusEmblem>();
+            ConfigureStatusEmblem(GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null);
         }
 
         void BuildSkillGroup(Transform parent)

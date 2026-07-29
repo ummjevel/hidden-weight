@@ -148,10 +148,37 @@ namespace HiddenWeight.Tests
             Assert.AreEqual(GameState.Paused, gm.State);
             Assert.AreEqual(PauseSection.Map, pause.CurrentSection);
             Assert.That(GameObject.Find("SectionBody").GetComponent<Text>().text, Does.Contain("기억의 입구"));
+            Assert.IsNotNull(GameObject.Find("SectionViewport").GetComponent<ScrollRect>(),
+                "지도와 기억 기록은 긴 내용을 위한 스크롤 영역을 사용해야 한다.");
 
             pause.OpenSection(PauseSection.Journal);
             yield return null;
             Assert.That(GameObject.Find("SectionBody").GetComponent<Text>().text, Does.Contain("돌아오라는 목소리"));
+            pause.Close();
+            yield return new WaitForSecondsRealtime(0.25f);
+        }
+
+        [UnityTest]
+        public IEnumerator 설정을_바꾼_뒤에도_같은_항목에_포커스가_남는다()
+        {
+            yield return SceneManager.LoadSceneAsync("Zone_Prologue", LoadSceneMode.Single);
+            yield return null;
+
+            var gm = GameManager.Instance;
+            gm.SetState(GameState.Playing);
+            var pause = Object.FindAnyObjectByType<PauseMenu>();
+            pause.OpenSection(PauseSection.Settings);
+            yield return null;
+
+            var selected = EventSystem.current.currentSelectedGameObject;
+            Assert.IsNotNull(selected);
+            Assert.That(selected.name, Does.StartWith("Button_전체 음량"));
+            selected.GetComponent<Button>().onClick.Invoke();
+            yield return null;
+
+            selected = EventSystem.current.currentSelectedGameObject;
+            Assert.IsNotNull(selected, "설정 목록을 다시 만든 뒤 포커스가 사라졌다.");
+            Assert.That(selected.name, Does.StartWith("Button_전체 음량"));
             pause.Close();
             yield return new WaitForSecondsRealtime(0.25f);
         }

@@ -41,6 +41,7 @@ namespace HiddenWeight.Emotions
             // OnBegin보다 먼저 적용한다. RewindSkill처럼 OnBegin 내부에서 즉시 End()를
             // 호출하는 경우(대상 없음)에도 End()의 복구 로직이 그대로 되감아 주므로 안전하다.
             ApplySpeedMultiplier();
+            HiddenWeight.Core.AudioManager.Instance?.PlaySfx(HiddenWeight.Core.SfxCue.Ability, 0.65f);
             OnBegin();
         }
 

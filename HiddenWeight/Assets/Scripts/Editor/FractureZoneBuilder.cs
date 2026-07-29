@@ -414,6 +414,7 @@ namespace HiddenWeight.EditorTools
             BuildF12(ctx);
 
             BuildFractureConnections(ctx);
+            ApplyFractureRoomBackgrounds(rooms.transform);
 
             ctx.O = F01;
             PlacePlayerAndCamera(root, new Vector3(F01.x + 3f, F01.y + 3f, 0f));
@@ -423,6 +424,30 @@ namespace HiddenWeight.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[FractureZoneBuilder] 균열 전체 지역(15룸) 생성 완료");
+        }
+
+        static void ApplyFractureRoomBackgrounds(Transform rooms)
+        {
+            foreach (Transform room in rooms)
+            {
+                var bounds = room.GetComponent<Room>()?.WorldBounds;
+                if (!bounds.HasValue) continue;
+                string path = $"Assets/Art/Fracture/Rooms/{room.name}.png";
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                if (sprite == null)
+                {
+                    Debug.LogWarning("[FractureZoneBuilder] 룸 배경이 없습니다: " + path);
+                    continue;
+                }
+
+                var background = new GameObject("FractureRoomBackground");
+                background.transform.SetParent(room, false);
+                var renderer = background.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                renderer.sortingOrder = -100;
+                renderer.color = new Color(0.86f, 0.90f, 0.92f, 0.82f);
+                FitSprite(renderer, bounds.Value.size.x, bounds.Value.size.y);
+            }
         }
 
         // ---------------- F01 유리 정원 (D0) ----------------

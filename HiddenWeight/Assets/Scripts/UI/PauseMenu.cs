@@ -163,7 +163,7 @@ namespace HiddenWeight.UI
         {
             _dialog.ShowConfirm(
                 "타이틀로 돌아가기",
-                "아직 저장 기능이 없어 현재 세션이 사라집니다.\n타이틀로 돌아갈까요?",
+                "진행 상황을 기억에 남기고 타이틀로 돌아갈까요?",
                 "타이틀로",
                 GoToTitle,
                 _titleButton);
@@ -174,7 +174,7 @@ namespace HiddenWeight.UI
             _dialog.Hide(false);
             _root.SetActive(false);
             PlayerInput.Enabled = true;
-            GameManager.Instance.Progress.ResetAll();
+            GameManager.Instance.SaveProgress();
             // 타이틀 씬으로 넘어가므로 timeScale을 되돌리는 의미로도 상태를 Title로 되돌린다.
             GameManager.Instance.SetState(GameState.Title);
             SceneFlow.LoadWithFade(SceneFlow.Title);

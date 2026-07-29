@@ -54,6 +54,11 @@ namespace HiddenWeight.Enemies
             ShowTelegraph(false);
 
             _phase = Phase.Charge;
+
+            // 돌진이 시작되는 자리에 잔상을 남긴다(ResidueEnemyProjectiles_v1 3행).
+            // 피해 판정이 아니라 "여기서부터 달려온다"를 읽히게 하는 표시다.
+            HiddenWeight.World.ImpactVFX.Play("ProjChargeTrail", transform.position, _chargeDirection);
+
             float elapsed = 0f;
             while (elapsed < Data.chargeMaxSeconds)
             {

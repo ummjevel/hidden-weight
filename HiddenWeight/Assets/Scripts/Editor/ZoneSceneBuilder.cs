@@ -446,7 +446,11 @@ namespace HiddenWeight.EditorTools
             switch (kind)
             {
                 case ResidueEnemyKind.Walker:
-                    break; // 기본 프리팹이 이미 EnemyPatrol을 들고 있다
+                    // 순찰은 기본 프리팹의 EnemyPatrol이 그대로 맡고, 거리를 둔 플레이어에게는
+                    // 석재 파편을 던진다(ResidueEnemyProjectiles_v1 1행). 붙어 있을 때는
+                    // 던지지 않으므로 근접 전투의 성격은 그대로다.
+                    go.AddComponent<RangedAttackBehavior>();
+                    break;
 
                 case ResidueEnemyKind.Carrier:
                 {

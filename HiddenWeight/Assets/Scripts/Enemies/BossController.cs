@@ -18,7 +18,9 @@ namespace HiddenWeight.Enemies
         //   GazeSweep : 시선 공격. 숨죽인 플레이어에게는 닿지 않는다(응시 7.1절).
         //   WallClose : 눈꺼풀 닫기. 좌우 벽이 좁아지고 중앙 안전지대만 남는다(응시 7.1절).
         //   TimeSkip  : 시간 건너뛰기. 사라졌다가 예고 지점에 나타나 낙하한다(균열 7.1절).
-        public enum Move { GroundSweep, Charge, Slam, GazeSweep, WallClose, TimeSkip }
+        //   Projectile: 예고 후 공격체를 쏜다. 무엇을 쏘는지는 projectileName이 정한다
+        //               (잔재의 감시 파동·기억침·되감기 구체).
+        public enum Move { GroundSweep, Charge, Slam, GazeSweep, WallClose, TimeSkip, Projectile }
 
         [SerializeField] Move[] moves = { Move.GroundSweep, Move.Charge, Move.Slam };
         // 공격별 예고 시간(R10 명세: 지상 쓸기 0.7 / 돌진 1.0 / 낙하 1.2).
@@ -52,6 +54,17 @@ namespace HiddenWeight.Enemies
         [Header("시간 건너뛰기")]
         [SerializeField] float timeSkipTelegraph = 1.0f;
         [SerializeField] float timeSkipLead = 2f;        // 예지 선행 시간과 같은 값
+
+        [Header("공격체")]
+        [SerializeField] string projectileName = "BossWave";
+        [SerializeField] float projectileTelegraph = 1.0f;
+        // 단계가 오르면 한 번에 두 발을 쏜다. 예고 길이는 그대로 두고 발수만 늘린다.
+        [SerializeField] float projectileBurstGap = 0.35f;
+
+        [Header("보스 전용 연출")]
+        // 낙하 착지와 단계 전환에 얹는 효과(ResidueBossProjectiles_v1의 낙하 고리·페이즈 파열).
+        [SerializeField] string slamImpactEffect = "BossRing";
+        [SerializeField] string phaseChangeEffect = "BossRupture";
 
         // 체력 비율이 이 값 아래로 내려가면 다음 단계. 명세의 R12 3단계(1.0 → 0.6 → 0.3)를 기본값으로.
         [SerializeField] float[] phaseThresholds = { 0.6f, 0.3f };
@@ -99,6 +112,12 @@ namespace HiddenWeight.Enemies
             int phase = 0;
             for (int i = 0; i < phaseThresholds.Length; i++)
                 if (ratio <= phaseThresholds[i]) phase = i + 1;
+
+            // 단계가 오르는 순간을 화면에 알린다. 패턴이 바뀌는 것을 수치가 아니라
+            // 연출로 읽게 하는 것이 목적이다.
+            if (phase != Phase)
+                HiddenWeight.World.ImpactVFX.Play(phaseChangeEffect, transform.position);
+
             Phase = phase;
         }
 
@@ -114,6 +133,7 @@ namespace HiddenWeight.Enemies
                 case Move.GroundSweep: telegraph = sweepTelegraph; break;
                 case Move.Charge: telegraph = chargeTelegraph; break;
                 case Move.GazeSweep: telegraph = gazeSweepTelegraph; break;
+                case Move.Projectile: telegraph = projectileTelegraph; break;
                 case Move.WallClose: telegraph = wallCloseTelegraph; break;
                 case Move.TimeSkip: telegraph = timeSkipTelegraph; break;
                 default: telegraph = slamTelegraph; break;
@@ -174,6 +194,22 @@ namespace HiddenWeight.Enemies
                     _body.linearVelocity = new Vector2(0f, -18f);
                     yield return new WaitForSeconds(0.5f);
                     HitPlayersInCircle(transform.position, sweepRange * 0.8f);
+                    HiddenWeight.World.ImpactVFX.Play(slamImpactEffect, transform.position);
+                    break;
+                }
+
+                case Move.Projectile:
+                {
+                    // 예고가 끝난 방향으로 쏜다. 쏜 뒤에는 따라오지 않으므로 옆으로 비키면 피한다.
+                    int dir = player.transform.position.x >= transform.position.x ? 1 : -1;
+                    int shots = Phase == 0 ? 1 : 2;
+
+                    for (int i = 0; i < shots; i++)
+                    {
+                        HiddenWeight.World.ProjectileSpawner.Fire(projectileName,
+                            transform.position + new Vector3(dir * 1.2f, 0f, 0f), new Vector2(dir, 0f));
+                        if (i + 1 < shots) yield return new WaitForSeconds(projectileBurstGap);
+                    }
                     break;
                 }
 

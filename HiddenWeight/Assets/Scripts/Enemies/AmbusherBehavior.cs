@@ -66,6 +66,11 @@ namespace HiddenWeight.Enemies
             Body.bodyType = RigidbodyType2D.Dynamic;
             Body.linearVelocity = new Vector2(0f, -Data.dropSpeed);
 
+            // 떨어지면서 아래로 손톱 궤적을 남긴다(ResidueEnemyProjectiles_v1 2행).
+            // 그림자를 보고 비켰다면 이것도 맞지 않는다 — 예고가 곧 회피 조건이라는 규칙 그대로다.
+            HiddenWeight.World.ProjectileSpawner.Fire("ProjClaw",
+                transform.position + new Vector3(0f, -0.6f, 0f), Vector2.down);
+
             var patrol = GetComponent<EnemyPatrol>();
             if (patrol != null) patrol.enabled = true;
         }

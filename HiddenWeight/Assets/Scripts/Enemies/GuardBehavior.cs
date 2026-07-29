@@ -48,6 +48,13 @@ namespace HiddenWeight.Enemies
             yield return new WaitForSeconds(Data.telegraphSeconds);
             ShowTelegraph(false);
 
+            // 강공격은 지면을 따라 퍼지는 충격파를 남긴다(ResidueEnemyProjectiles_v1 4행).
+            // 정면 방어를 뚫으려고 뒤로 돌아 들어간 플레이어를 바닥에서 다시 밀어내는 역할이라,
+            // 지형에 막히지 않고 바닥을 훑는다.
+            int facing = (int)Mathf.Sign(transform.localScale.x);
+            HiddenWeight.World.ProjectileSpawner.Fire("ProjShockwave",
+                transform.position + new Vector3(facing * 0.8f, -0.4f, 0f), new Vector2(facing, 0f));
+
             var hit = Physics2D.OverlapCircle(
                 (Vector2)transform.position + new Vector2(Mathf.Sign(transform.localScale.x) * Data.attackRange * 0.5f, 0f),
                 Data.attackRange * 0.5f,

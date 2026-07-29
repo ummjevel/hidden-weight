@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using UnityEngine;
@@ -111,6 +112,115 @@ namespace HiddenWeight.Tests
 
             Assert.IsTrue(spawned == null, "충돌 연출이 재생 후 스스로 사라지지 않는다.");
             Assert.Greater(before, 0, "씬에 렌더러가 하나도 없다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 공격체가_등록되고_날아가다_사라진다()
+        {
+            yield return LoadResidue();
+
+            Assert.IsNotNull(ProjectileSpawner.Instance,
+                "지역에 ProjectileSpawner가 없다 — 공격체 시트가 연결되지 않았다.");
+
+            var report = new StringBuilder();
+            foreach (var name in new[] { "ProjSplinter", "ProjClaw", "ProjShockwave",
+                                         "BossWave", "BossNeedle", "BossRewindOrb" })
+            {
+                report.AppendLine("  " + name + " " + (ProjectileSpawner.Instance.Has(name) ? "있음" : "없음"));
+                Assert.IsTrue(ProjectileSpawner.Instance.Has(name), name + "이 등록되지 않았다.");
+            }
+            Debug.Log("===== 공격체 =====\n" + report);
+
+            // 실제로 쏘아 본다. 지형이 없는 높은 곳에서 쏘아 벽에 막히지 않게 한다.
+            var origin = PlayerController.Instance.transform.position + new Vector3(0f, 6f, 0f);
+            ProjectileSpawner.Fire("BossNeedle", origin, Vector2.right);
+            yield return null;
+
+            var projectile = Object.FindFirstObjectByType<Projectile>();
+            Assert.IsNotNull(projectile, "Fire를 불렀는데 공격체가 생기지 않았다.");
+
+            float startX = projectile.transform.position.x;
+            for (int i = 0; i < 20 && projectile != null; i++) yield return null;
+
+            Assert.IsTrue(projectile == null || projectile.transform.position.x > startX,
+                "공격체가 제자리에 멈춰 있다.");
+
+            // 수명이 다하면 스스로 사라진다.
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (projectile != null && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsTrue(projectile == null, "공격체가 수명이 지나도 사라지지 않는다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 방마다_전경과_배경_모션이_돈다()
+        {
+            yield return LoadResidue();
+
+            int rooms = 0, withMotion = 0;
+            var missing = new List<string>();
+
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+            {
+                rooms++;
+                var back = room.transform.Find("MotionBack");
+                var front = room.transform.Find("MotionFront");
+                if (back == null || front == null) { missing.Add(room.name); continue; }
+
+                var backAnimator = back.GetComponent<SpriteAnimator>();
+                var frontAnimator = front.GetComponent<SpriteAnimator>();
+                if (backAnimator == null || frontAnimator == null) { missing.Add(room.name + "(애니메이터)"); continue; }
+
+                withMotion++;
+            }
+
+            // 모션은 배치 직후 자동 재생된다(환경 모션은 Loop Time을 쓴다 — 명세 공통 규칙).
+            yield return null;
+            var sample = Object.FindObjectsByType<Room>(FindObjectsSortMode.None)[0]
+                .transform.Find("MotionBack")?.GetComponent<SpriteAnimator>();
+
+            Debug.Log("===== 방 모션 ===== " + withMotion + "/" + rooms
+                + " 방 / 샘플 재생 클립=" + (sample != null ? sample.CurrentClip : "(없음)"));
+
+            Assert.IsEmpty(missing, "전경·배경 모션이 없는 방이 있다: " + string.Join(", ", missing));
+            Assert.AreEqual(15, rooms, "잔재는 15룸이다.");
+            Assert.IsNotNull(sample != null ? sample.CurrentClip : null,
+                "배경 모션이 재생되지 않는다(환경 모션은 자동 재생·루프여야 한다).");
+        }
+
+        [UnityTest]
+        public IEnumerator 두_보스가_공격체_무브를_가진다()
+        {
+            yield return LoadResidue();
+
+            int found = 0;
+            foreach (var boss in Object.FindObjectsByType<HiddenWeight.Enemies.BossController>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var moves = new SerializedObjectLikeReader(boss).Moves;
+                Assert.IsTrue(moves.Contains("Projectile"),
+                    boss.name + "에 공격체 무브가 없다: " + string.Join(",", moves));
+                found++;
+            }
+
+            Debug.Log("===== 보스 공격체 무브 ===== " + found + "체");
+            Assert.AreEqual(2, found, "잔재의 보스는 중간·지역 둘이다.");
+        }
+
+        // BossController의 moves는 직렬화 전용 필드라 런타임에서 읽을 방법이 없다.
+        // 테스트에서만 리플렉션으로 들여다본다 — 이 하나 때문에 공개 API를 넓히지 않는다.
+        sealed class SerializedObjectLikeReader
+        {
+            public readonly List<string> Moves = new List<string>();
+
+            public SerializedObjectLikeReader(HiddenWeight.Enemies.BossController boss)
+            {
+                var field = typeof(HiddenWeight.Enemies.BossController).GetField("moves",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field == null) return;
+
+                if (field.GetValue(boss) is System.Array array)
+                    foreach (var move in array) Moves.Add(move.ToString());
+            }
         }
 
         [UnityTest]

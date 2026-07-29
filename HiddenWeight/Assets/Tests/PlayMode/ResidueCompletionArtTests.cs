@@ -224,6 +224,42 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 상태_문양이_등록되고_위험할_때_켜진다()
+        {
+            yield return LoadResidue();
+
+            var emblem = Object.FindFirstObjectByType<HiddenWeight.UI.StatusEmblem>(
+                FindObjectsInactive.Include);
+            Assert.IsNotNull(emblem, "HUD에 상태 문양이 없다 — 상태 UI 시트가 연결되지 않았다.");
+
+            foreach (var name in new[] { "StatusRewind", "StatusDanger", "StatusProgress" })
+                Assert.IsTrue(emblem.Has(name), name + " 시퀀스가 등록되지 않았다.");
+
+            // 마지막 한 칸이 남으면 위험 문양이 켜진다.
+            var health = PlayerController.Instance.GetComponent<PlayerHealth>();
+            while (health.Current > 1)
+            {
+                health.TakeDamage(1, (Vector2)PlayerController.Instance.transform.position + Vector2.right);
+                // 무적 시간이 있으므로 풀릴 때까지 기다린다.
+                float wait = Time.realtimeSinceStartup + 2f;
+                while (health.IsInvulnerable && Time.realtimeSinceStartup < wait)
+                { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
+            }
+            yield return null;
+
+            Debug.Log("===== 상태 문양 ===== 체력=" + health.Current + " 문양=" + emblem.CurrentSequence);
+            Assert.AreEqual("StatusDanger", emblem.CurrentSequence,
+                "체력이 한 칸 남았는데 위험 문양이 켜지지 않는다.");
+
+            // 회복하면 꺼진다.
+            health.RestoreFull();
+            yield return null;
+
+            Assert.AreNotEqual("StatusDanger", emblem.CurrentSequence,
+                "회복했는데 위험 문양이 계속 켜져 있다.");
+        }
+
+        [UnityTest]
         public IEnumerator 숏컷에_봉쇄_해제_애니메이션이_붙어_있다()
         {
             yield return LoadResidue();

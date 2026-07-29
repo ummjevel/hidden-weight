@@ -15,6 +15,16 @@ namespace HiddenWeight.UI
     {
         [SerializeField] Sprite heartSprite;
 
+        // 상태 문양 프레임(ResidueStatusUI_v1의 세 행). HUD는 캔버스를 런타임에 짓기 때문에
+        // 프레임을 프리팹이 들고 있다가 StatusEmblem에 넘겨 준다.
+        [SerializeField] Sprite[] rewindStatusFrames;
+        [SerializeField] Sprite[] dangerStatusFrames;
+        [SerializeField] Sprite[] progressStatusFrames;
+
+        StatusEmblem _statusEmblem;
+        float _lastCooldown;
+        bool _dangerShown;
+
         GameObject _canvasGO;
         RectTransform _canvasRect;
         readonly List<Image> _hearts = new List<Image>();
@@ -72,6 +82,16 @@ namespace HiddenWeight.UI
 
         void HandleHealthChanged(int current, int max)
         {
+            // 위험 문양은 마지막 한 칸이 남았을 때만 켜고, 회복하면 끈다. 체력 숫자를 읽지
+            // 않아도 "이제 한 대만 더 맞으면 끝난다"가 화면에서 보여야 한다.
+            bool critical = current > 0 && current <= 1;
+            if (critical != _dangerShown && _statusEmblem != null)
+            {
+                _dangerShown = critical;
+                if (critical) _statusEmblem.Play("StatusDanger");
+                else _statusEmblem.Stop("StatusDanger");
+            }
+
             EnsureHeartCount(max);
             for (int i = 0; i < _hearts.Count; i++)
             {
@@ -124,6 +144,15 @@ namespace HiddenWeight.UI
                 ? Mathf.Clamp01(active.CooldownRemaining / cooldown)
                 : 0f;
 
+            // 스킬을 막 쓴 순간(쿨타임이 0에서 올라간 순간)에 되감기 문양을 한 번 돌린다.
+            // 시트의 한 행이 충전 → 준비 → 발동 → 소진을 통째로 담고 있어서, 사용 시점에
+            // 한 번 재생하는 것으로 그 흐름이 그대로 읽힌다.
+            // 위험 문양이 켜져 있으면 건드리지 않는다 — 생존 정보가 우선이다.
+            if (_statusEmblem != null && !_dangerShown
+                && _lastCooldown <= 0.01f && active.CooldownRemaining > 0.01f)
+                _statusEmblem.Play("StatusRewind");
+            _lastCooldown = active.CooldownRemaining;
+
             if (active is RewindSkill rewind && rewind.IsActive && rewind.CurrentTarget != null)
             {
                 _channelGroup.SetActive(true);
@@ -172,6 +201,10 @@ namespace HiddenWeight.UI
                 return;
             }
 
+            // 보스 조우가 시작되는 순간을 진행 문양으로 한 번 알린다(시트 3행의 "보스 경고").
+            // 위험 문양이 켜져 있으면 덮지 않는다 — 생존 정보가 우선이다.
+            if (_statusEmblem != null && !_dangerShown) _statusEmblem.Play("StatusProgress");
+
             UnbindBoss();
             _boss = encounter.BossEnemy;
             _bossName.text = encounter.DisplayName;
@@ -205,6 +238,33 @@ namespace HiddenWeight.UI
             BuildSkillGroup(_canvasGO.transform);
             BuildChannelGroup(_canvasGO.transform);
             BuildBossGroup(_canvasGO.transform);
+            BuildStatusEmblem(_canvasGO.transform);
+        }
+
+        // 체력 코어 바로 아래. 상시 표시가 아니라 사건이 있을 때만 켜지므로 자리를 많이 쓰지 않는다.
+        void BuildStatusEmblem(Transform parent)
+        {
+            var go = new GameObject("StatusEmblem", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+
+            var image = go.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+
+            var rt = image.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.sizeDelta = new Vector2(56f, 56f);
+            rt.anchoredPosition = new Vector2(32f, -78f);
+
+            _statusEmblem = go.AddComponent<StatusEmblem>();
+            _statusEmblem.Configure(
+                new StatusEmblem.Sequence
+                { name = "StatusRewind", frames = rewindStatusFrames, fps = 10f, loop = false },
+                new StatusEmblem.Sequence
+                { name = "StatusDanger", frames = dangerStatusFrames, fps = 12f, loop = true },
+                new StatusEmblem.Sequence
+                { name = "StatusProgress", frames = progressStatusFrames, fps = 10f, loop = false });
         }
 
         void BuildSkillGroup(Transform parent)

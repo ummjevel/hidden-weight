@@ -413,6 +413,53 @@ namespace HiddenWeight.EditorTools
             Debug.Log($"[PrefabBuilder] 플레이어 클립 {valid.Count}개 연결");
         }
 
+        // HUD 프리팹에 상태 문양 프레임(ResidueStatusUI_v1의 세 행)을 넣는다.
+        //
+        // 프리팹 13종을 전부 다시 짓지 않는다 — 다시 돌리면 프리팹 내부 fileID가 바뀌어 씬의
+        // 인스턴스 오버라이드가 끊긴다(ApplyPlayerPhysicsMaterial의 주석과 같은 이유).
+        [MenuItem("Hidden Weight/Fix/Apply HUD Status Emblem")]
+        public static void ApplyHudStatusEmblem()
+        {
+            string path = $"{Folder}/HUD.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+
+            try
+            {
+                var hud = root.GetComponent<HUD>();
+                if (hud == null)
+                {
+                    Debug.LogWarning("[PrefabBuilder] HUD 프리팹에 HUD 컴포넌트가 없다");
+                    return;
+                }
+
+                int filled = 0;
+                filled += AssignFrames(hud, "rewindStatusFrames", "StatusRewind");
+                filled += AssignFrames(hud, "dangerStatusFrames", "StatusDanger");
+                filled += AssignFrames(hud, "progressStatusFrames", "StatusProgress");
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Debug.Log($"[PrefabBuilder] HUD 상태 문양 프레임 {filled}장 연결");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        static int AssignFrames(UnityEngine.Object target, string propertyName, string clipName)
+        {
+            var frames = FindFrames(clipName);
+
+            var so = new SerializedObject(target);
+            var property = so.FindProperty(propertyName);
+            property.arraySize = frames.Length;
+            for (int i = 0; i < frames.Length; i++)
+                property.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            return frames.Length;
+        }
+
         // 잘라 둔 스프라이트를 이름으로 찾는다.
         //
         // 잔재 폴더만 뒤지면 안 된다. 플레이어 능력 시트(숨죽이기·자각)는 지역이 아니라

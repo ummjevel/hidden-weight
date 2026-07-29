@@ -44,5 +44,20 @@ namespace HiddenWeight.Tests
             Assert.AreEqual(zone.bgm, playing.clip, "재생 중인 클립이 지역 BGM과 다르다.");
             Assert.IsTrue(playing.loop, "BGM이 반복 재생으로 설정되지 않았다.");
         }
+
+        [UnityTest]
+        public IEnumerator 정식_음원이_없는_지역은_앰비언스_폴백을_쓴다()
+        {
+            yield return SceneManager.LoadSceneAsync("Zone_Gaze_Full", LoadSceneMode.Single);
+            yield return null;
+            var audio = AudioManager.Instance;
+            Assert.IsNotNull(audio);
+            Assert.IsNotNull(audio.CurrentBgm);
+            Assert.That(audio.CurrentBgm.name, Does.StartWith("GeneratedAmbient_Gaze"));
+#if UNITY_EDITOR
+            foreach (var source in audio.GetComponents<AudioSource>())
+                if (source.loop) Assert.IsTrue(source.mute, "개발 중에는 BGM 소스가 음소거돼야 한다.");
+#endif
+        }
     }
 }

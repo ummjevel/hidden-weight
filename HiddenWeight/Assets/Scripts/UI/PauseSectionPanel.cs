@@ -116,10 +116,17 @@ namespace HiddenWeight.UI
             }
 
             var accessible = new StringBuilder();
-            foreach (var entry in progress.FragmentTexts.OrderBy(e => e.Key))
+            string region = null;
+            foreach (var entry in progress.FragmentTexts.OrderBy(e => MemoryCatalog.SortKey(e.Key)))
             {
                 string text = string.IsNullOrWhiteSpace(entry.Value) ? "기억의 형체만 남아 있습니다." : entry.Value;
-                accessible.Append("◇ ").Append(entry.Key).AppendLine().AppendLine(text);
+                string nextRegion = MemoryCatalog.RegionFor(entry.Key);
+                if (nextRegion != region)
+                {
+                    CreateSectionLabel(nextRegion);
+                    region = nextRegion;
+                }
+                accessible.Append("◇ ").Append(MemoryCatalog.TitleFor(entry.Key)).AppendLine().AppendLine(text);
                 CreateJournalCard(entry.Key, text);
             }
             _body.text = accessible.ToString();
@@ -273,7 +280,7 @@ namespace HiddenWeight.UI
             layout.childForceExpandHeight = false;
 
             var heading = UIBuilder.CreateText(card.transform, "MemoryTitle", 19, TextAnchor.MiddleLeft);
-            heading.text = "◇  " + id;
+            heading.text = "◇  " + MemoryCatalog.TitleFor(id);
             heading.color = UIBuilder.AccentColor;
             heading.gameObject.AddComponent<LayoutElement>().preferredHeight = 28f;
             var body = UIBuilder.CreateText(card.transform, "MemoryText", 22, TextAnchor.UpperLeft);

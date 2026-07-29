@@ -72,6 +72,7 @@ namespace HiddenWeight.Player
             Current = Mathf.Max(0, Current - amount);
             HealthChanged?.Invoke(Current, _maxHealth);
             Damaged?.Invoke();
+            AudioManager.Instance?.PlaySfx(SfxCue.Hurt, 0.65f);
 
             var direction = ((Vector2)transform.position - sourcePosition).normalized;
             PlayerController.Instance.ApplyKnockback(direction, _knockbackForce);

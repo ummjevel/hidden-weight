@@ -104,6 +104,7 @@ namespace HiddenWeight.UI
             img.color = ButtonIdle;
 
             var button = go.AddComponent<Button>();
+            button.onClick.AddListener(() => AudioManager.Instance?.PlaySfx(SfxCue.UiConfirm, 0.35f));
             button.onClick.AddListener(onClick);
             button.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             go.AddComponent<UIFocusPulse>();

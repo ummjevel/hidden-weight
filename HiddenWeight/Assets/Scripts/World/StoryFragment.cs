@@ -40,6 +40,7 @@ namespace HiddenWeight.World
             if (!p.CollectFragment(fragmentId, text)) return; // 이미 먹은 것
             if (grantsSkill != EmotionId.None) p.UnlockSkill(grantsSkill);
             if (grantsAwareness) p.GrantAwareness();
+            AudioManager.Instance?.PlaySfx(SfxCue.Fragment, 0.75f);
             GameManager.FragmentPresenter?.Invoke(text);
             gameObject.SetActive(false);
             EmotionSkillController.Instance?.RefreshActive();

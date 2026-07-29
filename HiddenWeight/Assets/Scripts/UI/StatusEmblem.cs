@@ -28,10 +28,11 @@ namespace HiddenWeight.UI
         readonly Dictionary<string, Sequence> _byName = new Dictionary<string, Sequence>();
         Image _image;
         Sequence _current;
+        string _currentName;
         float _timer;
         int _frame;
 
-        public string CurrentSequence => _current != null ? _current.name : null;
+        public string CurrentSequence => _current != null ? _currentName : null;
 
         void Awake()
         {
@@ -61,31 +62,49 @@ namespace HiddenWeight.UI
 
         public bool Has(string name) => _byName.ContainsKey(name);
 
+        public void RegisterAlias(string alias, string sequenceName)
+        {
+            if (string.IsNullOrEmpty(alias) || !_byName.TryGetValue(sequenceName, out var sequence)) return;
+            _byName[alias] = sequence;
+        }
+
         public void Play(string name)
         {
             if (!_byName.TryGetValue(name, out var sequence)) return;
 
             _current = sequence;
+            _currentName = name;
             _frame = 0;
             _timer = 0f;
             if (_image == null) _image = GetComponent<Image>();
             _image.sprite = sequence.frames[0];
+            _image.color = UISettings.ReduceFlash ? new Color(1f, 1f, 1f, 0.82f) : Color.white;
             _image.enabled = true;
+
+            // 동작 감소에서는 애니메이션을 없애되 상태 자체는 숨기지 않는다.
+            // 반복 상태는 대표 프레임에 머물고, 일회성 상태는 마지막 프레임을 짧게 보여 준다.
+            if (UISettings.ReduceMotion)
+            {
+                _frame = sequence.loop ? 0 : sequence.frames.Length - 1;
+                _image.sprite = sequence.frames[_frame];
+            }
         }
 
         // 루프 중인 것을 끈다. 한 번짜리는 스스로 끝나므로 부를 필요가 없다.
         public void Stop(string name = null)
         {
             if (_current == null) return;
-            if (name != null && _current.name != name) return;
+            if (name != null && _currentName != name && _current.name != name) return;
 
             _current = null;
+            _currentName = null;
             if (_image != null) _image.enabled = false;
         }
 
         void Update()
         {
             if (_current == null) return;
+            if (UISettings.ReduceMotion) return;
 
             _timer += Time.unscaledDeltaTime; // 일시정지 중에도 멈추지 않는다(HUD는 UI다)
             float interval = _current.fps <= 0f ? 0.1f : 1f / _current.fps;
@@ -99,6 +118,7 @@ namespace HiddenWeight.UI
                 if (!_current.loop)
                 {
                     _current = null;
+                    _currentName = null;
                     _image.enabled = false;
                     return;
                 }

@@ -16,6 +16,8 @@ namespace HiddenWeight.World
     //      뒤로의 넉백". 복귀 직후 0.8초 안전 시간도 여기서 준다(10절).
     public class GazeHazard : MonoBehaviour
     {
+        // HUD가 특정 시선 구현을 탐색하지 않고도 현재 노출도를 표현할 수 있게 하는 역방향 훅.
+        public static event System.Action<GazeHazard, float, bool> ExposureChanged;
         [SerializeField] float viewRadius = 6f;
         [SerializeField] float viewAngle = 60f;
         [SerializeField] float damageInterval = 1f;
@@ -45,6 +47,8 @@ namespace HiddenWeight.World
 
         bool _wasOn;
         bool _wasTelegraphing;
+        float _lastReportedExposure = -1f;
+        bool _lastReportedAlarm;
 
         void PlayTransition(string clip)
         {
@@ -94,6 +98,25 @@ namespace HiddenWeight.World
             _sprite = GetComponent<SpriteRenderer>();
         }
 
+        void OnDisable()
+        {
+            ExposureChanged?.Invoke(this, 0f, false);
+            _lastReportedExposure = -1f;
+            _lastReportedAlarm = false;
+        }
+
+        void ReportExposure()
+        {
+            float exposure = IsPlayerSeen
+                ? (alarmDelay <= 0f ? 1f : Mathf.Clamp01(_seenTime / alarmDelay))
+                : 0f;
+            bool alarmed = IsAlarmed && IsPlayerSeen;
+            if (Mathf.Abs(exposure - _lastReportedExposure) < 0.05f && alarmed == _lastReportedAlarm) return;
+            _lastReportedExposure = exposure;
+            _lastReportedAlarm = alarmed;
+            ExposureChanged?.Invoke(this, exposure, alarmed);
+        }
+
         void Update()
         {
             if (_externalTimer > 0f) _externalTimer -= Time.deltaTime;
@@ -115,6 +138,7 @@ namespace HiddenWeight.World
                 _seenTime = 0f;
                 transform.localScale = _baseScale;
                 if (_sprite != null) _sprite.color = new Color(1f, 1f, 1f, 0.25f);
+                ReportExposure();
                 return;
             }
 
@@ -139,11 +163,13 @@ namespace HiddenWeight.World
                 _seenTime = 0f;
                 _wasTelegraphing = false;
                 UpdateAlarmVisual();
+                ReportExposure();
                 return;
             }
 
             _seenTime += Time.deltaTime;
             UpdateAlarmVisual();
+            ReportExposure();
 
             // 포착됐지만 아직 피해가 없는 단계 = 빔 예고. 여기서 벗어나면 맞지 않는다.
             if (!_wasTelegraphing)

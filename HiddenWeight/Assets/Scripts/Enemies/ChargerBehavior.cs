@@ -80,6 +80,11 @@ namespace HiddenWeight.Enemies
         {
             _phase = Phase.Stun;
             Body.linearVelocity = new Vector2(0f, Body.linearVelocity.y);
+
+            // 벽에 박은 순간을 눈에 보이게 한다. 이 적의 공략이 "유도해서 박게 만들기"라,
+            // 성공했다는 신호가 화면에 없으면 플레이어가 그 규칙을 배우지 못한다.
+            HiddenWeight.World.ImpactVFX.Play("ImpactWall",
+                transform.position + new Vector3(_chargeDirection * 0.6f, 0f, 0f), _chargeDirection);
             ShowTelegraph(true); // 경직도 눈에 보여야 공격 기회로 읽힌다
             yield return new WaitForSeconds(Data.stunSeconds);
             ShowTelegraph(false);

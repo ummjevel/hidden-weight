@@ -111,6 +111,36 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Environment/Props/Animation/AmbientProps_Animation_v1.png",
                         Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PropShroud", "PropCage", "PropLantern" } },
+
+            // --- 잔재 제작 마감 세트 9종 ---
+            // 규격은 docs/concept-art/generated/residue-completion-assets/PROMPTS.md의 납품 표 그대로다.
+            // 전부 8열 192x192이고, 바닥에 세우는 것(발판·방 전환)만 Bottom Center 피벗을 쓴다.
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueEnemyProjectiles_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "ProjSplinter", "ProjClaw", "ProjChargeTrail", "ProjShockwave" } },
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueBossProjectiles_v1.png",
+                        Columns = 8, Rows = 5, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "BossWave", "BossRing", "BossNeedle", "BossRewindOrb", "BossRupture" } },
+            new Sheet { Path = "Environment/Terrain/Animation/ResiduePlatformStates_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "PlatformCrack", "PlatformCollapse", "PlatformBroken", "PlatformRestore" } },
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueImpactVFX_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "ImpactMelee", "ImpactWall", "ImpactLand", "ImpactHeavy" } },
+            new Sheet { Path = "Environment/VFX/Animation/ResidueForegroundMotion_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "FgChains", "FgCage", "FgFinger", "FgDust" } },
+            new Sheet { Path = "Environment/VFX/Animation/ResidueBackgroundMotion_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "BgSmoke", "BgWindows", "BgHand", "BgCrowd" } },
+            new Sheet { Path = "Environment/Interactables/Animation/ResidueRoomTransitions_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "SealClose", "SealOpen", "ShortcutRewind", "SecretWall" } },
+            new Sheet { Path = "UI/ResidueUIIcons_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f), Prefix = "UIIcon" },
+            new Sheet { Path = "UI/Animation/ResidueStatusUI_v1.png",
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "StatusRewind", "StatusDanger", "StatusProgress" } },
         };
 
         [MenuItem("Hidden Weight/Art/Slice Residue Sheets")]

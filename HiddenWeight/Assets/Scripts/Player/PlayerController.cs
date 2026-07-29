@@ -263,6 +263,15 @@ namespace HiddenWeight.Player
         void SetState(PlayerState next)
         {
             if (State == next) return;
+
+            // 착지하는 순간 발밑에 먼지를 남긴다. 높은 곳에서 떨어졌으면 더 큰 것으로.
+            if (next == PlayerState.Land)
+            {
+                float fallSpeed = Mathf.Abs(_rb.linearVelocity.y);
+                HiddenWeight.World.ImpactVFX.Play(fallSpeed > 12f ? "ImpactHeavy" : "ImpactLand",
+                    transform.position + new Vector3(0f, -0.7f, 0f), Facing);
+            }
+
             State = next;
             StateChanged?.Invoke(next);
         }

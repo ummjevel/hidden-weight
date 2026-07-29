@@ -377,7 +377,99 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildCrumblingPlatform(parent, pos);
             ReplaceArt(go, "Item_CrumbleIntact", new Vector2(3f, 1f), 2);
+            AttachPlatformStates(go);
             return go;
+        }
+
+        // 발판 상태 4행(ResiduePlatformStates_v1: 균열 → 붕괴 → 파손 정착 → 되감기 복구).
+        // ReplaceArt가 만들어 둔 Art 자식에 얹는다. 1행만 대기 루프이고 나머지는 상태 전환용이라
+        // 마지막 프레임에서 멈춰야 한다(PROMPTS.md 납품 표).
+        static void AttachPlatformStates(GameObject platform)
+        {
+            var art = platform.transform.Find("Art");
+            if (art == null) return;
+
+            var renderer = art.GetComponent<SpriteRenderer>();
+            if (renderer == null) return;
+
+            AttachAnimator(art.gameObject, renderer, new[]
+            {
+                ("PlatformCrack", 8f, true),
+                ("PlatformCollapse", 12f, false),
+                ("PlatformBroken", 8f, false),
+                ("PlatformRestore", 14f, false),
+            }, 1f);
+
+            // 밟기 전에는 멀쩡한 그림 그대로 있어야 한다. 자동 재생을 켜 두면 금 간 1행이
+            // 처음부터 돌아가 발판이 늘 부서지기 직전처럼 보인다.
+            var animator = art.GetComponent<SpriteAnimator>();
+            if (animator != null) SetField(animator, "autoPlay", p => p.boolValue = false);
+        }
+
+        // 숏컷 장치의 봉쇄·해제 애니메이션(ResidueRoomTransitions_v1의 1·2행).
+        static void AttachSealAnimator(Shortcut shortcut, Vector2 size)
+        {
+            if (shortcut == null) return;
+
+            var sealObject = new GameObject("SealAnimation");
+            sealObject.transform.SetParent(shortcut.transform, false);
+
+            var renderer = sealObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6; // 숏컷 본체(5) 바로 위
+            FitSprite(renderer, size.x, size.y);
+
+            AttachAnimator(sealObject, renderer, new[]
+            {
+                ("SealClose", 10f, false),
+                ("SealOpen", 10f, false),
+            }, size.y);
+
+            var animator = sealObject.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(sealObject); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(shortcut, "transitionAnimator", p => p.objectReferenceValue = animator);
+        }
+
+        // 충돌 연출 4종을 지역에 하나만 놓는다. 호출부는 ImpactVFX.Play로 자리와 종류만 넘긴다.
+        static void BuildImpactVFX(Transform parent)
+        {
+            var definitions = new (string name, float fps, float height)[]
+            {
+                ("ImpactMelee", 18f, 1.4f),
+                ("ImpactWall", 16f, 1.6f),
+                ("ImpactLand", 14f, 1.0f),
+                ("ImpactHeavy", 16f, 1.8f),
+            };
+
+            var valid = new List<(string name, float fps, float height, Sprite[] frames)>();
+            foreach (var definition in definitions)
+            {
+                var frames = ArtFrames(definition.name);
+                if (frames.Length > 0) valid.Add((definition.name, definition.fps, definition.height, frames));
+            }
+            if (valid.Count == 0) return;
+
+            var go = new GameObject("ImpactVFX");
+            go.transform.SetParent(parent, false);
+            var vfx = go.AddComponent<ImpactVFX>();
+
+            SetField(vfx, "effects", p =>
+            {
+                p.arraySize = valid.Count;
+                for (int i = 0; i < valid.Count; i++)
+                {
+                    var element = p.GetArrayElementAtIndex(i);
+                    element.FindPropertyRelative("name").stringValue = valid[i].name;
+                    element.FindPropertyRelative("fps").floatValue = valid[i].fps;
+                    element.FindPropertyRelative("displayHeight").floatValue = valid[i].height;
+
+                    var frames = element.FindPropertyRelative("frames");
+                    frames.arraySize = valid[i].frames.Length;
+                    for (int f = 0; f < valid[i].frames.Length; f++)
+                        frames.GetArrayElementAtIndex(f).objectReferenceValue = valid[i].frames[f];
+                }
+            });
         }
 
         // 방과 방 사이의 평평한 연결 통로. 양쪽 높이를 맞춰 뒀으므로 바닥 한 줄이면 이어진다.
@@ -490,6 +582,15 @@ namespace HiddenWeight.EditorTools
             BuildR12(ctx);
 
             BuildConnections(ctx);
+
+            // 충돌 연출은 지역에 하나만 둔다(근접 타격·벽 충돌·착지).
+            BuildImpactVFX(root.transform);
+
+            // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다. 만든 곳과 여는 곳이 달라서
+            // 여기서 한 번에 처리한다.
+            AttachSealAnimator(_shortcutA, new Vector2(4f, 2f));
+            AttachSealAnimator(_shortcutB, new Vector2(3f, 2.5f));
+            AttachSealAnimator(_shortcutC, new Vector2(4f, 2f));
 
             // 플레이어는 R01 시작점에. 카메라도 같은 자리에서 시작한다.
             ctx.O = R01;

@@ -445,20 +445,22 @@ namespace HiddenWeight.EditorTools
         }
 
         // 충돌 연출 4종을 지역에 하나만 놓는다. 호출부는 ImpactVFX.Play로 자리와 종류만 넘긴다.
-        static void BuildImpactVFX(Transform parent)
+        // 잔재의 충돌 연출 목록. 지역마다 이름만 다르므로 목록을 인자로 받는다.
+        static readonly (string name, float fps, float height)[] ResidueImpacts =
         {
-            var definitions = new (string name, float fps, float height)[]
-            {
-                ("ImpactMelee", 18f, 1.4f),
-                ("ImpactWall", 16f, 1.6f),
-                ("ImpactLand", 14f, 1.0f),
-                ("ImpactHeavy", 16f, 1.8f),
+            ("ImpactMelee", 18f, 1.4f),
+            ("ImpactWall", 16f, 1.6f),
+            ("ImpactLand", 14f, 1.0f),
+            ("ImpactHeavy", 16f, 1.8f),
 
-                // 날아가지 않고 그 자리에서 터지는 것들도 같은 재생기로 처리한다.
-                ("ProjChargeTrail", 16f, 1.6f),  // 돌진 시작 잔상
-                ("BossRing", 14f, 3.5f),         // 보스 낙하 착지 고리
-                ("BossRupture", 12f, 3.0f),      // 단계 전환 파열
-            };
+            // 날아가지 않고 그 자리에서 터지는 것들도 같은 재생기로 처리한다.
+            ("ProjChargeTrail", 16f, 1.6f),  // 돌진 시작 잔상
+            ("BossRing", 14f, 3.5f),         // 보스 낙하 착지 고리
+            ("BossRupture", 12f, 3.0f),      // 단계 전환 파열
+        };
+
+        static void BuildImpactVFX(Transform parent, (string name, float fps, float height)[] definitions)
+        {
 
             var valid = new List<(string name, float fps, float height, Sprite[] frames)>();
             foreach (var definition in definitions)
@@ -517,18 +519,21 @@ namespace HiddenWeight.EditorTools
         // 날아가는 공격체. 지역에 하나만 놓고 적·보스가 이름으로 쏜다.
         // 수치는 명세의 역할 그대로다 — 파편은 빠르고 작게, 충격파는 느리지만 지형에 막히지
         // 않고 바닥을 훑는다(정면 방어를 피해 뒤로 돌아간 플레이어를 밀어내는 것이 목적).
-        static void BuildProjectileSpawner(Transform parent)
+        static readonly (string name, float fps, float speed, float lifetime,
+                         float radius, int damage, float height, bool ignoreTerrain)[] ResidueProjectiles =
         {
-            var definitions = new (string name, float fps, float speed, float lifetime,
-                                   float radius, int damage, float height, bool ignoreTerrain)[]
-            {
-                ("ProjSplinter",   14f, 8f,   2.0f, 0.4f, 1, 0.8f, false),
-                ("ProjClaw",       16f, 9f,   0.7f, 0.6f, 1, 1.2f, false),
-                ("ProjShockwave",  14f, 5f,   2.2f, 0.7f, 1, 1.0f, true),
-                ("BossWave",       14f, 6f,   3.0f, 0.9f, 1, 2.0f, true),
-                ("BossNeedle",     16f, 11f,  2.0f, 0.4f, 1, 1.0f, false),
-                ("BossRewindOrb",  14f, 4.5f, 3.5f, 0.8f, 1, 1.4f, false),
-            };
+            ("ProjSplinter",   14f, 8f,   2.0f, 0.4f, 1, 0.8f, false),
+            ("ProjClaw",       16f, 9f,   0.7f, 0.6f, 1, 1.2f, false),
+            ("ProjShockwave",  14f, 5f,   2.2f, 0.7f, 1, 1.0f, true),
+            ("BossWave",       14f, 6f,   3.0f, 0.9f, 1, 2.0f, true),
+            ("BossNeedle",     16f, 11f,  2.0f, 0.4f, 1, 1.0f, false),
+            ("BossRewindOrb",  14f, 4.5f, 3.5f, 0.8f, 1, 1.4f, false),
+        };
+
+        static void BuildProjectileSpawner(Transform parent,
+            (string name, float fps, float speed, float lifetime,
+             float radius, int damage, float height, bool ignoreTerrain)[] definitions)
+        {
 
             var valid = new List<(string name, float fps, float speed, float lifetime,
                                   float radius, int damage, float height, bool ignoreTerrain, Sprite[] frames)>();
@@ -580,7 +585,9 @@ namespace HiddenWeight.EditorTools
             ("FgChains", 6f), ("FgCage", 6f), ("FgFinger", 4f), ("FgDust", 6f),
         };
 
-        static void BuildRoomMotion(Room room, int index)
+        static void BuildRoomMotion(Room room, int index,
+                                    (string clip, float fps)[] BackgroundMotions,
+                                    (string clip, float fps)[] ForegroundMotions)
         {
             var bounds = room.WorldBounds;
 
@@ -711,13 +718,13 @@ namespace HiddenWeight.EditorTools
             BuildConnections(ctx);
 
             // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
-            BuildImpactVFX(root.transform);
-            BuildProjectileSpawner(root.transform);
+            BuildImpactVFX(root.transform, ResidueImpacts);
+            BuildProjectileSpawner(root.transform, ResidueProjectiles);
 
             // 방마다 전경·배경 모션을 얹는다. 방을 다 지은 뒤에 해야 방 경계가 정해져 있다.
             int motionIndex = 0;
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
-                BuildRoomMotion(room, motionIndex++);
+                BuildRoomMotion(room, motionIndex++, BackgroundMotions, ForegroundMotions);
 
             // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다. 만든 곳과 여는 곳이 달라서
             // 여기서 한 번에 처리한다.

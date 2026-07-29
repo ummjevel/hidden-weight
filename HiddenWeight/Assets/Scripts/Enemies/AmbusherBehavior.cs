@@ -20,6 +20,9 @@ namespace HiddenWeight.Enemies
         // 끄고 그대로 쓴다 — 적을 새로 만들지 않고 반응 규칙 하나만 갈아끼운다.
         [SerializeField] bool ignoreHushedPlayer = false;
 
+        // 떨어지며 남기는 궤적. 지역마다 다른 시트를 쓰므로 이름으로 지정한다.
+        [SerializeField] string dropProjectile = "ProjClaw";
+
         bool _triggered;
 
         protected override void Awake()
@@ -68,7 +71,7 @@ namespace HiddenWeight.Enemies
 
             // 떨어지면서 아래로 손톱 궤적을 남긴다(ResidueEnemyProjectiles_v1 2행).
             // 그림자를 보고 비켰다면 이것도 맞지 않는다 — 예고가 곧 회피 조건이라는 규칙 그대로다.
-            HiddenWeight.World.ProjectileSpawner.Fire("ProjClaw",
+            HiddenWeight.World.ProjectileSpawner.Fire(dropProjectile,
                 transform.position + new Vector3(0f, -0.6f, 0f), Vector2.down);
 
             var patrol = GetComponent<EnemyPatrol>();

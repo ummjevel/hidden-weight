@@ -87,3 +87,13 @@ are appended here as each atlas is completed.
 - Prompt summary: invisible-wall hand and foot contact in the upper loop,
   followed by compression, push, airborne extension and recovery in the lower
   row; no wall scenery is baked into the sprite sheet.
+
+### Player reaction VFX
+
+- Source: `PlayerVFX_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/VFX/PlayerVFX_v1.png`
+- Grid: 6×3 at 1536×1023; rows are Hit, Death and Respawn.
+- Prompt summary: a compact white-lavender impact burst, gray-violet smoky
+  dissolution and restrained cyan-white reconstruction. Each effect progresses
+  left to right, preserves bottom-center registration and stays inside its
+  256×341 runtime cell.

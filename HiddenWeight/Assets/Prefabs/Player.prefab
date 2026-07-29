@@ -35,7 +35,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &140239965718779040
 SpriteRenderer:
-  serializedVersion: 3
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -92,7 +92,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
-  m_BlendShapeWeights: []
 --- !u!114 &8590029480345622009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -314,6 +313,9 @@ MonoBehaviour:
     fps: 10
     loop: 0
   normalizedHeight: 1.5
+  lockFeetToGround: 1
+  groundY: -0.7
+  autoPlay: 1
 --- !u!1 &939411856103057049
 GameObject:
   m_ObjectHideFlags: 0

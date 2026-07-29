@@ -395,6 +395,12 @@ namespace HiddenWeight.EditorTools
             so.FindProperty("target").objectReferenceValue = renderer;
             so.FindProperty("normalizedHeight").floatValue = displayHeight;
 
+            // 콜라이더 바닥(CapsuleCollider2D size.y=1.4, offset 0 → 로컬 -0.7)에 그림 속
+            // 발을 고정한다. 프레임마다 캔버스 여백이 달라 피벗만으로는 "공중에 뜬 것처럼
+            // 보인다" 버그가 났다 — SpriteAnimator.Apply()가 매 프레임 다시 계산한다.
+            so.FindProperty("lockFeetToGround").boolValue = true;
+            so.FindProperty("groundY").floatValue = -0.7f;
+
             var clips = so.FindProperty("clips");
             clips.arraySize = valid.Count;
             for (int i = 0; i < valid.Count; i++)

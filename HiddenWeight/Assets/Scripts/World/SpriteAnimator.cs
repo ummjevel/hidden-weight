@@ -27,6 +27,13 @@ namespace HiddenWeight.World
         // 0보다 크면 매 프레임 이 높이에 맞춰 스케일을 다시 잡아 크기를 일정하게 유지한다.
         [SerializeField] float normalizedHeight = 0f;
 
+        // 프레임마다 캔버스 안 여백(머리 위·발 아래 공백)이 달라, 피벗(캔버스 중앙)만 믿으면
+        // 발 위치가 프레임/클립마다 들쭉날쭉해진다(플레이어 "공중에 뜬 것처럼 보인다" 버그).
+        // 켜두면 매 프레임 스프라이트의 실제(트리밍된) 바닥이 항상 groundY(로컬 좌표)에 오도록
+        // 위치를 다시 계산한다 — 피벗 대신 "그림 속 발"을 기준으로 맞춘다.
+        [SerializeField] bool lockFeetToGround = false;
+        [SerializeField] float groundY = 0f;
+
         // "지금 실제로 화면에 그려지는 렌더러"는 이것 하나다. 좌우 반전·피격 점멸처럼
         // 겉모습을 건드리는 쪽은 전부 여기를 봐야 한다 — 예전에는 프리팹 루트에 남아 있던
         // 꺼진 렌더러를 잡아, 안 보이는 그림만 뒤집히고 점멸이 엉뚱한 그림을 켜 놓았다.
@@ -119,6 +126,14 @@ namespace HiddenWeight.World
             // 가로세로 비율은 유지한 채 높이만 맞춘다.
             float scale = normalizedHeight / height;
             target.transform.localScale = new Vector3(scale, scale, 1f);
+
+            if (!lockFeetToGround) return;
+
+            // sprite.bounds.min.y는 피벗 기준 트리밍된 하단(발) 위치다(스케일 전 단위).
+            // 스케일을 곱해 실제 렌더 크기로 바꾼 뒤, 그만큼 위/아래로 밀어 발을 groundY에 둔다.
+            var pos = target.transform.localPosition;
+            pos.y = groundY - sprite.bounds.min.y * scale;
+            target.transform.localPosition = pos;
         }
     }
 }

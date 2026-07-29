@@ -494,8 +494,12 @@ namespace HiddenWeight.EditorTools
         }
 
         // 보스. 체력·패턴만 다르고 나머지는 같은 BossController를 쓴다.
+        // clips/idleSprite를 주면 그 지역 보스 아트를 쓰고, 비우면 잔재의 감시자 시트를 쓴다.
+        // 지역마다 보스 빌더를 따로 만들지 않기 위한 선택적 인자다.
         static GameObject BuildBoss(Transform parent, Vector2 pos, string assetName, int health,
-                                    BossController.Move[] moves, float[] phases, Color tint)
+                                    BossController.Move[] moves, float[] phases, Color tint,
+                                    (string clip, float fps, bool loop)[] clips = null,
+                                    string idleSprite = null)
         {
             var data = LoadData<EnemyData>(assetName);
             if (data == null)
@@ -511,7 +515,7 @@ namespace HiddenWeight.EditorTools
             var go = BuildEnemy(parent, pos, data);
             go.transform.localScale = Vector3.one * 2f;
 
-            var bossArt = ResidueArt("Watcher_Idle");
+            var bossArt = idleSprite != null ? Art(idleSprite) : ResidueArt("Watcher_Idle");
             if (bossArt != null)
             {
                 var rootRenderer = go.GetComponent<SpriteRenderer>();
@@ -533,7 +537,7 @@ namespace HiddenWeight.EditorTools
                     artObject.transform.localScale = new Vector3(scale, scale, 1f);
                 }
 
-                AttachAnimator(artObject, artRenderer, new[]
+                AttachAnimator(artObject, artRenderer, clips ?? new[]
                 {
                     ("WatcherAnimIdle",  8f,  true),
                     ("WatcherAnimSweep", 12f, false),

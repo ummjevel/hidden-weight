@@ -286,9 +286,61 @@ namespace HiddenWeight.EditorTools
             return data;
         }
 
+        // 적 종류별 애니메이션(BlindPilgrim / InformingMouth / HangingAudience / FacelessJudge).
+        // 시트의 2행은 문서상 "Move"지만 클립 이름은 Walk다 — EnemyPatrol이 PlayClip("Walk")를
+        // 부르기 때문이다(GazeAnimationArtSlicer 주석 참고).
+        static (string, float, bool)[] GazeEnemyClips(string prefix) => new[]
+        {
+            ($"{prefix}Idle",      8f,  true),
+            ($"{prefix}Walk",      10f, true),
+            ($"{prefix}Telegraph", 12f, false),
+            ($"{prefix}Attack",    14f, false),
+            ($"{prefix}Hit",       12f, false),
+            ($"{prefix}Death",     10f, false),
+        };
+
+        // 겉모습을 응시 전용 스프라이트로 바꾼다. 루트 스케일은 건드리지 않는다 —
+        // 콜라이더가 함께 줄어 판정이 통째로 어긋난다(잔재에서 겪은 문제 그대로다).
+        static void ApplyGazeEnemyArt(GameObject enemy, GazeEnemyKind kind)
+        {
+            string prefix = kind.ToString();
+            var idle = Art($"{prefix}Idle_00");
+            if (idle == null)
+            {
+                // 조용히 넘어가면 그 적만 플레이스홀더 사각형으로 남는다. 이 프로젝트에서
+                // 아트가 죽는 자리는 늘 여기라서, 빠진 것은 반드시 눈에 띄게 남긴다.
+                Debug.LogWarning($"[GazeZoneBuilder] {prefix} 아트를 찾지 못했다: {prefix}Idle_00");
+                return;
+            }
+
+            var rootRenderer = enemy.GetComponent<SpriteRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
+            var artObject = new GameObject("Art");
+            artObject.transform.SetParent(enemy.transform, false);
+
+            var artRenderer = artObject.AddComponent<SpriteRenderer>();
+            artRenderer.sprite = idle;
+            artRenderer.color = Color.white;
+            artRenderer.sortingOrder = 8;
+
+            // 재판관만 정예라 한 뼘 크게 보인다.
+            float displayHeight = kind == GazeEnemyKind.Judge ? 1.8f : 1.3f;
+            var size = idle.bounds.size;
+            if (size.y > 0f)
+            {
+                float scale = displayHeight / size.y;
+                artObject.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            AttachAnimator(artObject, artRenderer, GazeEnemyClips(prefix), displayHeight);
+            SetField(enemy.GetComponent<Enemy>(), "clipPrefix", p => p.stringValue = prefix);
+        }
+
         static GameObject BuildGazeEnemy(Transform parent, Vector2 pos, GazeEnemyKind kind)
         {
             var go = BuildEnemy(parent, pos, GazeEnemyData(kind));
+            ApplyGazeEnemyArt(go, kind);
             int playerMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 
             switch (kind)
@@ -368,6 +420,54 @@ namespace HiddenWeight.EditorTools
             });
         }
 
+        // 방마다 배경 3층(원경·중경·전경)을 붙인다. 파일 이름은 방 번호로만 정해지므로
+        // 씬의 방 이름(GazeRoom01)에서 폴더 이름(Room01)을 뽑아 쓴다.
+        static void BuildGazeRoomLayers(Room room)
+        {
+            string folder = null;
+            if (room.name.StartsWith("GazeRoom")) folder = "Room" + room.name.Substring("GazeRoom".Length);
+            else if (room.name.StartsWith("GazeSecret")) folder = "Secret" + room.name.Substring("GazeSecret".Length);
+            if (folder == null) return;
+
+            var artRoot = new GameObject("Art");
+            artRoot.transform.SetParent(room.transform, false);
+            artRoot.transform.localPosition = Vector3.zero;
+
+            // 원경은 거의 따라오지 않고, 중경은 절반쯤, 전경은 카메라와 함께 움직인다.
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "BG_Far", -30, 0.15f);
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "BG_Mid", -20, 0.35f);
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "FG_Overlay", 20, 0f);
+        }
+
+        static void BuildGazeRoomLayer(Transform parent, Room room, string folder, string suffix,
+                                       int sortingOrder, float parallax)
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+                $"Assets/Art/Gaze/{folder}/{folder}_{suffix}.png");
+            if (sprite == null) return;
+
+            var go = new GameObject(suffix);
+            go.transform.SetParent(parent, false);
+            go.transform.position = room.WorldBounds.center;
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = sortingOrder;
+
+            // 방 너비에 맞춰 균일 배율로 키운다. 가로세로를 따로 늘리면 그림이 일그러진다.
+            float width = sprite.bounds.size.x;
+            if (width > 0f)
+            {
+                float scale = room.WorldBounds.size.x / width;
+                go.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            if (parallax <= 0f) return;
+
+            var layer = go.AddComponent<ParallaxLayer>();
+            SetField(layer, "multiplier", p => p.floatValue = parallax);
+        }
+
         // ------------------------------------------------------------
         // 방 연결
         // ------------------------------------------------------------
@@ -419,6 +519,7 @@ namespace HiddenWeight.EditorTools
         public static void RunGazeZone()
         {
             EnsureScenesFolder();
+            UseArtRoot("Assets/Art/Gaze");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Gaze", out var root);
@@ -456,6 +557,11 @@ namespace HiddenWeight.EditorTools
 
             ctx.O = G01;
             PlacePlayerAndCamera(root, new Vector3(G01.x + 3f, G01.y + 3f, 0f));
+
+            // 방마다 배경 3층을 붙인다. 방을 다 지은 뒤에 해야 방 경계가 정해져 있다.
+            GazeRoomArtImporter.ConfigureAll();
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+                BuildGazeRoomLayers(room);
 
             SaveScene(scene, "Zone_Gaze_Full");
             RegisterBuildSettings();
@@ -871,7 +977,18 @@ namespace HiddenWeight.EditorTools
 
             var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Gaze_Gatekeeper", 14,
                 new[] { BossController.Move.GazeSweep, BossController.Move.WallClose, BossController.Move.Charge },
-                new[] { 0.5f }, new Color(0.55f, 0.45f, 0.7f));
+                new[] { 0.5f }, new Color(0.55f, 0.45f, 0.7f),
+                new[]
+                {
+                    ("GatekeeperIdle",      8f,  true),
+                    ("GatekeeperGazeSweep", 12f, false),
+                    ("GatekeeperEyelid",    10f, false),
+                    ("GatekeeperCharge",    12f, false),
+                    ("GatekeeperDualGaze",  14f, false),
+                    ("GatekeeperHurt",      12f, false),
+                    ("GatekeeperDeath",     9f,  false),
+                },
+                "GatekeeperIdle_00");
             ConfigureGazeBoss(boss, new[] { lidL, lidR });
 
             // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
@@ -965,7 +1082,18 @@ namespace HiddenWeight.EditorTools
                     BossController.Move.Charge,
                     BossController.Move.GazeSweep,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.45f, 0.4f, 0.62f));
+                new[] { 0.6f, 0.3f }, new Color(0.45f, 0.4f, 0.62f),
+                new[]
+                {
+                    ("AllEyesIdle",          8f,  true),
+                    ("AllEyesFixedGaze",     12f, false),
+                    ("AllEyesRotatingGaze",  12f, false),
+                    ("AllEyesProjectile",    14f, false),
+                    ("AllEyesTrueStrike",    14f, false),
+                    ("AllEyesHurt",          12f, false),
+                    ("AllEyesDeath",         9f,  false),
+                },
+                "AllEyesIdle_00");
             ConfigureGazeBoss(boss, null);
 
             var reward = BuildRewardChest(c.Root.transform, "gaze_g12_boss", c.P(15f, 5.5f), 70, true);

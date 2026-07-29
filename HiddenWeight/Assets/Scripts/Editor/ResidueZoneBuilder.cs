@@ -46,12 +46,25 @@ namespace HiddenWeight.EditorTools
         // 항목 때문에 씬 생성이 실패하면 안 된다.
         static Dictionary<string, Sprite> _residueSprites;
 
+        // 지금 어느 지역의 아트를 집을지. 지역마다 같은 이름의 스프라이트가 있으므로
+        // (응시에도 Platform_r1_c1이 있다) 한 폴더만 보게 해야 서로 섞이지 않는다.
+        // 각 지역 빌더가 시작할 때 자기 폴더로 바꾼다.
+        static string _artRoot = "Assets/Art/Residue";
+
+        static void UseArtRoot(string root)
+        {
+            if (_artRoot == root) return;
+
+            _artRoot = root;
+            _residueSprites = null; // 폴더가 바뀌었으니 캐시를 버린다
+        }
+
         static Sprite Art(string spriteName)
         {
             if (_residueSprites == null)
             {
                 _residueSprites = new Dictionary<string, Sprite>();
-                foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { "Assets/Art/Residue" }))
+                foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { _artRoot }))
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guid);
                     foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
@@ -664,6 +677,7 @@ namespace HiddenWeight.EditorTools
         public static void RunResidueZone()
         {
             EnsureScenesFolder();
+            UseArtRoot("Assets/Art/Residue");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Residue", out var root);

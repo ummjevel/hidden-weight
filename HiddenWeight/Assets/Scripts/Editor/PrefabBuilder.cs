@@ -492,6 +492,11 @@ namespace HiddenWeight.EditorTools
 
             var so = new SerializedObject(target);
             var property = so.FindProperty(propertyName);
+
+            // main의 HUD가 상태 문양 필드를 갖고 있지 않을 수 있다(머지에서 main 쪽을 유지했다).
+            // 그 경우 조용히 건너뛴다 — 메뉴를 눌렀다고 에디터가 죽으면 안 된다.
+            if (property == null) return 0;
+
             property.arraySize = frames.Count;
             for (int i = 0; i < frames.Count; i++)
                 property.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
@@ -517,6 +522,8 @@ namespace HiddenWeight.EditorTools
 
             var so = new SerializedObject(target);
             var property = so.FindProperty(propertyName);
+            if (property == null) return 0;
+
             property.arraySize = frames.Length;
             for (int i = 0; i < frames.Length; i++)
                 property.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];

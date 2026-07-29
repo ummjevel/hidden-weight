@@ -55,7 +55,6 @@ namespace HiddenWeight.UI
         void Update()
         {
             if (_health == null) TryBindPlayerHealth();
-            RefreshStatusFramesForZone();
             UpdateSkillDisplay();
         }
 

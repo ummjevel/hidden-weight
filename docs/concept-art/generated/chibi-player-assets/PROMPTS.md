@@ -67,3 +67,23 @@ are appended here as each atlas is completed.
   returns to approved idle proportions.
 - Audit: `contact-sheets/locomotion-loop-audit.jpg` compares loop boundaries
   and the Land-to-Idle transition against a common foot baseline.
+
+### Player actions
+
+- Source: `Player_Actions_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/Player/Animation/Player_Actions_v1.png`
+- Grid: 6×2 at 2172×724; rows are Attack and Dash.
+- Prompt summary: compact six-frame weaponless energy attack and six-frame
+  low dash, with every character and effect held inside a square cell.
+- Iteration note: the first draft used a 2:1 canvas and crossed cell
+  boundaries. The accepted 3:1 regeneration adds 12% safe padding and keeps
+  the crescent, particles, speed lines and dust inside their source cells.
+
+### Player wall movement
+
+- Source: `Player_Wall_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/Player/Animation/Player_Wall_v1.png`
+- Grid: 6×2 at 2172×724; rows are WallCling and WallJump.
+- Prompt summary: invisible-wall hand and foot contact in the upper loop,
+  followed by compression, push, airborne extension and recovery in the lower
+  row; no wall scenery is baked into the sprite sheet.

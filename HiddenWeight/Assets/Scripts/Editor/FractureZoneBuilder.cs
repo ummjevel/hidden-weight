@@ -447,6 +447,7 @@ namespace HiddenWeight.EditorTools
                 renderer.sortingOrder = -100;
                 renderer.color = new Color(0.86f, 0.90f, 0.92f, 0.82f);
                 FitSprite(renderer, bounds.Value.size.x, bounds.Value.size.y);
+                background.AddComponent<RoomVisualCuller>();
             }
         }
 

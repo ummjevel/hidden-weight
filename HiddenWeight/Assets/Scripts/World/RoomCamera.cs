@@ -22,6 +22,7 @@ namespace HiddenWeight.World
 
         public static RoomCamera Instance { get; private set; }
         public Room CurrentRoom { get; private set; }
+        public event System.Action<Room> RoomChanged;
 
         void Awake()
         {
@@ -83,7 +84,9 @@ namespace HiddenWeight.World
         // CurrentRoom을 바꾸기만 한다. 급전환은 LateUpdate의 Lerp가 자연히 흡수한다.
         public void SetRoom(Room room)
         {
+            if (CurrentRoom == room) return;
             CurrentRoom = room;
+            RoomChanged?.Invoke(room);
         }
 
         // Lerp 없이 즉시 플레이어 위치로 이동한다 (씬 진입·리스폰용).

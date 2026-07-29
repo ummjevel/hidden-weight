@@ -323,6 +323,8 @@ namespace HiddenWeight.Tests
                 Assert.IsNotNull(renderer);
                 Assert.IsNotNull(renderer.sprite, roomSpec.name + " 배경 스프라이트가 연결되지 않았다.");
                 Assert.That(renderer.sprite.name, Is.EqualTo(roomSpec.name));
+                Assert.IsNotNull(background.GetComponent<RoomVisualCuller>(),
+                    roomSpec.name + " 배경에 현재 방 렌더링 제한이 없다.");
             }
         }
     }

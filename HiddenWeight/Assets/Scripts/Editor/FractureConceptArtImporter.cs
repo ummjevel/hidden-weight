@@ -56,8 +56,15 @@ namespace HiddenWeight.EditorTools
                 importer.spritePixelsPerUnit = 100f;
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
-                importer.maxTextureSize = 2048;
+                // 전체 지역이 한 씬에 들어가므로 15장을 2048로 유지하면 배경만으로 메모리
+                // 예산을 크게 넘는다. 카메라 줌에서 충분한 1024를 평면 합성 기준으로 고정한다.
+                importer.maxTextureSize = 1024;
                 importer.textureCompression = TextureImporterCompression.CompressedHQ;
+                var standalone = importer.GetPlatformTextureSettings("Standalone");
+                standalone.overridden = true;
+                standalone.maxTextureSize = 1024;
+                standalone.textureCompression = TextureImporterCompression.CompressedHQ;
+                importer.SetPlatformTextureSettings(standalone);
                 importer.SaveAndReimport();
             }
             Debug.Log("[FractureConceptArtImporter] 룸 배경 15장 임포트 완료");

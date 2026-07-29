@@ -34,6 +34,25 @@ namespace HiddenWeight.World
         [SerializeField] Transform retreatPoint;
         [SerializeField] float retreatInvulnSeconds = 0.8f;
 
+        [Header("전환 애니메이션 — 비면 크기·색 변화로만 알린다")]
+        // 눈이 뜨고 감기고, 빔을 예고하고, 실제로 쏘는 네 단계(EyeHazardTransitions_v1).
+        // 애니메이터가 없으면 지금까지처럼 스케일과 색으로만 경보를 표현한다.
+        [SerializeField] SpriteAnimator transitions;
+        [SerializeField] string openClip = "GazeEyeOpen";
+        [SerializeField] string closeClip = "GazeEyeClose";
+        [SerializeField] string telegraphClip = "GazeBeamTelegraph";
+        [SerializeField] string dischargeClip = "GazeBeamDischarge";
+
+        bool _wasOn;
+        bool _wasTelegraphing;
+
+        void PlayTransition(string clip)
+        {
+            if (transitions == null || string.IsNullOrEmpty(clip)) return;
+            if (!transitions.Has(clip)) return;
+            transitions.Play(clip, true);
+        }
+
         // 인스펙터에서 Player 레이어만 지정한다. PlayerHushed는 넣지 않는다 —
         // 숨죽이기 중에는 플레이어 레이어가 바뀌어 시선에서 자동으로 무해화된다 (기획서 4.2절).
         // World가 Emotions를 참조하지 않고도 숨죽이기 기믹과 맞물리는 이유다.
@@ -81,7 +100,15 @@ namespace HiddenWeight.World
 
             // 꺼져 있는 동안은 감지도 경보도 하지 않는다. 눈을 반투명으로 낮춰
             // "지금은 안 보고 있다"를 텍스트 없이 알린다.
-            if (!IsGazeOn)
+            bool on = IsGazeOn;
+            if (on != _wasOn)
+            {
+                // 눈이 뜨고 감기는 순간만 재생한다. 매 프레임 다시 걸면 첫 프레임에서 멈춘다.
+                _wasOn = on;
+                PlayTransition(on ? openClip : closeClip);
+            }
+
+            if (!on)
             {
                 IsPlayerSeen = false;
                 _damageTimer = 0f;
@@ -110,12 +137,21 @@ namespace HiddenWeight.World
             {
                 _damageTimer = 0f;
                 _seenTime = 0f;
+                _wasTelegraphing = false;
                 UpdateAlarmVisual();
                 return;
             }
 
             _seenTime += Time.deltaTime;
             UpdateAlarmVisual();
+
+            // 포착됐지만 아직 피해가 없는 단계 = 빔 예고. 여기서 벗어나면 맞지 않는다.
+            if (!_wasTelegraphing)
+            {
+                _wasTelegraphing = true;
+                PlayTransition(telegraphClip);
+            }
+
             if (!IsAlarmed) return; // 경보 단계 — 아직 피해 없음, 벗어날 기회
 
             _damageTimer -= Time.deltaTime;
@@ -124,6 +160,7 @@ namespace HiddenWeight.World
                 var health = target.GetComponentInParent<PlayerHealth>();
                 if (health != null) health.TakeDamage(1, transform.position);
                 _damageTimer = damageInterval;
+                PlayTransition(dischargeClip);
                 Retreat(health);
             }
         }

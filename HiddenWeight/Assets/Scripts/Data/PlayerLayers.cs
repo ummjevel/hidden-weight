@@ -29,6 +29,27 @@ namespace HiddenWeight.Data
             return go.layer == _hushed;
         }
 
+        // 플레이어가 이 발판을 "위에서 밟았는가".
+        //
+        // 원래는 각 발판이 contact.normal.y > 0.5f로 판단했는데, ContactPoint2D.normal의 부호는
+        // 어느 쪽 콜라이더를 기준으로 보느냐에 따라 뒤집힌다. 발판 쪽 스크립트에서 받으면
+        // 법선이 아래를 향해서, 분명히 올라섰는데도 판정이 영영 참이 되지 않았다 — 균열의
+        // 붕괴 발판이 밟아도 무너지지 않고 승강기가 출발조차 하지 않던 원인이 이것이다.
+        // (검증: Assets/Tests/PlayMode/GazeFracturePlaythroughTests.cs)
+        //
+        // 그래서 부호가 아니라 뜻으로 판단한다: 플레이어가 발판보다 위에 있고, 접촉면이
+        // 수평에 가까우면 밟은 것이다.
+        public static bool SteppedOnFromAbove(Collision2D collision, Transform platform)
+        {
+            if (!IsPlayer(collision.gameObject)) return false;
+            if (collision.transform.position.y <= platform.position.y) return false;
+
+            foreach (var contact in collision.contacts)
+                if (Mathf.Abs(contact.normal.y) > 0.5f) return true;
+
+            return false;
+        }
+
         static void Cache()
         {
             if (_player >= 0) return;

@@ -43,7 +43,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -52,7 +52,7 @@ TextureImporter:
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
-  alphaIsTransparency: 0
+  alphaIsTransparency: 1
   spriteTessellationDetail: -1
   textureType: 8
   textureShape: 1
@@ -108,23 +108,437 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: PlayerHit_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5e4cc39fd6dfef40800000000000000
+      internalID: 5760058704175844958
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerHit_01
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05667edbd31593490800000000000000
+      internalID: -7766086756802795952
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerHit_02
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a0175ddf83279560800000000000000
+      internalID: 7320358820114796706
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerHit_03
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33166a3650ef77b70800000000000000
+      internalID: 8896858887993844019
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerHit_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 287a3998652762670800000000000000
+      internalID: 8513617861591410562
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerHit_05
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 682
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af3873ab329c87370800000000000000
+      internalID: 8320621466852230138
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39455151ff6176050800000000000000
+      internalID: 5793624730461623443
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_01
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cda9e6e24f88029b0800000000000000
+      internalID: -5106931395105744164
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_02
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5eee3b1dab8ad710800000000000000
+      internalID: 1718839783397977693
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_03
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 735d12cc1847319d0800000000000000
+      internalID: -2804770042097314505
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a58656e8f3d3c140800000000000000
+      internalID: 4738864298893673894
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerDeath_05
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 341
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa1d6807cb07a3300800000000000000
+      internalID: 232622285407048111
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42821aba612835990800000000000000
+      internalID: -7398426728959236060
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_01
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6f78028f76558a00800000000000000
+      internalID: 758107217924226922
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_02
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b34b6a8bc7f24eef0800000000000000
+      internalID: -79886680665443269
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_03
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ea489708e06c30f0800000000000000
+      internalID: -1135926456328107294
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_04
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4caad627a67b44c70800000000000000
+      internalID: 8954483626933594820
+      vertices: []
+      indices:
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: PlayerRespawn_05
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 0
+        width: 256
+        height: 341
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData:
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ae27e3a56a68dde0800000000000000
+      internalID: -1308178706977050970
+      vertices: []
+      indices:
+      edges: []
+      weights: []
     outline: []
-    customData: 
+    customData:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
-    indices: 
+    indices:
     edges: []
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
-  mipmapLimitGroupName: 
+    nameFileIdTable:
+      PlayerDeath_00: 5793624730461623443
+      PlayerDeath_01: -5106931395105744164
+      PlayerDeath_02: 1718839783397977693
+      PlayerDeath_03: -2804770042097314505
+      PlayerDeath_04: 4738864298893673894
+      PlayerDeath_05: 232622285407048111
+      PlayerHit_00: 5760058704175844958
+      PlayerHit_01: -7766086756802795952
+      PlayerHit_02: 7320358820114796706
+      PlayerHit_03: 8896858887993844019
+      PlayerHit_04: 8513617861591410562
+      PlayerHit_05: 8320621466852230138
+      PlayerRespawn_00: -7398426728959236060
+      PlayerRespawn_01: 758107217924226922
+      PlayerRespawn_02: -79886680665443269
+      PlayerRespawn_03: -1135926456328107294
+      PlayerRespawn_04: 8954483626933594820
+      PlayerRespawn_05: -1308178706977050970
+  mipmapLimitGroupName:
   pSDRemoveMatte: 0
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
+  userData:
+  assetBundleName:
+  assetBundleVariant:

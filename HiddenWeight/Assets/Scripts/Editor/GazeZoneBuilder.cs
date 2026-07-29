@@ -76,6 +76,8 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildSolidBlock(parent, name, center, size, "Ground", GazeStone);
             go.GetComponent<SpriteRenderer>().sortingOrder = 3;
+            // 엄폐물 시트 1행 1열. 아트가 없으면 단색 블록 그대로 남는다.
+            ApplyArtOverlay(go, "GazeCover_r1_c1", size, 3);
             return go;
         }
 
@@ -83,6 +85,7 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildSolidBlock(parent, name, center, size, "Wall", tint);
             go.GetComponent<SpriteRenderer>().sortingOrder = 3;
+            ApplyArtOverlay(go, "GazeTerrain_r3_c1", size, 3); // 3행 = 세로 벽
             return go;
         }
 
@@ -100,7 +103,34 @@ namespace HiddenWeight.EditorTools
             SetField(gaze, "dormant", p => p.boolValue = dormant);
             if (retreat != null) SetField(gaze, "retreatPoint", p => p.objectReferenceValue = retreat);
 
+            AttachEyeTransitions(gaze);
             return gaze;
+        }
+
+        // 눈이 뜨고 감기고 빔을 예고하고 쏘는 네 단계(EyeHazardTransitions_v1).
+        // 프리팹의 눈 스프라이트는 그대로 두고, 전환만 별도 자식에서 재생한다 —
+        // 경보 시 본체를 확대·적색화하는 기존 연출과 겹치지 않게 하기 위해서다.
+        static void AttachEyeTransitions(GazeHazard gaze)
+        {
+            var go = new GameObject("EyeTransitions");
+            go.transform.SetParent(gaze.transform, false);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6;
+
+            AttachAnimator(go, renderer, new[]
+            {
+                ("GazeEyeOpen", 12f, false),
+                ("GazeEyeClose", 12f, false),
+                ("GazeBeamTelegraph", 14f, false),
+                ("GazeBeamDischarge", 16f, false),
+            }, 2.4f);
+
+            var animator = go.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(go); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(gaze, "transitions", p => p.objectReferenceValue = animator);
         }
 
         // 포착당했을 때 되돌아갈 자리. 방마다 "직전 엄폐물 뒤"에 하나씩 둔다(4.2절).
@@ -286,16 +316,73 @@ namespace HiddenWeight.EditorTools
             return data;
         }
 
+        // 적 종류별 애니메이션(BlindPilgrim / InformingMouth / HangingAudience / FacelessJudge).
+        // 시트의 2행은 문서상 "Move"지만 클립 이름은 Walk다 — EnemyPatrol이 PlayClip("Walk")를
+        // 부르기 때문이다(GazeAnimationArtSlicer 주석 참고).
+        static (string, float, bool)[] GazeEnemyClips(string prefix) => new[]
+        {
+            ($"{prefix}Idle",      8f,  true),
+            ($"{prefix}Walk",      10f, true),
+            ($"{prefix}Telegraph", 12f, false),
+            ($"{prefix}Attack",    14f, false),
+            ($"{prefix}Hit",       12f, false),
+            ($"{prefix}Death",     10f, false),
+        };
+
+        // 겉모습을 응시 전용 스프라이트로 바꾼다. 루트 스케일은 건드리지 않는다 —
+        // 콜라이더가 함께 줄어 판정이 통째로 어긋난다(잔재에서 겪은 문제 그대로다).
+        static void ApplyGazeEnemyArt(GameObject enemy, GazeEnemyKind kind)
+        {
+            string prefix = kind.ToString();
+            var idle = Art($"{prefix}Idle_00");
+            if (idle == null)
+            {
+                // 조용히 넘어가면 그 적만 플레이스홀더 사각형으로 남는다. 이 프로젝트에서
+                // 아트가 죽는 자리는 늘 여기라서, 빠진 것은 반드시 눈에 띄게 남긴다.
+                Debug.LogWarning($"[GazeZoneBuilder] {prefix} 아트를 찾지 못했다: {prefix}Idle_00");
+                return;
+            }
+
+            var rootRenderer = enemy.GetComponent<SpriteRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
+            var artObject = new GameObject("Art");
+            artObject.transform.SetParent(enemy.transform, false);
+
+            var artRenderer = artObject.AddComponent<SpriteRenderer>();
+            artRenderer.sprite = idle;
+            artRenderer.color = Color.white;
+            artRenderer.sortingOrder = 8;
+
+            // 재판관만 정예라 한 뼘 크게 보인다.
+            float displayHeight = kind == GazeEnemyKind.Judge ? 1.8f : 1.3f;
+            var size = idle.bounds.size;
+            if (size.y > 0f)
+            {
+                float scale = displayHeight / size.y;
+                artObject.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            AttachAnimator(artObject, artRenderer, GazeEnemyClips(prefix), displayHeight);
+            SetField(enemy.GetComponent<Enemy>(), "clipPrefix", p => p.stringValue = prefix);
+        }
+
         static GameObject BuildGazeEnemy(Transform parent, Vector2 pos, GazeEnemyKind kind)
         {
             var go = BuildEnemy(parent, pos, GazeEnemyData(kind));
+            ApplyGazeEnemyArt(go, kind);
             int playerMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 
             switch (kind)
             {
                 case GazeEnemyKind.Pilgrim:
+                {
                     go.AddComponent<StalkerBehavior>();
+                    // 소리로 쫓는 적이라 소리 파문을 던진다. 지형에 막히지 않는 공격체다.
+                    var ranged = go.AddComponent<RangedAttackBehavior>();
+                    SetField(ranged, "projectileName", p => p.stringValue = "GazeProjSound");
                     break;
+                }
 
                 case GazeEnemyKind.Mouth:
                     go.AddComponent<ScreamerBehavior>();
@@ -316,6 +403,7 @@ namespace HiddenWeight.EditorTools
                     SetField(ambush, "shadow", p => p.objectReferenceValue = shadowSr);
                     // 잔재의 매달린 손가락과 같은 컴포넌트지만 이 한 줄이 응시의 규칙을 만든다.
                     SetField(ambush, "ignoreHushedPlayer", p => p.boolValue = true);
+                    SetField(ambush, "dropProjectile", p => p.stringValue = "GazeProjShadow");
 
                     var patrol = go.GetComponent<EnemyPatrol>();
                     if (patrol != null) patrol.enabled = false;
@@ -369,6 +457,121 @@ namespace HiddenWeight.EditorTools
         }
 
         // ------------------------------------------------------------
+        // 응시 지역의 연출 목록. 잔재와 같은 모듈을 쓰고 이름과 수치만 다르다.
+        // 규격은 gaze-completion-assets/PROMPTS.md의 납품 표 그대로다.
+        // ------------------------------------------------------------
+
+        static readonly (string name, float fps, float height)[] GazeImpacts =
+        {
+            ("GazeImpactMelee",      18f, 1.4f),
+            ("GazeImpactBeam",       16f, 1.8f),  // 빔 화상
+            ("GazeImpactLand",       14f, 1.0f),
+            ("GazeImpactGuardBreak", 16f, 1.8f),  // 방어 파괴 — 재판관을 뚫었을 때
+            ("GazeVfxHit",           16f, 1.2f),
+            ("GazeVfxReveal",        14f, 1.6f),  // 자각으로 진실이 드러나는 순간
+            ("GazeBossEyelidShard",  14f, 3.0f),  // 보스 눈꺼풀 파편 — 그 자리에서 터진다
+            ("GazeBossTrueStrike",   14f, 3.2f),  // 진실 타격
+        };
+
+        static readonly (string name, float fps, float speed, float lifetime,
+                         float radius, int damage, float height, bool ignoreTerrain)[] GazeProjectiles =
+        {
+            // 소리 파문은 벽을 돌아 퍼지므로 지형에 막히지 않는다 — 눈먼 순례자가 소리로
+            // 쫓는 적이라는 성격과 맞춘다.
+            ("GazeProjSound",     14f, 6f,   2.4f, 0.7f, 1, 1.2f, true),
+            ("GazeProjScream",    16f, 9f,   2.0f, 0.5f, 1, 1.0f, false),
+            ("GazeProjShadow",    12f, 7f,   1.2f, 0.6f, 1, 1.4f, false),
+            ("GazeProjVerdict",   14f, 10f,  1.4f, 0.6f, 1, 1.6f, false),
+            ("GazeBossScanBeam",  16f, 7f,   3.0f, 0.9f, 1, 2.2f, true),
+            ("GazeBossChainWhip", 14f, 8f,   2.2f, 0.7f, 1, 1.8f, false),
+            ("GazeBossFalseEye",  16f, 6f,   2.6f, 0.6f, 1, 1.2f, false),
+        };
+
+        static readonly (string clip, float fps)[] GazeBackgroundMotions =
+        {
+            ("GazeBgIris", 4f), ("GazeBgWindows", 5f), ("GazeBgCage", 5f), ("GazeBgCrowd", 4f),
+        };
+
+        static readonly (string clip, float fps)[] GazeForegroundMotions =
+        {
+            ("GazeFgChains", 6f), ("GazeFgCurtain", 6f), ("GazeFgMask", 4f), ("GazeFgMist", 6f),
+        };
+
+        // 숏컷의 봉쇄·해제 애니메이션(GazeRoomTransitions_v1의 1·2행).
+        static void AttachGazeSealAnimator(Shortcut shortcut, Vector2 size)
+        {
+            if (shortcut == null) return;
+
+            var sealObject = new GameObject("SealAnimation");
+            sealObject.transform.SetParent(shortcut.transform, false);
+
+            var renderer = sealObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6;
+
+            AttachAnimator(sealObject, renderer, new[]
+            {
+                ("GazeSealClose", 10f, false),
+                ("GazeSealOpen", 10f, false),
+            }, size.y);
+
+            var animator = sealObject.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(sealObject); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(shortcut, "transitionAnimator", p => p.objectReferenceValue = animator);
+            SetField(shortcut, "closedClip", p => p.stringValue = "GazeSealClose");
+            SetField(shortcut, "openClip", p => p.stringValue = "GazeSealOpen");
+        }
+
+        // 방마다 배경 3층(원경·중경·전경)을 붙인다. 파일 이름은 방 번호로만 정해지므로
+        // 씬의 방 이름(GazeRoom01)에서 폴더 이름(Room01)을 뽑아 쓴다.
+        static void BuildGazeRoomLayers(Room room)
+        {
+            string folder = null;
+            if (room.name.StartsWith("GazeRoom")) folder = "Room" + room.name.Substring("GazeRoom".Length);
+            else if (room.name.StartsWith("GazeSecret")) folder = "Secret" + room.name.Substring("GazeSecret".Length);
+            if (folder == null) return;
+
+            var artRoot = new GameObject("Art");
+            artRoot.transform.SetParent(room.transform, false);
+            artRoot.transform.localPosition = Vector3.zero;
+
+            // 원경은 거의 따라오지 않고, 중경은 절반쯤, 전경은 카메라와 함께 움직인다.
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "BG_Far", -30, 0.15f);
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "BG_Mid", -20, 0.35f);
+            BuildGazeRoomLayer(artRoot.transform, room, folder, "FG_Overlay", 20, 0f);
+        }
+
+        static void BuildGazeRoomLayer(Transform parent, Room room, string folder, string suffix,
+                                       int sortingOrder, float parallax)
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+                $"Assets/Art/Gaze/{folder}/{folder}_{suffix}.png");
+            if (sprite == null) return;
+
+            var go = new GameObject(suffix);
+            go.transform.SetParent(parent, false);
+            go.transform.position = room.WorldBounds.center;
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = sortingOrder;
+
+            // 방 너비에 맞춰 균일 배율로 키운다. 가로세로를 따로 늘리면 그림이 일그러진다.
+            float width = sprite.bounds.size.x;
+            if (width > 0f)
+            {
+                float scale = room.WorldBounds.size.x / width;
+                go.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            if (parallax <= 0f) return;
+
+            var layer = go.AddComponent<ParallaxLayer>();
+            SetField(layer, "multiplier", p => p.floatValue = parallax);
+        }
+
+        // ------------------------------------------------------------
         // 방 연결
         // ------------------------------------------------------------
 
@@ -419,6 +622,11 @@ namespace HiddenWeight.EditorTools
         public static void RunGazeZone()
         {
             EnsureScenesFolder();
+            // 응시 시트는 전부 "Gaze" 접두사를 쓴다(GazeTerrain / GazePlatform …).
+            // 숏컷 겉모습은 문 시트(Gaze_DoorsShortcuts_v1)의 1행을 닫힘/열림으로 쓴다.
+            UseArtRoot("Assets/Art/Gaze", "Gaze",
+                "GazeDoor_r1_c1", "GazeDoor_r1_c2",
+                "GazeDoor_r2_c1", "GazeDoor_r2_c2");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Gaze", out var root);
@@ -434,7 +642,8 @@ namespace HiddenWeight.EditorTools
             SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Gaze);
 
             // 잔재 전용 지형 아트를 응시 방에 씌우지 않는다(RoomCtx.FloorArt 주석 참고).
-            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform, FloorArt = false };
+            // 이제 응시 전용 지형 시트가 있으므로 바닥 표면 아트를 켠다.
+            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform, FloorArt = true };
 
             BuildG01(ctx);
             BuildG02(ctx);
@@ -456,6 +665,24 @@ namespace HiddenWeight.EditorTools
 
             ctx.O = G01;
             PlacePlayerAndCamera(root, new Vector3(G01.x + 3f, G01.y + 3f, 0f));
+
+            // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
+            BuildImpactVFX(root.transform, GazeImpacts);
+            BuildProjectileSpawner(root.transform, GazeProjectiles);
+
+            // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다.
+            AttachGazeSealAnimator(_gazeShortcutA, new Vector2(4f, 2f));
+            AttachGazeSealAnimator(_gazeShortcutB, new Vector2(3.5f, 2.5f));
+            AttachGazeSealAnimator(_gazeShortcutC, new Vector2(4f, 2f));
+
+            // 방마다 배경 3층과 전경·배경 모션을 붙인다. 방을 다 지은 뒤에 해야 경계가 정해져 있다.
+            GazeRoomArtImporter.ConfigureAll();
+            int motionIndex = 0;
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+            {
+                BuildGazeRoomLayers(room);
+                BuildRoomMotion(room, motionIndex++, GazeBackgroundMotions, GazeForegroundMotions);
+            }
 
             SaveScene(scene, "Zone_Gaze_Full");
             RegisterBuildSettings();
@@ -774,14 +1001,23 @@ namespace HiddenWeight.EditorTools
             c.O = G08;
             c.Floor(0, 24, 2);
 
-            // 층마다 폭 3 이상의 안전 포켓. 승강 중에도 숨 돌릴 자리가 있어야 한다.
-            c.Tiles(2, 8, 12, 13);
-            c.Tiles(16, 22, 20, 21);
-            c.Tiles(18, 24, 25, 26);   // 북동 출구 (22,26)
+            // 승강기가 지나갈 기둥(x 4.5~7.5)에는 아무 지형도 두지 않는다. 예전에는 안전
+            // 포켓을 그 위에 깔아 두어, 타고 올라가던 플레이어가 천장에 끼여 떨어졌다.
+            c.Tiles(10, 16, 12, 13);   // 중간 안전 포켓
+            c.Tiles(10, 16, 19, 20);   // 상단 안전 포켓
+            c.Tiles(8, 24, 25, 26);    // 북동 출구 선반 (22,26)
 
-            var lift = BuildLift(c.Root.transform, "G08_Lift", c.P(6f, 3f),
-                new[] { new Vector2(0f, 11f), new Vector2(9f, 23f) },
+            // 승강기는 바닥에 붙여 두고 곧게 위로만 올린다. 1유닛 띄우면 걸어오다 옆면에
+            // 부딪혀 지나쳐 버리고, 대각선 구간을 두면 타고 가던 중에 미끄러진다(봇이 둘 다 겪었다).
+            var lift = BuildLift(c.Root.transform, "G08_Lift", c.P(6f, 2.6f),
+                new[] { new Vector2(0f, 22.6f) },
                 _gazeShortcutB, new Color(0.5f, 0.7f, 0.8f));
+
+            // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공으로 떨어지지 않게 막는다.
+            // 이 방의 출구는 위(22,26)뿐이라 바닥 오른쪽 바깥에는 아무것도 없다.
+            var edge = BuildSolidBlock(c.Root.transform, "G08_RightEdge",
+                c.P(24.5f, 12f), new Vector2(1f, 26f), "Ground");
+            edge.GetComponent<SpriteRenderer>().enabled = false;
 
             // 승강 경로를 훑는 회전 시선. 승강기 그림자 안에 서 있으면 지나간다.
             PlaceGaze(c.Root.transform, c.P(12f, 15f), 0f, 45f);
@@ -837,28 +1073,55 @@ namespace HiddenWeight.EditorTools
         static void BuildG10(RoomCtx c)
         {
             c.O = G10;
-            c.Floor(0, 20, 3);
+            // 출구 선반(y=7)까지 한 칸씩 오르는 계단으로 만든다. 예전에는 +4를 한 번에
+            // 올라야 해서 실측 점프 높이(2.72)로는 아무도 나갈 수 없었고, 떠 있는 발판
+            // 두 장으로 고쳤더니 이번에는 선반 옆면에 걸렸다. 지형 계단이 가장 확실하다.
+            c.Floor(0, 16, 3);
+            c.Floor(16, 18, 4);
+            c.Floor(18, 19, 5);
+            c.Floor(19, 20, 6);
             c.Floor(20, 24, 7);   // 출구 (24,7)
-            BuildSafePlatform(c.Root.transform, c.P(18.5f, 5.5f)); // 출구로 오르는 중간 발판
 
             // 체크포인트는 전장 바깥이다 — 재도전 20초 목표를 지키려면 문 앞이어야 한다.
-            BuildCheckpoint(c.Root.transform, c.P(2f, 4f));
+            BuildCheckpoint(c.Root.transform, c.P(1.5f, 4f));
 
-            // 눈꺼풀 닫기에 쓰이는 좌우 벽. 보스가 이 둘을 안쪽으로 옮긴다.
-            var lidL = BuildPlainWall(c.Root.transform, "G10_Lid_L", c.P(1f, 8f), new Vector2(1.2f, 9f), GazeStone);
-            var lidR = BuildPlainWall(c.Root.transform, "G10_Lid_R", c.P(19f, 8f), new Vector2(1.2f, 9f), GazeStone);
+            // 눈꺼풀 닫기에 쓰이는 좌우 벽. 천장에서 내려온 셔터라 바닥에 닿지 않는다.
+            // 바닥까지 세우면 입구와 출구를 통째로 막아 방을 지나갈 수 없다(봇이 잡아냈다).
+            // 이 공격에는 애초에 피해 판정이 없고(명세 7.1절 "기본 이동으로 대응") 압박은
+            // 안전지대가 좁아 보이는 것으로만 만들므로, 발밑을 비워도 의도가 살아 있다.
+            var lidL = BuildPlainWall(c.Root.transform, "G10_Lid_L", c.P(5f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
+            var lidR = BuildPlainWall(c.Root.transform, "G10_Lid_R", c.P(13f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
 
             // 중앙 엄폐 기둥. 홍채 훑기를 숨죽이기 대신 엄폐로도 넘길 수 있게 한다.
             BuildCoverPillar(c.Root.transform, "G10_Cover_A", c.P(7f, 5f), new Vector2(1.4f, 3f));
-            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(13f, 5f), new Vector2(1.4f, 3f));
+            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(12f, 5f), new Vector2(1.4f, 3f));
 
-            var boss = BuildBoss(c.Root.transform, c.P(14f, 5f), "Enemy_Gaze_Gatekeeper", 14,
-                new[] { BossController.Move.GazeSweep, BossController.Move.WallClose, BossController.Move.Charge },
-                new[] { 0.5f }, new Color(0.55f, 0.45f, 0.7f));
+            var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Gaze_Gatekeeper", 14,
+                new[]
+                {
+                    BossController.Move.GazeSweep, BossController.Move.Projectile,
+                    BossController.Move.WallClose, BossController.Move.Charge,
+                },
+                new[] { 0.5f }, new Color(0.55f, 0.45f, 0.7f),
+                new[]
+                {
+                    ("GatekeeperIdle",      8f,  true),
+                    ("GatekeeperGazeSweep", 12f, false),
+                    ("GatekeeperEyelid",    10f, false),
+                    ("GatekeeperCharge",    12f, false),
+                    ("GatekeeperDualGaze",  14f, false),
+                    ("GatekeeperHurt",      12f, false),
+                    ("GatekeeperDeath",     9f,  false),
+                },
+                "GatekeeperIdle_00");
             ConfigureGazeBoss(boss, new[] { lidL, lidR });
+            // 스캔 빔을 섞는다. 원형 전장이라 붙기만 해서는 안 되게 만드는 원거리 압박이다.
+            SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "GazeBossScanBeam");
 
-            var reward = BuildRewardChest(c.Root.transform, "gaze_g10_boss", c.P(10f, 4.5f), 45, false);
-            BuildEncounter(c.Root.transform, "gaze_g10_boss", c.P(10f, 8f), new Vector2(18f, 12f), true,
+            // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
+            // 돌진이 벽에 박히는 것도 그것으로 성립하므로 상시 벽을 따로 두지 않는다.
+            var reward = BuildRewardChest(c.Root.transform, "gaze_g10_boss", c.P(6f, 4.5f), 45, false);
+            BuildEncounter(c.Root.transform, "gaze_g10_boss", c.P(10f, 7f), new Vector2(14f, 10f), true,
                 new[] { new[] { boss } }, new int[0], reward, _gazeShortcutC);
 
             c.Room("GazeRoom10", 24f, 18f);
@@ -923,8 +1186,10 @@ namespace HiddenWeight.EditorTools
         {
             c.O = G12;
             c.Floor(0, 30, 4);
-            BuildPlainWall(c.Root.transform, "G12_Wall_L", c.P(1f, 9f), new Vector2(1.2f, 10f), GazeStone);
-            BuildPlainWall(c.Root.transform, "G12_Wall_R", c.P(29f, 9f), new Vector2(1.2f, 10f), GazeStone);
+
+            // 전장을 가두는 벽은 조우(Encounter)가 전투 중에만 세운다. 상시 벽을 방 양끝에
+            // 두면 입구와 출구를 그대로 막아 버린다 — 봇이 왼쪽 벽을 벽점프로 넘어야만
+            // 들어올 수 있는 상태였다.
 
             // 전장을 관객석·중앙 무대·좌우 엄폐막 세 층으로 읽히게 만든다(4.12절).
             BuildDecor(c.Root.transform, "G12_Gallery", c.P(15f, 14f), new Vector2(26f, 3f),
@@ -940,12 +1205,27 @@ namespace HiddenWeight.EditorTools
                 new[]
                 {
                     BossController.Move.GazeSweep,
+                    BossController.Move.Projectile,
                     BossController.Move.Slam,
                     BossController.Move.Charge,
-                    BossController.Move.GazeSweep,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.45f, 0.4f, 0.62f));
+                new[] { 0.6f, 0.3f }, new Color(0.45f, 0.4f, 0.62f),
+                new[]
+                {
+                    ("AllEyesIdle",          8f,  true),
+                    ("AllEyesFixedGaze",     12f, false),
+                    ("AllEyesRotatingGaze",  12f, false),
+                    ("AllEyesProjectile",    14f, false),
+                    ("AllEyesTrueStrike",    14f, false),
+                    ("AllEyesHurt",          12f, false),
+                    ("AllEyesDeath",         9f,  false),
+                },
+                "AllEyesIdle_00");
             ConfigureGazeBoss(boss, null);
+            // 가짜 눈탄. 자각으로 진짜를 가려내야 한다는 이 보스의 규칙과 맞물린다.
+            SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "GazeBossFalseEye");
+            SetField(boss.GetComponent<BossController>(), "slamImpactEffect", p => p.stringValue = "GazeBossTrueStrike");
+            SetField(boss.GetComponent<BossController>(), "phaseChangeEffect", p => p.stringValue = "GazeVfxReveal");
 
             var reward = BuildRewardChest(c.Root.transform, "gaze_g12_boss", c.P(15f, 5.5f), 70, true);
             BuildEncounter(c.Root.transform, "gaze_g12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,

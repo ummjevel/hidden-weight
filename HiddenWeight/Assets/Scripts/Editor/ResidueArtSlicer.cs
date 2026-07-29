@@ -41,9 +41,9 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Environment/VFX/Residue_AmbientVFX_v1.png",
                         Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0.5f), Prefix = "AmbientVFX" },
 
-            // --- Gameplay (피벗 Center: 캐릭터·아이템은 가운데가 편하다) ---
+            // --- Gameplay ---
             new Sheet { Path = "Gameplay/Player/Player_KeyPoses_v1.png",
-                        Columns = 4, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 4, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         Names = new[] { "Player_Idle", "Player_Walk", "Player_Run", "Player_Jump",
                                         "Player_Fall", "Player_Land", "Player_Attack", "Player_Dash" } },
             new Sheet { Path = "Gameplay/Enemies/Residue_Enemies_Atlas_v1.png",
@@ -67,17 +67,20 @@ namespace HiddenWeight.EditorTools
             // --- 애니메이션 시트 (행 = 클립, 열 = 프레임) ---
             // 이름은 "클립_00" 형식이라 런타임에서 클립 단위로 모을 수 있다.
             new Sheet { Path = "Gameplay/Player/Animation/Player_Locomotion_v1.png",
-                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerIdle", "PlayerWalk", "PlayerRun" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Aerial_v1.png",
-                        Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerJump", "PlayerAirMove", "PlayerFall", "PlayerLand" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Actions_v1.png",
-                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerAttack", "PlayerDash" } },
             new Sheet { Path = "Gameplay/Player/Animation/Player_Wall_v1.png",
-                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
+                        Columns = 6, Rows = 2, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerWallCling", "PlayerWallJump" } },
+            new Sheet { Path = "Gameplay/VFX/PlayerVFX_v1.png",
+                        Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "PlayerHit", "PlayerDeath", "PlayerRespawn" } },
 
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
@@ -108,6 +111,36 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Environment/Props/Animation/AmbientProps_Animation_v1.png",
                         Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PropShroud", "PropCage", "PropLantern" } },
+
+            // --- 잔재 제작 마감 세트 9종 ---
+            // 규격은 docs/concept-art/generated/residue-completion-assets/PROMPTS.md의 납품 표 그대로다.
+            // 전부 8열 192x192이고, 바닥에 세우는 것(발판·방 전환)만 Bottom Center 피벗을 쓴다.
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueEnemyProjectiles_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "ProjSplinter", "ProjClaw", "ProjChargeTrail", "ProjShockwave" } },
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueBossProjectiles_v1.png",
+                        Columns = 8, Rows = 5, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "BossWave", "BossRing", "BossNeedle", "BossRewindOrb", "BossRupture" } },
+            new Sheet { Path = "Environment/Terrain/Animation/ResiduePlatformStates_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "PlatformCrack", "PlatformCollapse", "PlatformBroken", "PlatformRestore" } },
+            new Sheet { Path = "Gameplay/VFX/Animation/ResidueImpactVFX_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "ImpactMelee", "ImpactWall", "ImpactLand", "ImpactHeavy" } },
+            new Sheet { Path = "Environment/VFX/Animation/ResidueForegroundMotion_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "FgChains", "FgCage", "FgFinger", "FgDust" } },
+            new Sheet { Path = "Environment/VFX/Animation/ResidueBackgroundMotion_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "BgSmoke", "BgWindows", "BgHand", "BgCrowd" } },
+            new Sheet { Path = "Environment/Interactables/Animation/ResidueRoomTransitions_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0f),
+                        RowClips = new[] { "SealClose", "SealOpen", "ShortcutRewind", "SecretWall" } },
+            new Sheet { Path = "UI/ResidueUIIcons_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f), Prefix = "UIIcon" },
+            new Sheet { Path = "UI/Animation/ResidueStatusUI_v1.png",
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "StatusRewind", "StatusDanger", "StatusProgress" } },
         };
 
         [MenuItem("Hidden Weight/Art/Slice Residue Sheets")]
@@ -124,20 +157,24 @@ namespace HiddenWeight.EditorTools
                     continue;
                 }
 
-                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-                if (texture == null) continue;
+                importer.GetSourceTextureWidthAndHeight(
+                    out int sourceWidth,
+                    out int sourceHeight);
 
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spritePixelsPerUnit = 32f;
                 importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.spriteImportMode = SpriteImportMode.Multiple;
                 // 원본 해상도 그대로 잘라야 격자가 어긋나지 않는다.
-                importer.maxTextureSize = Mathf.Max(2048, Mathf.Max(texture.width, texture.height));
+                importer.maxTextureSize =
+                    Mathf.Max(2048, Mathf.Max(sourceWidth, sourceHeight));
 
-                importer.spritesheet = BuildRects(texture.width, texture.height, sheet);
+                importer.spritesheet =
+                    BuildRects(sourceWidth, sourceHeight, sheet);
                 importer.SaveAndReimport();
                 sliced++;
             }

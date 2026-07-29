@@ -16,5 +16,12 @@ namespace HiddenWeight.Data
         public bool awarenessStable = true; // 균열만 false
         public VolumeProfile volumeProfile; // 지역 색보정
         public AudioClip bgm; // MVP에서는 비워둔다
+
+        // 지역별 HUD 상태 문양(잔재 StatusRewind… / 응시 GazeStatusTruth…).
+        // HUD 프리팹은 하나뿐이라 지역이 바뀌면 여기서 프레임을 갈아끼운다.
+        // 비어 있으면 HUD가 들고 있는 기본 프레임을 그대로 쓴다.
+        public Sprite[] statusRewindFrames;
+        public Sprite[] statusDangerFrames;
+        public Sprite[] statusProgressFrames;
     }
 }

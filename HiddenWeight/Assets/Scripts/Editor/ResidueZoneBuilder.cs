@@ -46,12 +46,49 @@ namespace HiddenWeight.EditorTools
         // 항목 때문에 씬 생성이 실패하면 안 된다.
         static Dictionary<string, Sprite> _residueSprites;
 
+        // 지금 어느 지역의 아트를 집을지. 지역마다 같은 이름의 스프라이트가 있으므로
+        // (응시에도 Platform_r1_c1이 있다) 한 폴더만 보게 해야 서로 섞이지 않는다.
+        // 각 지역 빌더가 시작할 때 자기 폴더로 바꾼다.
+        static string _artRoot = "Assets/Art/Residue";
+
+        // 지역마다 시트 접두사가 다르다(잔재 Terrain / 응시 GazeTerrain). 공용 빌더가 쓰는
+        // 논리 이름 앞에 이것을 붙여 실제 스프라이트 이름을 만든다.
+        static string _artPrefix = "";
+
+        // 숏컷 겉모습은 접두사 규칙으로 안 풀린다(잔재는 사슬·승강기, 응시는 문 시트라
+        // 행·열 위치가 다르다). 그래서 이름을 통째로 지역이 정한다.
+        static string _shortcutClosedArt = "Shortcut_ChainBroken";
+        static string _shortcutOpenArt = "Shortcut_ChainRestored";
+        static string _shortcutLiftClosedArt = "Shortcut_LiftDormant";
+        static string _shortcutLiftOpenArt = "Shortcut_LiftActive";
+
+        static void UseArtRoot(string root, string prefix = "",
+                               string shortcutClosed = "Shortcut_ChainBroken",
+                               string shortcutOpen = "Shortcut_ChainRestored",
+                               string liftClosed = "Shortcut_LiftDormant",
+                               string liftOpen = "Shortcut_LiftActive")
+        {
+            _artPrefix = prefix;
+            _shortcutClosedArt = shortcutClosed;
+            _shortcutOpenArt = shortcutOpen;
+            _shortcutLiftClosedArt = liftClosed;
+            _shortcutLiftOpenArt = liftOpen;
+
+            if (_artRoot == root) return;
+
+            _artRoot = root;
+            _residueSprites = null; // 폴더가 바뀌었으니 캐시를 버린다
+        }
+
+        // 논리 이름 → 지역별 실제 스프라이트.
+        static Sprite ZoneArt(string logicalName) => Art(_artPrefix + logicalName);
+
         static Sprite Art(string spriteName)
         {
             if (_residueSprites == null)
             {
                 _residueSprites = new Dictionary<string, Sprite>();
-                foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { "Assets/Art/Residue" }))
+                foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { _artRoot }))
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guid);
                     foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
@@ -282,7 +319,7 @@ namespace HiddenWeight.EditorTools
         static void PlaceFloorArt(Transform parent, Vector2 surfaceCenter, float width, int variant = 1)
         {
             // 1행 = 직선 바닥. 열을 바꿔 방마다 결을 달리한다.
-            var sprite = Art($"Terrain_r1_c{Mathf.Clamp(variant, 1, 3)}");
+            var sprite = ZoneArt($"Terrain_r1_c{Mathf.Clamp(variant, 1, 3)}");
             if (sprite == null) return;
 
             var go = new GameObject("FloorArt");
@@ -377,7 +414,106 @@ namespace HiddenWeight.EditorTools
         {
             var go = BuildCrumblingPlatform(parent, pos);
             ReplaceArt(go, "Item_CrumbleIntact", new Vector2(3f, 1f), 2);
+            AttachPlatformStates(go);
             return go;
+        }
+
+        // 발판 상태 4행(ResiduePlatformStates_v1: 균열 → 붕괴 → 파손 정착 → 되감기 복구).
+        // ReplaceArt가 만들어 둔 Art 자식에 얹는다. 1행만 대기 루프이고 나머지는 상태 전환용이라
+        // 마지막 프레임에서 멈춰야 한다(PROMPTS.md 납품 표).
+        static void AttachPlatformStates(GameObject platform)
+        {
+            var art = platform.transform.Find("Art");
+            if (art == null) return;
+
+            var renderer = art.GetComponent<SpriteRenderer>();
+            if (renderer == null) return;
+
+            AttachAnimator(art.gameObject, renderer, new[]
+            {
+                ("PlatformCrack", 8f, true),
+                ("PlatformCollapse", 12f, false),
+                ("PlatformBroken", 8f, false),
+                ("PlatformRestore", 14f, false),
+            }, 1f);
+
+            // 밟기 전에는 멀쩡한 그림 그대로 있어야 한다. 자동 재생을 켜 두면 금 간 1행이
+            // 처음부터 돌아가 발판이 늘 부서지기 직전처럼 보인다.
+            var animator = art.GetComponent<SpriteAnimator>();
+            if (animator != null) SetField(animator, "autoPlay", p => p.boolValue = false);
+        }
+
+        // 숏컷 장치의 봉쇄·해제 애니메이션(ResidueRoomTransitions_v1의 1·2행).
+        static void AttachSealAnimator(Shortcut shortcut, Vector2 size)
+        {
+            if (shortcut == null) return;
+
+            var sealObject = new GameObject("SealAnimation");
+            sealObject.transform.SetParent(shortcut.transform, false);
+
+            var renderer = sealObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6; // 숏컷 본체(5) 바로 위
+            FitSprite(renderer, size.x, size.y);
+
+            AttachAnimator(sealObject, renderer, new[]
+            {
+                ("SealClose", 10f, false),
+                ("SealOpen", 10f, false),
+            }, size.y);
+
+            var animator = sealObject.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(sealObject); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(shortcut, "transitionAnimator", p => p.objectReferenceValue = animator);
+        }
+
+        // 충돌 연출 4종을 지역에 하나만 놓는다. 호출부는 ImpactVFX.Play로 자리와 종류만 넘긴다.
+        // 잔재의 충돌 연출 목록. 지역마다 이름만 다르므로 목록을 인자로 받는다.
+        static readonly (string name, float fps, float height)[] ResidueImpacts =
+        {
+            ("ImpactMelee", 18f, 1.4f),
+            ("ImpactWall", 16f, 1.6f),
+            ("ImpactLand", 14f, 1.0f),
+            ("ImpactHeavy", 16f, 1.8f),
+
+            // 날아가지 않고 그 자리에서 터지는 것들도 같은 재생기로 처리한다.
+            ("ProjChargeTrail", 16f, 1.6f),  // 돌진 시작 잔상
+            ("BossRing", 14f, 3.5f),         // 보스 낙하 착지 고리
+            ("BossRupture", 12f, 3.0f),      // 단계 전환 파열
+        };
+
+        static void BuildImpactVFX(Transform parent, (string name, float fps, float height)[] definitions)
+        {
+
+            var valid = new List<(string name, float fps, float height, Sprite[] frames)>();
+            foreach (var definition in definitions)
+            {
+                var frames = ArtFrames(definition.name);
+                if (frames.Length > 0) valid.Add((definition.name, definition.fps, definition.height, frames));
+            }
+            if (valid.Count == 0) return;
+
+            var go = new GameObject("ImpactVFX");
+            go.transform.SetParent(parent, false);
+            var vfx = go.AddComponent<ImpactVFX>();
+
+            SetField(vfx, "effects", p =>
+            {
+                p.arraySize = valid.Count;
+                for (int i = 0; i < valid.Count; i++)
+                {
+                    var element = p.GetArrayElementAtIndex(i);
+                    element.FindPropertyRelative("name").stringValue = valid[i].name;
+                    element.FindPropertyRelative("fps").floatValue = valid[i].fps;
+                    element.FindPropertyRelative("displayHeight").floatValue = valid[i].height;
+
+                    var frames = element.FindPropertyRelative("frames");
+                    frames.arraySize = valid[i].frames.Length;
+                    for (int f = 0; f < valid[i].frames.Length; f++)
+                        frames.GetArrayElementAtIndex(f).objectReferenceValue = valid[i].frames[f];
+                }
+            });
         }
 
         // 방과 방 사이의 평평한 연결 통로. 양쪽 높이를 맞춰 뒀으므로 바닥 한 줄이면 이어진다.
@@ -402,6 +538,119 @@ namespace HiddenWeight.EditorTools
                 new Vector2(1f, topY - bottomY), "Wall");
             BuildSolidBlock(parent, name + "_R", new Vector2(centerX + half + 0.5f, (topY + bottomY) * 0.5f),
                 new Vector2(1f, topY - bottomY), "Wall");
+        }
+
+        // 날아가는 공격체. 지역에 하나만 놓고 적·보스가 이름으로 쏜다.
+        // 수치는 명세의 역할 그대로다 — 파편은 빠르고 작게, 충격파는 느리지만 지형에 막히지
+        // 않고 바닥을 훑는다(정면 방어를 피해 뒤로 돌아간 플레이어를 밀어내는 것이 목적).
+        static readonly (string name, float fps, float speed, float lifetime,
+                         float radius, int damage, float height, bool ignoreTerrain)[] ResidueProjectiles =
+        {
+            ("ProjSplinter",   14f, 8f,   2.0f, 0.4f, 1, 0.8f, false),
+            ("ProjClaw",       16f, 9f,   0.7f, 0.6f, 1, 1.2f, false),
+            ("ProjShockwave",  14f, 5f,   2.2f, 0.7f, 1, 1.0f, true),
+            ("BossWave",       14f, 6f,   3.0f, 0.9f, 1, 2.0f, true),
+            ("BossNeedle",     16f, 11f,  2.0f, 0.4f, 1, 1.0f, false),
+            ("BossRewindOrb",  14f, 4.5f, 3.5f, 0.8f, 1, 1.4f, false),
+        };
+
+        static void BuildProjectileSpawner(Transform parent,
+            (string name, float fps, float speed, float lifetime,
+             float radius, int damage, float height, bool ignoreTerrain)[] definitions)
+        {
+
+            var valid = new List<(string name, float fps, float speed, float lifetime,
+                                  float radius, int damage, float height, bool ignoreTerrain, Sprite[] frames)>();
+            foreach (var d in definitions)
+            {
+                var frames = ArtFrames(d.name);
+                if (frames.Length > 0)
+                    valid.Add((d.name, d.fps, d.speed, d.lifetime, d.radius, d.damage, d.height,
+                               d.ignoreTerrain, frames));
+            }
+            if (valid.Count == 0) return;
+
+            var go = new GameObject("ProjectileSpawner");
+            go.transform.SetParent(parent, false);
+            var spawner = go.AddComponent<ProjectileSpawner>();
+
+            SetField(spawner, "definitions", p =>
+            {
+                p.arraySize = valid.Count;
+                for (int i = 0; i < valid.Count; i++)
+                {
+                    var element = p.GetArrayElementAtIndex(i);
+                    element.FindPropertyRelative("name").stringValue = valid[i].name;
+                    element.FindPropertyRelative("fps").floatValue = valid[i].fps;
+                    element.FindPropertyRelative("speed").floatValue = valid[i].speed;
+                    element.FindPropertyRelative("lifetime").floatValue = valid[i].lifetime;
+                    element.FindPropertyRelative("radius").floatValue = valid[i].radius;
+                    element.FindPropertyRelative("damage").intValue = valid[i].damage;
+                    element.FindPropertyRelative("displayHeight").floatValue = valid[i].height;
+                    element.FindPropertyRelative("ignoreTerrain").boolValue = valid[i].ignoreTerrain;
+
+                    var frames = element.FindPropertyRelative("frames");
+                    frames.arraySize = valid[i].frames.Length;
+                    for (int f = 0; f < valid[i].frames.Length; f++)
+                        frames.GetArrayElementAtIndex(f).objectReferenceValue = valid[i].frames[f];
+                }
+            });
+        }
+
+        // 방마다 전경·배경 모션을 한 겹씩 얹는다. 방 순서로 골라 이웃한 방이 같은 움직임을
+        // 반복하지 않게 한다 — 전부 같으면 랜드마크로 길을 기억할 수 없다(GAME_DESIGN.md).
+        static readonly (string clip, float fps)[] BackgroundMotions =
+        {
+            ("BgSmoke", 5f), ("BgWindows", 5f), ("BgHand", 3f), ("BgCrowd", 4f),
+        };
+
+        static readonly (string clip, float fps)[] ForegroundMotions =
+        {
+            ("FgChains", 6f), ("FgCage", 6f), ("FgFinger", 4f), ("FgDust", 6f),
+        };
+
+        static void BuildRoomMotion(Room room, int index,
+                                    (string clip, float fps)[] BackgroundMotions,
+                                    (string clip, float fps)[] ForegroundMotions)
+        {
+            var bounds = room.WorldBounds;
+
+            var background = BackgroundMotions[index % BackgroundMotions.Length];
+            BuildMotionLayer(room.transform, "MotionBack", background.clip, background.fps,
+                -25, 0.2f, bounds.center + new Vector3(0f, bounds.extents.y * 0.35f, 0f),
+                bounds.size.y * 0.55f);
+
+            var foreground = ForegroundMotions[index % ForegroundMotions.Length];
+            // 전경은 시차를 주지 않는다. 카메라와 함께 움직이면 화면 앞을 가리는 느낌이 사라진다.
+            BuildMotionLayer(room.transform, "MotionFront", foreground.clip, foreground.fps,
+                25, 0f, bounds.center - new Vector3(0f, bounds.extents.y * 0.25f, 0f),
+                bounds.size.y * 0.45f);
+        }
+
+        static void BuildMotionLayer(Transform parent, string name, string clip, float fps,
+                                     int sortingOrder, float parallax, Vector3 position, float height)
+        {
+            var frames = ArtFrames(clip);
+            if (frames.Length == 0) return;
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = frames[0];
+            renderer.sortingOrder = sortingOrder;
+            // 배경은 어둡게 깔아 게임플레이 가독성을 해치지 않는다(명세 공통 규칙).
+            renderer.color = sortingOrder < 0
+                ? new Color(1f, 1f, 1f, 0.55f)
+                : new Color(1f, 1f, 1f, 0.7f);
+
+            AttachAnimator(go, renderer, new[] { (clip, fps, true) }, height);
+
+            if (parallax <= 0f) return;
+
+            var layer = go.AddComponent<ParallaxLayer>();
+            SetField(layer, "multiplier", p => p.floatValue = parallax);
         }
 
         // 주 동선 12룸을 순서대로 잇고, 비밀방 3곳으로 내려가는(올라가는) 수직 통로를 놓는다.
@@ -459,6 +708,7 @@ namespace HiddenWeight.EditorTools
         public static void RunResidueZone()
         {
             EnsureScenesFolder();
+            UseArtRoot("Assets/Art/Residue");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Residue", out var root);
@@ -490,6 +740,21 @@ namespace HiddenWeight.EditorTools
             BuildR12(ctx);
 
             BuildConnections(ctx);
+
+            // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
+            BuildImpactVFX(root.transform, ResidueImpacts);
+            BuildProjectileSpawner(root.transform, ResidueProjectiles);
+
+            // 방마다 전경·배경 모션을 얹는다. 방을 다 지은 뒤에 해야 방 경계가 정해져 있다.
+            int motionIndex = 0;
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+                BuildRoomMotion(room, motionIndex++, BackgroundMotions, ForegroundMotions);
+
+            // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다. 만든 곳과 여는 곳이 달라서
+            // 여기서 한 번에 처리한다.
+            AttachSealAnimator(_shortcutA, new Vector2(4f, 2f));
+            AttachSealAnimator(_shortcutB, new Vector2(3f, 2.5f));
+            AttachSealAnimator(_shortcutC, new Vector2(4f, 2f));
 
             // 플레이어는 R01 시작점에. 카메라도 같은 자리에서 시작한다.
             ctx.O = R01;
@@ -855,9 +1120,15 @@ namespace HiddenWeight.EditorTools
             ResidueRewindable(c.Root.transform, c.P(8f, 4f));
             ResidueRewindable(c.Root.transform, c.P(16f, 4f));
 
+            // 감시 파동을 섞는다. 전장이 넓어 붙기만 해서는 안 되게 만드는 원거리 압박이다.
             var boss = BuildBoss(c.Root.transform, c.P(18f, 5f), "Enemy_Residue_Watcher", 12,
-                new[] { BossController.Move.GroundSweep, BossController.Move.Charge, BossController.Move.Slam },
+                new[]
+                {
+                    BossController.Move.GroundSweep, BossController.Move.Projectile,
+                    BossController.Move.Charge, BossController.Move.Slam,
+                },
                 new[] { 0.5f }, new Color(0.66f, 0.5f, 0.45f));
+            SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
             // 입장 후 2초 관찰 뒤 출구 잠금. 승리하면 잠금 해제 + 숏컷 C + 큰 재화.
@@ -931,9 +1202,15 @@ namespace HiddenWeight.EditorTools
             ResidueRewindable(c.Root.transform, c.P(10f, 4f));
             ResidueRewindable(c.Root.transform, c.P(20f, 4f));
 
+            // 기억침을 섞는다. 되감기로 복원한 발판 뒤에 숨어 피하는 것이 공략의 일부다.
             var boss = BuildBoss(c.Root.transform, c.P(15f, 5f), "Enemy_Residue_Professor", 18,
-                new[] { BossController.Move.GroundSweep, BossController.Move.Slam, BossController.Move.Charge },
+                new[]
+                {
+                    BossController.Move.GroundSweep, BossController.Move.Projectile,
+                    BossController.Move.Slam, BossController.Move.Charge,
+                },
                 new[] { 0.6f, 0.3f }, new Color(0.5f, 0.42f, 0.55f));
+            SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r12_boss", c.P(15f, 4.5f), 60, true);
             BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,

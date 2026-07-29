@@ -21,8 +21,9 @@ namespace HiddenWeight.World
 
         Rigidbody2D _rb;
         SpriteRenderer _sprite;
+        BoxCollider2D _box;
         Vector3 _origin;
-        Transform _riderOnTop;
+        int _riderMask;
 
         int _leg = -1;      // -1이면 아직 출발 전
         float _delayTimer;
@@ -39,7 +40,27 @@ namespace HiddenWeight.World
             _rb = GetComponent<Rigidbody2D>();
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _sprite = GetComponent<SpriteRenderer>();
+            _box = GetComponent<BoxCollider2D>();
             _origin = transform.position;
+            _riderMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
+        }
+
+        // 발판 바로 위를 매 스텝 훑어 탑승자를 옮긴다.
+        //
+        // MovingPlatform처럼 OnCollisionEnter2D/Exit2D로 탑승자를 기억하는 방식은 수평 왕복에는
+        // 통하지만 수직 승강에는 통하지 않는다. 위로 올라가는 동안 발판이 플레이어를 아래에서
+        // 밀어 올리느라 접촉이 끊겼다 붙었다를 반복하고, Exit가 한 번 뜨는 순간 탑승자를 잊어
+        // 발판만 혼자 올라가 버린다 — 봇이 승강기 중간에서 계속 떨어졌던 원인이다.
+        void CarryRiders(Vector3 delta)
+        {
+            if (delta.sqrMagnitude <= 0f) return;
+
+            var size = _box != null ? _box.size : new Vector2(3f, 0.5f);
+            var center = (Vector2)transform.position + new Vector2(0f, size.y * 0.5f + 0.45f);
+            var area = new Vector2(size.x * 0.95f, 1f);
+
+            foreach (var hit in Physics2D.OverlapBoxAll(center, area, 0f, _riderMask))
+                hit.transform.position += delta;
         }
 
         Vector3 Target(int leg)
@@ -60,7 +81,7 @@ namespace HiddenWeight.World
             var delta = next - transform.position;
 
             _rb.MovePosition(next);
-            if (_riderOnTop != null) _riderOnTop.position += delta;
+            CarryRiders(delta);
 
             if ((next - target).sqrMagnitude > 0.0001f) return;
 
@@ -97,26 +118,15 @@ namespace HiddenWeight.World
 
         public bool PredictActive(float leadSeconds) => true;
 
+        // 출발은 "위에서 밟았을 때" 한 번만 판단하면 되므로 충돌 이벤트를 그대로 쓴다.
+        // 탑승자 운반만 CarryRiders가 따로 맡는다.
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (!PlayerLayers.IsPlayer(collision.gameObject)) return;
+            if (_leg >= 0 || _finished) return;
+            if (!PlayerLayers.SteppedOnFromAbove(collision, transform)) return;
 
-            bool fromAbove = false;
-            foreach (var contact in collision.contacts)
-                if (contact.normal.y > 0.5f) { fromAbove = true; break; }
-            if (!fromAbove) return;
-
-            _riderOnTop = collision.transform;
-            if (_leg < 0 && !_finished)
-            {
-                _leg = 0;
-                _delayTimer = startDelay;
-            }
-        }
-
-        void OnCollisionExit2D(Collision2D collision)
-        {
-            if (collision.transform == _riderOnTop) _riderOnTop = null;
+            _leg = 0;
+            _delayTimer = startDelay;
         }
     }
 }

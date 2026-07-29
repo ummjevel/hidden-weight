@@ -16,6 +16,10 @@ namespace HiddenWeight.Enemies
         [SerializeField] GazeHazard[] linkedDevices; // 비명이 켜는 휴면 시선들
         [SerializeField] float cooldownSeconds = 4f;
 
+        // 비명을 눈에 보이게 하는 공격체. 소리는 화면에 남지 않으므로, 무엇이 시선 장치를
+        // 켰는지 플레이어가 읽으려면 날아가는 형태가 필요하다.
+        [SerializeField] string screamProjectile = "GazeProjScream";
+
         bool _busy;
         float _cooldown;
 
@@ -71,6 +75,10 @@ namespace HiddenWeight.Enemies
                 yield return null;
             }
             ShowTelegraph(false);
+
+            int direction = DirectionToPlayer;
+            HiddenWeight.World.ProjectileSpawner.Fire(screamProjectile,
+                transform.position + new Vector3(direction * 0.6f, 0.3f, 0f), new Vector2(direction, 0f));
 
             if (linkedDevices != null)
                 foreach (var device in linkedDevices)

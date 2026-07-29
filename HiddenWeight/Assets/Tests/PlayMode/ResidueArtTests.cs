@@ -53,9 +53,13 @@ namespace HiddenWeight.Tests
             var artTransform = player.transform.Find("Art");
             Assert.IsNotNull(artTransform, "플레이어에 Art 자식이 없다.");
             var renderer = artTransform.GetComponent<SpriteRenderer>();
+            // 프레임 수가 아니라 실제 시간으로 기다린다. 배치모드는 프레임 간격이 상황에 따라
+            // 크게 달라서, 120프레임이 가장 느린 클립(8~10fps)의 한 프레임 간격에도 못 미치는
+            // 경우가 있다 — 테스트가 늘어 타이밍이 밀리자 실제로 그렇게 뒤집혔다.
             var first = renderer.sprite;
             bool changed = false;
-            for (int i = 0; i < 120 && !changed; i++)
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (!changed && Time.realtimeSinceStartup < deadline)
             {
                 yield return null;
                 if (renderer.sprite != first) changed = true;

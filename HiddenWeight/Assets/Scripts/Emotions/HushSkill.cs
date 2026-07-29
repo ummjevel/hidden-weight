@@ -24,6 +24,10 @@ namespace HiddenWeight.Emotions
             Player.transform.localScale = _originalScale * Data.hushScale;
             var atk = Player.GetComponent<PlayerAttack>();
             if (atk != null) atk.CanAttack = false;
+
+            // 웅크렸다가 그 자세를 유지한다. 이동 상태가 바뀌어도 자세가 풀리면 안 되므로
+            // 상태 클립이 아니라 덮어쓰기 계층에 건다(PlayerAnimator 참고).
+            Animator?.BeginOverride("HushBegin", "HushMove");
         }
 
         protected override void OnTick(float dt) { }
@@ -37,7 +41,15 @@ namespace HiddenWeight.Emotions
 
             var health = GetComponent<PlayerHealth>(); // 스킬과 같은 GameObject에 있다
             if (health != null) health.GrantInvulnerability(releaseInvulnSeconds);
+
+            Animator?.EndOverride("HushEnd");
         }
+
+        // 스킬과 같은 GameObject에 붙어 있다. Awake에서 캡처하지 않는 이유는 EmotionSkill의
+        // Player 프로퍼티와 같다 — 같은 오브젝트 안의 Awake 순서는 보장되지 않는다.
+        PlayerAnimator _animator;
+        PlayerAnimator Animator
+            => _animator != null ? _animator : (_animator = GetComponent<PlayerAnimator>());
 
         // 축소 상태에서 좁은 틈을 지나려면 콜라이더도 줄어야 한다. localScale 변경이
         // CapsuleCollider2D에 자동 반영되므로 별도 처리는 필요 없다.

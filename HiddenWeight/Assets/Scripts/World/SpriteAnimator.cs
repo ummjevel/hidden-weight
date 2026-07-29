@@ -44,9 +44,13 @@ namespace HiddenWeight.World
             if (target == null) target = GetComponentInChildren<SpriteRenderer>();
         }
 
+        // 상태 전환용 시트(발판의 균열·붕괴·복구처럼)는 시작하자마자 첫 클립을 틀면 안 된다.
+        // 밟지도 않았는데 발판이 계속 금 가 있는 것처럼 보인다. 그런 경우만 이 값을 끈다.
+        [SerializeField] bool autoPlay = true;
+
         void Start()
         {
-            if (_current == null && clips != null && clips.Length > 0) Play(clips[0].name);
+            if (autoPlay && _current == null && clips != null && clips.Length > 0) Play(clips[0].name);
         }
 
         void Update()

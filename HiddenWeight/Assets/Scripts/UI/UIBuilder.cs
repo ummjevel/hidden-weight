@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using HiddenWeight.Core;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.UI
 {
@@ -12,11 +14,34 @@ namespace HiddenWeight.UI
         // 화면마다 따로 하드코딩돼 있던 색을 한 곳으로 모은 것 — 값 자체는 기존 화면들이
         // 이미 쓰던 것 중 하나로 통일했을 뿐, 새로운 톤을 도입한 게 아니다. 실제 아트(커스텀
         // 폰트·아이콘)는 별도 작업으로 미루고, 지금은 색·형태의 일관성만 맞춘다.
-        public static readonly Color PanelBackground = new Color(0f, 0f, 0f, 0.6f); // 기존 PauseMenu 배경값
-        public static readonly Color ButtonIdle = new Color(1f, 1f, 1f, 0.15f);
-        public static readonly Color TextPrimary = Color.white;
-        public static readonly Color AccentColor = Color.cyan; // 스킬 게이지 등 강조용(기존 HUD 되감기 게이지 색)
-        public static readonly Color HeartFull = Color.red;
+        static ZoneId CurrentZone => GameManager.Instance != null && GameManager.Instance.CurrentZoneData != null
+            ? GameManager.Instance.CurrentZoneData.id : ZoneId.Prologue;
+
+        public static Color PanelBackground => CurrentZone switch
+        {
+            ZoneId.Residue => new Color(0.075f, 0.062f, 0.045f, 0.94f),
+            ZoneId.Gaze => new Color(0.035f, 0.065f, 0.075f, 0.94f),
+            ZoneId.Fracture => new Color(0.085f, 0.055f, 0.072f, 0.94f),
+            _ => new Color(0.045f, 0.042f, 0.055f, 0.92f),
+        };
+        public static Color ButtonIdle => CurrentZone switch
+        {
+            ZoneId.Residue => new Color(0.48f, 0.37f, 0.22f, 0.34f),
+            ZoneId.Gaze => new Color(0.23f, 0.42f, 0.44f, 0.32f),
+            ZoneId.Fracture => new Color(0.48f, 0.30f, 0.39f, 0.30f),
+            _ => new Color(0.42f, 0.38f, 0.52f, 0.28f),
+        };
+        public static Color TextPrimary => UISettings.HighContrast
+            ? new Color(1f, 0.98f, 0.90f, 1f)
+            : new Color(0.92f, 0.89f, 0.82f, 1f);
+        public static Color AccentColor => CurrentZone switch
+        {
+            ZoneId.Residue => new Color(0.83f, 0.61f, 0.27f, 1f),
+            ZoneId.Gaze => new Color(0.45f, 0.72f, 0.68f, 1f),
+            ZoneId.Fracture => new Color(0.88f, 0.56f, 0.66f, 1f),
+            _ => new Color(0.68f, 0.62f, 0.80f, 1f),
+        };
+        public static readonly Color HeartFull = new Color(0.78f, 0.24f, 0.22f, 1f);
         // 지금은 HUD가 하트를 enabled on/off로만 표시한다(빈 하트를 별도로 그리지 않음).
         // 최대 체력 확장 때 빈 하트 아웃라인을 그리게 되면 이 색을 쓴다.
         public static readonly Color HeartEmpty = new Color(1f, 1f, 1f, 0.25f);
@@ -34,8 +59,8 @@ namespace HiddenWeight.UI
             if (scaler.GetComponent<UIScaleWatcher>() == null) scaler.gameObject.AddComponent<UIScaleWatcher>();
         }
         // 버튼 호버/눌림 피드백용 배율 — Selectable.colors(ColorBlock)가 ButtonIdle에 곱한다.
-        public static readonly Color HoverTint = new Color(1.15f, 1.15f, 1.15f, 1f);
-        public static readonly Color PressedTint = new Color(0.85f, 0.85f, 0.85f, 1f);
+        public static readonly Color HoverTint = new Color(1.08f, 1.06f, 1.02f, 1f);
+        public static readonly Color PressedTint = new Color(0.82f, 0.80f, 0.76f, 1f);
 
         // HUD.cs가 쓰던 버전: GameObject 이름을 그대로 받고, 정렬을 지정하며, 텍스트는 빈 채로 시작한다.
         public static Text CreateText(Transform parent, string name, int fontSize, TextAnchor alignment)
@@ -85,11 +110,11 @@ namespace HiddenWeight.UI
 
             var colors = button.colors;
             colors.normalColor = ButtonIdle;
-            colors.highlightedColor = new Color(1f, 1f, 1f, 0.28f);
-            colors.pressedColor = new Color(1f, 1f, 1f, 0.38f);
+            colors.highlightedColor = new Color(0.92f, 0.86f, 0.72f, 0.46f);
+            colors.pressedColor = new Color(0.72f, 0.62f, 0.48f, 0.62f);
             colors.selectedColor = UISettings.HighContrast
-                ? new Color(0.1f, 0.75f, 0.82f, 0.95f)
-                : new Color(0.72f, 0.9f, 0.92f, 0.32f);
+                ? new Color(0.94f, 0.72f, 0.26f, 0.95f)
+                : AccentColor * new Color(1f, 1f, 1f, 0.58f);
             colors.disabledColor = new Color(1f, 1f, 1f, 0.06f);
             colors.colorMultiplier = 1f;
             colors.fadeDuration = 0.08f;

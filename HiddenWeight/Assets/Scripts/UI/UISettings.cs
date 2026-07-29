@@ -14,7 +14,7 @@ namespace HiddenWeight.UI
         public static float MasterVolume { get => GetFloat("master", 1f); set => SetFloat("master", value, 0f, 1f); }
         public static float BgmVolume { get => GetFloat("bgm", 0.8f); set => SetFloat("bgm", value, 0f, 1f); }
         public static float SfxVolume { get => GetFloat("sfx", 1f); set => SetFloat("sfx", value, 0f, 1f); }
-        public static float UiScale { get => GetFloat("scale", 1f); set => SetFloat("scale", value, 0.8f, 1.3f); }
+        public static float UiScale { get => GetFloat("scale", 1f); set => SetFloat("scale", value, 0.8f, 1.5f); }
         public static float MessageDuration { get => GetFloat("message", 1f); set => SetFloat("message", value, 0.8f, 2f); }
         public static bool ReduceMotion { get => GetBool("reduceMotion", false); set => SetBool("reduceMotion", value); }
         public static bool ReduceFlash { get => GetBool("reduceFlash", false); set => SetBool("reduceFlash", value); }

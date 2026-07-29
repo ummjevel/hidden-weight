@@ -23,5 +23,9 @@ namespace HiddenWeight.Data
         public Sprite[] statusRewindFrames;
         public Sprite[] statusDangerFrames;
         public Sprite[] statusProgressFrames;
+
+        // UI 아이콘 시트의 4행: 미발견/발견/완료/재방문/현재/목표/보스 격파/지역 완료.
+        // 지도는 실제 방을 축소하지 않고 이 실루엣으로 기억 상태를 표현한다.
+        public Sprite[] mapStateIcons;
     }
 }

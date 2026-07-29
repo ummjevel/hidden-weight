@@ -260,6 +260,18 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 지역_지도_상태_아이콘이_연결돼_있다()
+        {
+            yield return LoadResidue();
+            var zone = GameManager.Instance.CurrentZoneData;
+            Assert.IsNotNull(zone);
+            Assert.IsNotNull(zone.mapStateIcons);
+            Assert.AreEqual(8, zone.mapStateIcons.Length);
+            Assert.IsTrue(System.Array.TrueForAll(zone.mapStateIcons, icon => icon != null),
+                "지역 UI 아이콘 시트의 상태 행이 지도 데이터에 모두 연결돼야 한다.");
+        }
+
+        [UnityTest]
         public IEnumerator 숏컷에_봉쇄_해제_애니메이션이_붙어_있다()
         {
             yield return LoadResidue();

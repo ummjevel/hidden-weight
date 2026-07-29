@@ -82,7 +82,7 @@ namespace HiddenWeight.UI
             else if (gm.State == GameState.Paused) Close();
         }
 
-        public void Open()
+        public void Open(bool selectResume = true)
         {
             PlayerInput.Enabled = false;
             GameManager.Instance.SetState(GameState.Paused);
@@ -92,12 +92,12 @@ namespace HiddenWeight.UI
             _root.SetActive(true);
             if (_fadeRoutine != null) StopCoroutine(_fadeRoutine);
             _fadeRoutine = StartCoroutine(FadeTo(1f));
-            StartCoroutine(SelectResumeNextFrame());
+            if (selectResume) StartCoroutine(SelectResumeNextFrame());
         }
 
         public void OpenSection(PauseSection section)
         {
-            if (!IsOpen) Open();
+            if (!IsOpen) Open(false);
             _sections.Show(section);
         }
 

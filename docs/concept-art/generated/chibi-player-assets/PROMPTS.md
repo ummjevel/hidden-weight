@@ -119,3 +119,25 @@ are appended here as each atlas is completed.
   gaze in the final frame.
 - Audit: every character, delayed contour and mote remains inside its 256×256
   cell.
+
+## Final audit
+
+- Generator: built-in image generation tool, one call per atlas; the Actions
+  atlas received one additional strict-grid regeneration.
+- Alpha/chroma: all 8 runtime PNGs are RGBA, contain transparent pixels and
+  contain zero opaque chroma-key-green pixels under the audit threshold.
+- Sprite import: all player sheets use Sprite Multiple, PPU 32, Bilinear,
+  Mipmap Off, Clamp, Uncompressed, Alpha Is Transparency and Bottom Center
+  pivots.
+- Grid correction: Actions and Wall cover their full 2172×724 source canvases
+  with twelve 362×362 sprites. PlayerVFX is 18 sprites at 256×341. Hush and
+  Awareness are 18 sprites at 256×256.
+- Regression protection: `ResidueArtImporter.ConfigureAll()` no longer mutates
+  player animation sheet settings while configuring room layers.
+- Review images:
+  - `contact-sheets/chibi-player-all-sheets.jpg`
+  - `contact-sheets/chibi-player-frame-audit.jpg`
+  - `contact-sheets/locomotion-loop-audit.jpg`
+- Final tests:
+  - EditMode: 21 passed, 0 failed.
+  - PlayMode: 62 passed, 0 failed.

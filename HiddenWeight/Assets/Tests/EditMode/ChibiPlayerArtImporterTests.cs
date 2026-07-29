@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using HiddenWeight.EditorTools;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -139,6 +140,31 @@ namespace HiddenWeight.Tests
             {
                 "AwarenessBegin", "AwarenessLoop", "AwarenessUnlock",
             });
+        }
+
+        [Test]
+        public void ResidueRoomImporterDoesNotOverwritePlayerSheetSettings()
+        {
+            foreach (var expected in Sheets.Take(6))
+            {
+                var importer =
+                    (TextureImporter)AssetImporter.GetAtPath(expected.Path);
+                importer.alphaIsTransparency = true;
+                importer.SaveAndReimport();
+            }
+
+            ResidueArtImporter.ConfigureAll();
+
+            foreach (var expected in Sheets.Take(6))
+            {
+                var importer =
+                    (TextureImporter)AssetImporter.GetAtPath(expected.Path);
+
+                Assert.That(importer.alphaIsTransparency, Is.True,
+                    expected.Path);
+                Assert.That(importer.spriteImportMode,
+                    Is.EqualTo(SpriteImportMode.Multiple), expected.Path);
+            }
         }
 
         static void AssertNames(

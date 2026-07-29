@@ -47,3 +47,23 @@ are appended here as each atlas is completed.
   in the attack cell, uniform `#00ff00` backdrop.
 - Audit: eight isolated full-body poses, no crop or overlap, transparent
   runtime corners, identity and costume preserved.
+
+### Player locomotion
+
+- Source: `Player_Locomotion_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/Player/Animation/Player_Locomotion_v1.png`
+- Grid: 8×3 at 2048×768; rows are Idle, Walk and Run.
+- Prompt summary: preserve the approved chibi identity across 24 right-facing,
+  bottom-aligned frames with a subtle idle loop, alternating walk contacts and
+  a stronger forward-leaning run; no effects or scenery.
+
+### Player aerial
+
+- Source: `Player_Aerial_Chibi_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Residue/Gameplay/Player/Animation/Player_Aerial_v1.png`
+- Grid: 6×4 at 1536×1024; rows are Jump, AirMove, Fall and Land.
+- Prompt summary: preserve scale and registration across takeoff, aerial
+  movement, falling hair follow-through and landing recovery; final land pose
+  returns to approved idle proportions.
+- Audit: `contact-sheets/locomotion-loop-audit.jpg` compares loop boundaries
+  and the Land-to-Idle transition against a common foot baseline.

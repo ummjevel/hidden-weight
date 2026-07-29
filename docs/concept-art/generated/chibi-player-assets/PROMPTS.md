@@ -97,3 +97,25 @@ are appended here as each atlas is completed.
   dissolution and restrained cyan-white reconstruction. Each effect progresses
   left to right, preserves bottom-center registration and stays inside its
   256×341 runtime cell.
+
+### Player Hush ability
+
+- Source: `Player_Hush_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Player/Abilities/Player_Hush_v1.png`
+- Grid: 6×3 at 1536×768; rows are HushBegin, HushMove and HushEnd.
+- Prompt summary: contract from idle into an inward guarded crouch, move with
+  small cautious steps, then expand back to idle.
+- Audit correction: the generated HushMove row measured 78% of standing
+  height. It was uniformly reduced and bottom-aligned; final maximum is 58.5%.
+
+### Player Awareness ability
+
+- Source: `Player_Awareness_Source.png`
+- Runtime: `HiddenWeight/Assets/Art/Player/Abilities/Player_Awareness_v1.png`
+- Grid: 6×3 at 1536×768; rows are AwarenessBegin, AwarenessLoop and
+  AwarenessUnlock.
+- Prompt summary: restrained eye and gemstone ignition, a pale delayed
+  double-contour perception loop, then contour convergence and a calm frontal
+  gaze in the final frame.
+- Audit: every character, delayed contour and mote remains inside its 256×256
+  cell.

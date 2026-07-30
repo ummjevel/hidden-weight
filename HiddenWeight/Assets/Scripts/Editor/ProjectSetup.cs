@@ -11,10 +11,12 @@ namespace HiddenWeight.EditorTools
     // 이 메서드를 그대로 재사용하기 때문이다.
     public static class ProjectSetup
     {
-        // 8~14번 슬롯에 순서대로 채워 넣을 사용자 정의 레이어. (기획 문서 2.1절)
+        // 8~15번 슬롯에 순서대로 채워 넣을 사용자 정의 레이어. (기획 문서 2.1절)
+        // EnemyHitbox: 접촉 피해 전용 트리거 자식이 쓰는 레이어. Enemy 본체 레이어는 Player와
+        // 물리 충돌을 꺼서(밀지 않게) 두되, 접촉 피해 판정만은 이 레이어의 트리거로 계속 받는다.
         private static readonly string[] LayerNames =
         {
-            "Ground", "Wall", "Player", "PlayerHushed", "Enemy", "Hazard", "Interactable",
+            "Ground", "Wall", "Player", "PlayerHushed", "Enemy", "Hazard", "Interactable", "EnemyHitbox",
         };
 
         // 지역별 색보정 수치 (설계 문서 6.1절 = 기획서 7.1절)
@@ -38,6 +40,19 @@ namespace HiddenWeight.EditorTools
             AssetDatabase.Refresh();
         }
 
+        // Run() 전체를 다시 돌리면 URP 파이프라인/렌더러 에셋이 새 GUID로 재생성되어 ZoneData의
+        // Volume 참조가 깨진다(README 참고). 레이어 이름·충돌 행렬만 필요할 때는 이 둘만 다시 돈다 —
+        // 둘 다 몇 번을 다시 실행해도 같은 결과라 안전하다.
+        [MenuItem("Hidden Weight/Fix/Apply Enemy Layer Setup")]
+        public static void ApplyEnemyLayerSetup()
+        {
+            RegisterLayers();
+            SetupLayerCollisionMatrix();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[ProjectSetup] EnemyHitbox 레이어 등록 + 충돌 행렬(Player-Enemy 무시) 적용 완료");
+        }
+
         // 1. 레이어 등록: TagManager.asset을 SerializedObject로 열어 8번 슬롯부터 채운다.
         private static void RegisterLayers()
         {
@@ -58,8 +73,16 @@ namespace HiddenWeight.EditorTools
         private static void SetupLayerCollisionMatrix()
         {
             int hushedLayer = LayerMask.NameToLayer("PlayerHushed");
+            int playerLayer = LayerMask.NameToLayer("Player");
             int enemyLayer = LayerMask.NameToLayer("Enemy");
+            int enemyHitboxLayer = LayerMask.NameToLayer("EnemyHitbox");
             Physics2D.IgnoreLayerCollision(hushedLayer, enemyLayer, true);
+            Physics2D.IgnoreLayerCollision(hushedLayer, enemyHitboxLayer, true);
+
+            // 적 본체와 플레이어는 서로 밀지 않는다(둘 다 Dynamic Rigidbody2D라 그냥 두면 부딪힌
+            // 쪽이 물리적으로 떠밀린다). 접촉 피해는 별도의 EnemyHitbox 트리거로 계속 받으므로
+            // 이 레이어 쌍만 물리 충돌을 꺼도 안전하다.
+            Physics2D.IgnoreLayerCollision(playerLayer, enemyLayer, true);
         }
 
         // 3. URP 에셋 생성: Renderer2DData + UniversalRenderPipelineAsset을 만들고

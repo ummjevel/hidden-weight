@@ -248,9 +248,23 @@ namespace HiddenWeight.Tests
             bool okX = bestX >= needX - 1f;
             bool okY = leg.GoalY <= 0f || bestY >= goalY - 1f;
 
+            string obstruction = "";
+            if (!okX || !okY)
+            {
+                var nearby = Physics2D.OverlapBoxAll(player.transform.position, new Vector2(2.5f, 3f), 0f,
+                    blockMask);
+                var names = new StringBuilder();
+                foreach (var hit in nearby)
+                {
+                    if (names.Length > 0) names.Append(", ");
+                    names.Append(hit.name);
+                }
+                obstruction = $" 위치={(Vector2)player.transform.position} 주변=[{names}]";
+            }
+
             report($"  {leg.Room,-18} x {bestX - min.x,6:F1} / {leg.GoalX,-4} "
                  + (leg.GoalY > 0f ? $"y {bestY - min.y,5:F1} / {leg.GoalY,-4} " : "")
-                 + (okX && okY ? "통과" : "← 막힘"));
+                 + (okX && okY ? "통과" : "← 막힘" + obstruction));
 
             BotResult = okX && okY;
         }
@@ -295,6 +309,16 @@ namespace HiddenWeight.Tests
 
                 // 착지·안정화.
                 for (int i = 0; i < 25; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
+
+                // 이 픽스처는 전투가 아니라 지형만 검증한다. 비활성화 직전에 생성된 공격체나
+                // 지연 판정 때문에 죽어 시작 체크포인트로 돌아가면 지형 막힘으로 오인되므로,
+                // 해당 방을 달리는 짧은 시간 동안만 체력을 채우고 피해를 무시한다.
+                var health = player.GetComponent<PlayerHealth>();
+                if (health != null)
+                {
+                    health.RestoreFull();
+                    health.GrantInvulnerability(leg.Steps * Time.fixedDeltaTime + 1f);
+                }
 
                 BotResult = false;
                 yield return RunBot(player, room, leg, line => report.AppendLine(line));
@@ -369,6 +393,38 @@ namespace HiddenWeight.Tests
                 "승강기는 올라갔는데 플레이어가 함께 올라가지 못했다(발판 " + liftRise.ToString("F1")
                 + " / 플레이어 " + ridden.ToString("F1") + ").");
             Assert.IsTrue(shortcut.IsOpen, "승강기가 종점에 닿았는데 숏컷이 열리지 않았다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 열린_숏컷의_승강기는_재방문하면_종점에서_시작한다(
+            [Values("Zone_Gaze_Full", "Zone_Fracture_Full")] string sceneName,
+            [Values("gaze_shortcut_b", "fracture_shortcut_b")] string shortcutId)
+        {
+            // [Values]의 교차 조합 중 같은 지역의 짝만 검사한다.
+            if (sceneName.Contains("Gaze") != shortcutId.StartsWith("gaze")) yield break;
+
+            if (GameManager.Instance != null) GameManager.Instance.Progress.ResetAll();
+            yield return SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+            yield return null;
+
+            var firstLift = Object.FindFirstObjectByType<LiftPlatform>();
+            Assert.IsNotNull(firstLift, sceneName + "에 승강기가 없다.");
+            Vector3 firstPosition = firstLift.transform.position;
+
+            GameManager.Instance.Progress.MarkShortcutOpen(shortcutId);
+            yield return SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+            yield return null;
+
+            var restoredLift = Object.FindFirstObjectByType<LiftPlatform>();
+            Assert.IsNotNull(restoredLift, sceneName + " 재방문 후 승강기가 없다.");
+
+            float restoredDistance = Vector3.Distance(firstPosition, restoredLift.transform.position);
+            Debug.Log("===== 승강기 재방문 ===== " + sceneName
+                + " 종점복원=" + restoredLift.IsFinished
+                + " 이동거리=" + restoredDistance.ToString("F1"));
+
+            Assert.IsTrue(restoredLift.IsFinished, "열린 숏컷인데 승강기가 다시 출발 대기 상태다.");
+            Assert.Greater(restoredDistance, 5f, "열린 숏컷인데 승강기가 시작 위치에 남아 있다.");
         }
 
         // 능력 파편이 실제로 스킬을 주는지. 준다고 코드에 적혀 있는 것과 실제로 먹히는 것은 다르다.

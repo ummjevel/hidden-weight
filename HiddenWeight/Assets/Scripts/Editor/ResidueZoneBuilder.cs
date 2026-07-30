@@ -974,7 +974,9 @@ namespace HiddenWeight.EditorTools
             // 올라서서 돌아설 폭이 없어진다.
             c.Tiles(12, 18, 13, 14);
             BuildResidueEnemy(c.Root.transform, c.P(15f, 15f), ResidueEnemyKind.Walker);
-            BuildResidueEnemy(c.Root.transform, c.P(16f, 3f), ResidueEnemyKind.Walker);  // 하층, S1 반대편
+            // 두 번째 적은 S1을 확인하러 왼쪽으로 꺾을 때만 만난다. 동쪽 주 출구를 향하는
+            // 플레이어의 60~90초 예산을 붙잡지 않는다.
+            BuildResidueEnemy(c.Root.transform, c.P(4f, 3f), ResidueEnemyKind.Walker);
 
             c.Room("Room04", 24f, 22f);
         }
@@ -1002,36 +1004,40 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- R05 되감기 성소 (D0→D2) ----------------
-        // 되감기 획득과 3단계 튜토리얼. 실패·적·시간제한이 없다.
+        // 되감기 획득과 1회 필수·1회 선택 튜토리얼. 실패·적·시간제한이 없다.
         static void BuildR05(RoomCtx c)
         {
             c.O = R05;
             c.Variant = 2;
             c.Floor(0, 12, 2);
-            // 1단계 턱을 4유닛으로 세운다. 실측 점프 높이가 2.72라 기본 점프로는 절대 못 오른다 —
-            // 복원한 블록(로컬 11,3 → 되감기로 11,6)을 밟고 올라가야 한다. 2유닛이던 시절에는
-            // 봇이 되감기를 한 번도 쓰지 않고 R09까지 통과했다.
-            c.Floor(12, 16, 6);
-            c.Floor(16, 17, 2);
-            // 2단계: 폭 6 틈(17~23). 달리기 점프 도달이 6.66이라 아슬아슬해 보이지만, 착지면이
-            // 2유닛 높아서 실제로는 넘지 못한다. 다리 조각을 복원해 건넌다.
+            // 1단계 턱은 실측 기본 점프 높이(2.72)보다 높은 3유닛이다. 복원 블록의 상단과
+            // 턱 표면을 y=5로 정확히 맞춰, 되감기는 필수지만 모서리 걸림은 없게 한다.
+            c.Floor(12, 16, 5);
+            // 필수 복원 뒤에는 아래 안전 통로로 곧장 출구까지 갈 수 있다. 위쪽 다리 복원은
+            // 같은 입력을 한 번 더 연습하고 재화를 얻는 선택 가지다.
+            c.Floor(16, 26, 2);
             c.Floor(23, 26, 4);
 
             BuildCheckpoint(c.Root.transform, c.P(7f, 3f)); // 체크포인트 2 — 능력 획득 직전
 
-            BuildStoryFragment(c.Root.transform, c.P(10f, 4f), "residue_skill",
+            BuildStoryFragment(c.Root.transform, c.P(8.5f, 4f), "residue_skill",
                 "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
             BuildTutorialHint(c.Root.transform, c.P(11f, 6f), "K 홀드  —  되감기");
 
-            // 대상 1: 원래 자리는 턱 중간 높이(11,4.5)다. 시작하면 중력으로 바닥까지 굴러떨어져
-            // 있고, 되감으면 제자리로 올라가 4유닛 턱을 오르는 디딤돌이 된다.
-            ResidueRewindable(c.Root.transform, c.P(11f, 4.5f));
-            // 대상 2: 끊어진 다리 조각. 원래 자리는 틈 한가운데 공중이라, 복원해야 발판이 생긴다.
+            // 대상 1: 바닥(y=2)과 턱(y=5) 사이의 실제 디딤 높이(y=3.5)에 복원된다.
+            // 블록 상단 y=4를 밟은 뒤 1유닛 더 올라가므로 밑면에 머리가 걸리지 않는다.
+            var primary = ResidueRewindable(c.Root.transform, c.P(10.5f, 3.5f));
+            primary.name = "R05_PrimaryRestore";
+            LinkRewindToShortcut(primary, _shortcutA);
+
+            // 선택 대상: 끊어진 다리 조각. 복원하면 위쪽 재화 가지를 편하게 건넌다.
             ResidueRewindable(c.Root.transform, c.P(20f, 6.5f));
-            // 대상 3: R03 숏컷 A를 여는 사슬장치.
+            for (int i = 0; i < 4; i++)
+                BuildCurrencyPickup(c.Root.transform, c.P(18.5f + i * 0.7f, 7.5f));
+
+            // 사슬은 선택 연출 대상으로 남긴다. 숏컷은 첫 필수 복원에서 이미 열린다.
             var chain = ResidueRewindable(c.Root.transform, c.P(22f, 7f));
             chain.name = "R05_ChainDevice";
-            LinkRewindToShortcut(chain, _shortcutA); // 3단계: 복원하면 R03 숏컷 A가 열린다
 
             c.Room("Room05", 26f, 14f);
         }
@@ -1043,17 +1049,21 @@ namespace HiddenWeight.EditorTools
             c.O = R06;
             c.Variant = 3;
             c.Floor(0, 8, 2);
-            // 5유닛 상승. 복원 블록을 발판으로 써야만 오른다(기본 점프 2.72).
-            c.Floor(8, 20, 7);
+            // 4유닛 상승. 바닥에 닿는 복원 계단을 발판으로 써야만 오른다(기본 점프 2.72).
+            c.Floor(8, 20, 6);
             c.Floor(20, 32, 5);   // 출구 (32,5)
 
-            // 필수 대상. 원래 자리(7, 4.5)로 복원하면 5유닛 턱을 오르는 디딤돌이 된다.
-            ResidueRewindable(c.Root.transform, c.P(7f, 4.5f));
+            // 필수 대상. 낮은 바닥에 닿아 있고 상단 y=4가 두 바닥(y=2, y=6)의 중간이다.
+            // 부유 블록 아래에 끼는 틈 없이 기본 점프 두 번으로만 오른다.
+            var requiredStep = ResidueRewindable(c.Root.transform, c.P(6.5f, 3f));
+            requiredStep.name = "R06_RequiredStep";
+            requiredStep.GetComponent<BoxCollider2D>().size = new Vector2(2.5f, 2f);
+            ReplaceArt(requiredStep, "Rewind_r1_c1", new Vector2(2.5f, 2.2f), 4);
 
             // 매복 적. 착지점 좌우 3유닛은 비워 둔다.
             BuildResidueEnemy(c.Root.transform, c.P(18f, 11f), ResidueEnemyKind.Finger);
-            // 상승 구간 바닥이 y=7이므로 그 위에 세운다. 예전엔 y=5라 지형에 묻혀 있었다.
-            BuildResidueEnemy(c.Root.transform, c.P(12f, 8f), ResidueEnemyKind.Walker);
+            // 상승 구간 바닥이 y=6이므로 그 위에 세운다.
+            BuildResidueEnemy(c.Root.transform, c.P(12f, 7f), ResidueEnemyKind.Walker);
 
             // 선택 대상: 복원하면 S2 입구가 열린다. 주 동선 문은 닫히지 않는다.
             ResidueRewindable(c.Root.transform, c.P(21f, 6f));
@@ -1145,11 +1155,14 @@ namespace HiddenWeight.EditorTools
             ResidueCrumbling(c.Root.transform, c.P(18f, 25f));
             c.Tiles(20, 24, 26, 27); // 북동 출구 (22,26)
 
-            // 승강기 도르래 2개를 "모두" 되감아야 R03 숏컷 B가 열린다.
+            // 어느 도르래든 하나를 되감으면 연쇄 작동으로 R03 숏컷 B가 열린다. 두 번째는
+            // 위험 발판을 택한 숙련 플레이어가 더 가까운 장치를 쓰는 단축 선택이다.
             var pulleyA = ResidueRewindable(c.Root.transform, c.P(12f, 21f));
             var pulleyB = ResidueRewindable(c.Root.transform, c.P(19f, 26f));
-            LinkRewindToShortcut(pulleyA, _shortcutB, pulleyB);
-            LinkRewindToShortcut(pulleyB, _shortcutB, pulleyA);
+            pulleyA.name = "R08_PulleySafe";
+            pulleyB.name = "R08_PulleyFast";
+            LinkRewindToShortcut(pulleyA, _shortcutB);
+            LinkRewindToShortcut(pulleyB, _shortcutB);
 
             c.Room("Room08", 24f, 30f);
         }
@@ -1165,6 +1178,12 @@ namespace HiddenWeight.EditorTools
             c.Floor(0, 24, 3);    // 초반 관찰 발판 + 중앙 전투 구간(14유닛)
             c.Floor(28, 32, 4);   // 출구 (32,4) — 4.5유닛 대시 선택 경로 너머
 
+            // 정예는 주 동선 위가 아니라 위쪽 선택 분기에 둔다. 안전 발판을 타고 올라간
+            // 플레이어만 추가 전투와 보상을 치르므로, 재방문 때는 곧장 출구로 달릴 수 있다.
+            BuildSafePlatform(c.Root.transform, c.P(6.5f, 5.5f));
+            BuildSafePlatform(c.Root.transform, c.P(9f, 7.5f));
+            c.Tiles(7, 15, 9, 10);
+
             var recovery = new GameObject("R09_Recovery");
             recovery.transform.SetParent(c.Root.transform, false);
             recovery.transform.position = c.P(4f, 4f);
@@ -1172,16 +1191,18 @@ namespace HiddenWeight.EditorTools
 
             var finger = BuildResidueEnemy(c.Root.transform, c.P(13f, 11f), ResidueEnemyKind.Finger);
             var carrier = BuildResidueEnemy(c.Root.transform, c.P(20f, 4f), ResidueEnemyKind.Carrier);
-            var elite = BuildResidueEnemy(c.Root.transform, c.P(23f, 4f), ResidueEnemyKind.Hardened);
+            var elite = BuildResidueEnemy(c.Root.transform, c.P(11f, 10f), ResidueEnemyKind.Hardened);
 
             // 복원 대상 둘을 서로 다른 자리에 둔다 — 다리는 안전한 주 동선, 벽은 정예 공략용.
             ResidueRewindable(c.Root.transform, c.P(25f, 4f)); // 다리
             ResidueRewindable(c.Root.transform, c.P(21f, 4f)); // 방어벽
 
-            var reward = BuildRewardChest(c.Root.transform, "residue_r09_elite", c.P(24f, 4.5f), 15, false);
-            BuildEncounter(c.Root.transform, "residue_r09", c.P(16f, 6f), new Vector2(20f, 10f), false,
-                new[] { new[] { finger }, new[] { carrier }, new[] { elite } },
-                new[] { 0, -1 }, reward, null);
+            BuildEncounter(c.Root.transform, "residue_r09_main", c.P(16f, 5f), new Vector2(20f, 6f), false,
+                new[] { new[] { finger }, new[] { carrier } }, new[] { 0 }, null, null);
+
+            var reward = BuildRewardChest(c.Root.transform, "residue_r09_elite", c.P(14f, 10.5f), 15, false);
+            BuildEncounter(c.Root.transform, "residue_r09_elite", c.P(11f, 11f), new Vector2(10f, 6f), true,
+                new[] { new[] { elite } }, System.Array.Empty<int>(), reward, null);
 
             for (int i = 0; i < 4; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(25.5f + i * 0.5f, 5f)); // 대시 선택 경로 보상

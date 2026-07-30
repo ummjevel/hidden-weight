@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Core;
 using HiddenWeight.Data;
 
 namespace HiddenWeight.World
@@ -48,6 +49,21 @@ namespace HiddenWeight.World
             _box = GetComponent<BoxCollider2D>();
             _origin = transform.position;
             _riderMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
+        }
+
+        void Start()
+        {
+            // 한 번 종점까지 운행해 숏컷을 연 뒤에는 재방문 때 같은 이동을 기다리게 하지 않는다.
+            // Shortcut.Start의 실행 순서에 기대지 않고 저장 상태를 직접 읽어 두 지역에서 동일하게 복원한다.
+            if (linkedShortcut == null || waypoints == null || waypoints.Length == 0) return;
+            if (GameManager.Instance == null
+                || !GameManager.Instance.Progress.IsShortcutOpen(linkedShortcut.Id)) return;
+
+            var destination = Target(waypoints.Length - 1);
+            transform.position = destination;
+            _rb.position = destination;
+            _leg = waypoints.Length - 1;
+            _finished = true;
         }
 
         // 발판 바로 위를 매 스텝 훑어 탑승자를 옮긴다.

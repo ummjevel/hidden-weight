@@ -117,7 +117,7 @@ namespace HiddenWeight.Tests
                 shaking + "마리가 제자리에서 떨고 있다(이동폭 1 미만 또는 4초에 방향전환 20회 초과).\n" + report);
         }
 
-        // 숏컷 A: R05 사슬장치를 되감으면 열리는가.
+        // 숏컷 A: R05 첫 필수 복원물을 되감으면 즉시 열리는가.
         [UnityTest]
         public IEnumerator 숏컷A가_되감기로_열린다()
         {
@@ -131,27 +131,27 @@ namespace HiddenWeight.Tests
             Assert.IsNotNull(shortcutA, "숏컷 A가 씬에 없다.");
             Assert.IsFalse(shortcutA.IsOpen, "숏컷 A가 처음부터 열려 있다.");
 
-            GameObject chain = null;
+            GameObject primaryRestore = null;
             foreach (var rewindable in Object.FindObjectsByType<Rewindable>(FindObjectsSortMode.None))
-                if (rewindable.name == "R05_ChainDevice") chain = rewindable.gameObject;
-            Assert.IsNotNull(chain, "R05 사슬장치를 찾지 못했다.");
+                if (rewindable.name == "R05_PrimaryRestore") primaryRestore = rewindable.gameObject;
+            Assert.IsNotNull(primaryRestore, "R05 첫 필수 복원물을 찾지 못했다.");
 
             // 중력으로 밀려난 뒤 되감는다.
             for (int i = 0; i < 150; i++) yield return new WaitForFixedUpdate();
-            chain.GetComponent<Rewindable>().Rewind();
+            primaryRestore.GetComponent<Rewindable>().Rewind();
             yield return null;
 
             Debug.Log("===== 숏컷 A ===== 되감기 후 열림=" + shortcutA.IsOpen
                 + " 저장됨=" + GameManager.Instance.Progress.IsShortcutOpen("residue_shortcut_a"));
 
-            Assert.IsTrue(shortcutA.IsOpen, "사슬장치를 복원했는데 숏컷 A가 열리지 않았다.");
+            Assert.IsTrue(shortcutA.IsOpen, "첫 필수 복원물을 복원했는데 숏컷 A가 열리지 않았다.");
             Assert.IsTrue(GameManager.Instance.Progress.IsShortcutOpen("residue_shortcut_a"),
                 "숏컷 A 개방이 저장되지 않았다.");
         }
 
-        // 숏컷 B: 도르래를 하나만 되감으면 열리지 않고, 둘 다 되감아야 열린다.
+        // 숏컷 B: 안전/속도 경로 중 어느 도르래를 택해도 즉시 열린다.
         [UnityTest]
-        public IEnumerator 숏컷B는_도르래_둘을_모두_복원해야_열린다()
+        public IEnumerator 숏컷B는_도르래_하나를_복원하면_열린다()
         {
             ResetProgress();
             yield return SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
@@ -178,14 +178,12 @@ namespace HiddenWeight.Tests
             yield return null;
             bool openedAfterFirst = shortcutB.IsOpen;
 
-            pulleys[1].Rewind();
-            yield return null;
-
             Debug.Log("===== 숏컷 B ===== 하나만 복원 후 열림=" + openedAfterFirst
-                + " / 둘 다 복원 후 열림=" + shortcutB.IsOpen);
+                + " 저장됨=" + GameManager.Instance.Progress.IsShortcutOpen("residue_shortcut_b"));
 
-            Assert.IsFalse(openedAfterFirst, "도르래 하나만 복원했는데 숏컷 B가 열렸다.");
-            Assert.IsTrue(shortcutB.IsOpen, "도르래를 둘 다 복원했는데 숏컷 B가 열리지 않았다.");
+            Assert.IsTrue(openedAfterFirst, "도르래 하나를 복원했는데 숏컷 B가 열리지 않았다.");
+            Assert.IsTrue(GameManager.Instance.Progress.IsShortcutOpen("residue_shortcut_b"),
+                "숏컷 B 개방이 저장되지 않았다.");
         }
 
         // S3: 조건을 만족하기 전에는 샤프트 입구가 막혀 있어야 한다.

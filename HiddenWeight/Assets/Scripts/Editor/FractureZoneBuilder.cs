@@ -742,10 +742,11 @@ namespace HiddenWeight.EditorTools
             c.Floor(0, 8, 2, 2);      // 하층 안전 바닥 — 로컬 8~9를 비워 FS1 통로를 만든다
             c.Floor(9, 24, 2, 2);
 
-            // 좌우로 천천히 흔들리는 화단. 느린 주기라 눈으로 읽을 수 있다.
+            // 첫 화단만 주 동선에서 주기를 읽는다. 아래 두 단계는 안전 발판이라 첫 방문의
+            // 관찰 학습은 남기면서 재방문 하강이 반복 대기로 늘어나지 않는다.
             BuildMovingPlatform(c.Root.transform, c.P(12f, 15f), new Vector2(2f, 0f), 6f);
-            BuildMovingPlatform(c.Root.transform, c.P(15f, 11f), new Vector2(-2f, 0f), 6f);
-            BuildMovingPlatform(c.Root.transform, c.P(12f, 7f), new Vector2(2f, 0f), 6f);
+            BuildFractureSafePlatform(c.Root.transform, c.P(15f, 11f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(12f, 7f));
             BuildFractureSafePlatform(c.Root.transform, c.P(18f, 5f));
 
             // FS1 입구는 "배경 기둥과 실제 통로가 한 번 정렬되는" 순간에만 열린다(4.4절).
@@ -835,13 +836,21 @@ namespace HiddenWeight.EditorTools
             BuildDecor(c.Root.transform, "F06_FS2_Marker", c.P(4.5f, 6f), new Vector2(1.2f, 1.2f),
                 "FractureForesight_r1_c2", FracturePeach, 0f, -4);
 
-            // 서로 다른 주기의 이동 발판 3개(3초 / 5초 / 7초).
+            // 주 동선에서 읽는 이동 발판은 2개(3초 / 5초)만 남긴다.
             BuildMovingPlatform(c.Root.transform, c.P(9f, 6f), new Vector2(3f, 0f), 3f);
             BuildMovingPlatform(c.Root.transform, c.P(15f, 7f), new Vector2(3f, 0f), 5f);
-            BuildMovingPlatform(c.Root.transform, c.P(21f, 6f), new Vector2(3f, 0f), 7f);
+
+            // 세 번째 7초 발판과 두 번째 선구는 상단 보상 분기다. 아래 주 동선의 점프
+            // 높이에 발판 밑면이 걸리지 않으므로 숙련자는 기다리지 않고 출구로 달린다.
+            BuildFractureSafePlatform(c.Root.transform, c.P(18f, 6.5f));
+            c.Tiles(19, 27, 9, 10);
+            BuildMovingPlatform(c.Root.transform, c.P(22f, 12f), new Vector2(3f, 0f), 7f);
 
             BuildFractureEnemy(c.Root.transform, c.P(12f, 3f), FractureEnemyKind.Precursor);
-            BuildFractureEnemy(c.Root.transform, c.P(22f, 3f), FractureEnemyKind.Precursor);
+            BuildFractureEnemy(c.Root.transform, c.P(23f, 11f), FractureEnemyKind.Precursor);
+
+            for (int i = 0; i < 5; i++)
+                BuildCurrencyPickup(c.Root.transform, c.P(20f + i * 1.2f, 11f));
 
             // 거꾸로 선 온실 — F03에서 보이던 랜드마크에 여기서 도달한다(2.3절).
             BuildDecor(c.Root.transform, "F06_Greenhouse", c.P(16f, 12f), new Vector2(18f, 6f),
@@ -943,7 +952,7 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- F09 거울 가능성실 (D4, 정예) ----------------
-        // 좌우 대칭 중 한쪽만 유지된다. 예지로 확인할 수 있지만 선택은 플레이어의 몫이다(4.9절).
+        // 일반 전투는 주 동선, 좌우 대칭을 읽는 분열체 정예전은 상단 선택 분기다.
         static void BuildF09(RoomCtx c)
         {
             c.O = F09;
@@ -952,6 +961,7 @@ namespace HiddenWeight.EditorTools
 
             // 정예 조우 전에 방 전체를 내려다보는 관찰대.
             c.Tiles(2, 8, 9, 10);
+            c.Tiles(18, 29, 9, 10);
 
             // 좌우 대칭 경로. 위쪽 줄은 유지되고 아래쪽 줄은 같은 시점에 사라진다 —
             // 겉모습이 같으므로 예지로만 미리 구분된다.
@@ -965,15 +975,17 @@ namespace HiddenWeight.EditorTools
                 "Tile", FractureGhost, 0f, -4);
 
             var sproutA = BuildFractureEnemy(c.Root.transform, c.P(10f, 4f), FractureEnemyKind.Sprout);
-            var collector = BuildFractureEnemy(c.Root.transform, c.P(21f, 9f), FractureEnemyKind.Collector);
+            var collector = BuildFractureEnemy(c.Root.transform, c.P(19f, 4f), FractureEnemyKind.Collector);
 
-            var split = BuildFractureEnemy(c.Root.transform, c.P(20f, 4f), FractureEnemyKind.SplitSelf);
+            var split = BuildFractureEnemy(c.Root.transform, c.P(23f, 11f), FractureEnemyKind.SplitSelf);
             ConfigureSplitSelf(split, c.Root.transform, c.P(16f, 0f).x);
 
-            var reward = BuildRewardChest(c.Root.transform, "fracture_f09_elite", c.P(25f, 4.5f), 40, false);
-            BuildEncounter(c.Root.transform, "fracture_f09", c.P(16f, 7f), new Vector2(22f, 12f), false,
-                new[] { new[] { sproutA, collector }, new[] { split } },
-                new[] { 1, -1 }, reward, null);
+            BuildEncounter(c.Root.transform, "fracture_f09_main", c.P(16f, 5f), new Vector2(22f, 6f), false,
+                new[] { new[] { sproutA, collector } }, System.Array.Empty<int>(), null, null);
+
+            var reward = BuildRewardChest(c.Root.transform, "fracture_f09_elite", c.P(27f, 11.5f), 40, false);
+            BuildEncounter(c.Root.transform, "fracture_f09_elite", c.P(23.5f, 12f), new Vector2(11f, 6f), true,
+                new[] { new[] { split } }, System.Array.Empty<int>(), reward, null);
 
             c.Room("FractureRoom09", 32f, 16f);
         }

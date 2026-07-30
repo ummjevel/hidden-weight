@@ -30,6 +30,11 @@ namespace HiddenWeight.Enemies
         // 고쳐 쓰는 대신, 모든 적이 공통으로 갖는 이 컴포넌트에서 한 번만 막는다.
         [SerializeField] LayerMask groundMask;
 
+        // 잔재 지역 적 그림이 전부 어두운 앰버 톤이라 배경과 실루엣 구분이 잘 안 된다.
+        // 여기 박아 두면 Awake마다 자동으로 입혀져서, 씬을 새로 짓거나 에디터 메뉴를 따로
+        // 돌릴 필요 없이 게임을 시작하는 순간부터 항상 적용된다(PrefabBuilder.EnemyOutlineMaterial).
+        [SerializeField] Material outlineMaterial;
+
         static readonly List<Enemy> _all = new List<Enemy>();
         static readonly List<Enemy> _instances = new List<Enemy>();
         public static IReadOnlyList<Enemy> All => _all;
@@ -91,6 +96,7 @@ namespace HiddenWeight.Enemies
 
             Health = data.maxHealth;
             if (_sprite != null) _sprite.color = data.tint;
+            if (_sprite != null && outlineMaterial != null) _sprite.material = outlineMaterial;
             _spawnPosition = transform.position;
             _spawnRotation = transform.rotation;
             _instances.Add(this);

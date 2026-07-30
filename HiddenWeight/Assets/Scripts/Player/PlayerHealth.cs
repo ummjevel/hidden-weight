@@ -121,6 +121,7 @@ namespace HiddenWeight.Player
 
         void HandleRespawn(Vector3 position)
         {
+            HiddenWeight.Enemies.Enemy.ResetUnmanagedEnemies();
             PlayerController.Instance.TeleportTo(position);
             RestoreFull();
             Animator?.PlayOnce("PlayerRespawn");

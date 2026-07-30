@@ -1,6 +1,8 @@
 using System.Collections;
 using UnityEngine;
 using HiddenWeight.Player;
+using HiddenWeight.World;
+using HiddenWeight.Core;
 
 namespace HiddenWeight.Enemies
 {
@@ -72,7 +74,17 @@ namespace HiddenWeight.Enemies
         Enemy _self;
         Rigidbody2D _body;
         SpriteRenderer _sprite;
+        HiddenWeight.World.SpriteAnimator _animator;
         int _moveIndex;
+
+        [Header("보스 애니메이션")]
+        [SerializeField] string idleClip = "WatcherAnimIdle";
+        [SerializeField] string sweepClip = "WatcherAnimSweep";
+        [SerializeField] string chargeClip = "WatcherAnimCharge";
+        [SerializeField] string slamClip = "WatcherAnimDrop";
+        [SerializeField] string projectileClip = "WatcherAnimSweep";
+        [SerializeField] string phaseClip = "WatcherAnimStun";
+        [SerializeField] Rewindable[] arenaRewindables;
 
         public int Phase { get; private set; }
 
@@ -81,7 +93,27 @@ namespace HiddenWeight.Enemies
             _self = GetComponent<Enemy>();
             _body = GetComponent<Rigidbody2D>();
             _sprite = GetComponentInChildren<SpriteRenderer>();
+            _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
         }
+
+        public void ConfigurePresentation(string idle, string sweep, string charge, string slam,
+                                          string projectile, string phase)
+        {
+            // 기존 씬이 아직 새 Instructor 시트로 재생성되지 않은 경우에는 Watcher 클립을
+            // 유지한다. 없는 이름으로 덮어쓰면 보스가 전투 내내 정지 포즈가 되는 회귀가 난다.
+            idleClip = AvailableOr(idle, idleClip);
+            sweepClip = AvailableOr(sweep, sweepClip);
+            chargeClip = AvailableOr(charge, chargeClip);
+            slamClip = AvailableOr(slam, slamClip);
+            projectileClip = AvailableOr(projectile, projectileClip);
+            phaseClip = AvailableOr(phase, phaseClip);
+            PlayClip(idleClip, true);
+        }
+
+        string AvailableOr(string requested, string fallback)
+            => _animator != null && _animator.Has(requested) ? requested : fallback;
+
+        public void ConfigureArena(params Rewindable[] rewindables) => arenaRewindables = rewindables;
 
         void OnEnable() => StartCoroutine(FightRoutine());
 
@@ -116,7 +148,21 @@ namespace HiddenWeight.Enemies
             // 단계가 오르는 순간을 화면에 알린다. 패턴이 바뀌는 것을 수치가 아니라
             // 연출로 읽게 하는 것이 목적이다.
             if (phase != Phase)
+            {
                 HiddenWeight.World.ImpactVFX.Play(phaseChangeEffect, transform.position);
+                AudioManager.Instance?.PlaySfx(SfxCue.BossPhase, 0.75f);
+                PlayClip(phaseClip, true);
+                if (phase > Phase && arenaRewindables != null && arenaRewindables.Length > 0)
+                {
+                    int index = Mathf.Clamp(phase - 1, 0, arenaRewindables.Length - 1);
+                    var target = arenaRewindables[index];
+                    if (target != null)
+                    {
+                        float direction = index % 2 == 0 ? -1f : 1f;
+                        target.BreakForEncounter(new Vector2(direction * 3f, 5f));
+                    }
+                }
+            }
 
             Phase = phase;
         }
@@ -148,6 +194,8 @@ namespace HiddenWeight.Enemies
             Vector3 skipTarget = player.transform.position;
 
             Telegraph(true);
+            AudioManager.Instance?.PlaySfx(SfxCue.BossTelegraph, 0.45f);
+            PlayMoveClip(move);
             yield return new WaitForSeconds(telegraph);
             Telegraph(false);
             if (shadow != null) Destroy(shadow);
@@ -287,6 +335,26 @@ namespace HiddenWeight.Enemies
                     break;
                 }
             }
+
+            PlayClip(idleClip);
+        }
+
+        void PlayMoveClip(Move move)
+        {
+            switch (move)
+            {
+                case Move.GroundSweep: PlayClip(sweepClip, true); break;
+                case Move.Charge: PlayClip(chargeClip, true); break;
+                case Move.Slam:
+                case Move.TimeSkip: PlayClip(slamClip, true); break;
+                default: PlayClip(projectileClip, true); break;
+            }
+        }
+
+        void PlayClip(string clip, bool restart = false)
+        {
+            if (_animator != null && !string.IsNullOrEmpty(clip) && _animator.Has(clip))
+                _animator.Play(clip, restart);
         }
 
         // 좌우 벽을 안쪽으로 inset만큼 옮긴다. 0을 주면 원래 자리로 돌아온다.

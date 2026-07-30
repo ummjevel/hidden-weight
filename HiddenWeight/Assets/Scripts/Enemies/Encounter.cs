@@ -3,6 +3,7 @@ using UnityEngine;
 using HiddenWeight.Core;
 using HiddenWeight.Data;
 using HiddenWeight.World;
+using System.Collections.Generic;
 
 namespace HiddenWeight.Enemies
 {
@@ -33,23 +34,36 @@ namespace HiddenWeight.Enemies
         [SerializeField] GameObject[] lockObjects;  // 전투 중에만 켜지는 잠금 콜라이더
         [SerializeField] RewardChest victoryReward;
         [SerializeField] Shortcut victoryShortcut;
+        [SerializeField] GameObject[] victoryObjects;
         [SerializeField] string displayName = "보스";
 
         int _activeWave = -1;
         float _waveStartTime;
         bool _running;
         bool _finished;
+        readonly List<GameObject> _runtimeVictoryObjects = new List<GameObject>();
 
         public bool IsRunning => _running;
         public bool IsFinished => _finished;
+        public string Id => encounterId;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? "보스" : displayName;
         public Enemy BossEnemy { get; private set; }
 
         public static event System.Action<Encounter, bool> EncounterStateChanged;
 
+        public void RegisterVictoryObject(GameObject target)
+        {
+            if (target == null || _runtimeVictoryObjects.Contains(target)) return;
+            _runtimeVictoryObjects.Add(target);
+            target.SetActive(_finished);
+        }
+
         void Start()
         {
             SetLocks(false);
+            if (victoryObjects != null)
+                foreach (var target in victoryObjects)
+                    if (target != null) target.SetActive(false);
 
             // 이 조우가 관리하는 적은 죽어도 파괴되지 않게 표시한다.
             if (waves != null)
@@ -76,6 +90,9 @@ namespace HiddenWeight.Enemies
                 DeactivateAll();
                 _finished = true;
                 if (victoryShortcut != null) victoryShortcut.Open();
+                if (victoryObjects != null)
+                    foreach (var target in victoryObjects)
+                        if (target != null) target.SetActive(true);
                 return;
             }
 
@@ -160,6 +177,7 @@ namespace HiddenWeight.Enemies
             _finished = true;
             _running = false;
             if (BossEnemy != null) EncounterStateChanged?.Invoke(this, false);
+            if (BossEnemy != null) AudioManager.Instance?.PlaySfx(SfxCue.BossVictory, 0.8f);
             SetLocks(false);
 
             if (oneTime && GameManager.Instance != null)
@@ -167,6 +185,11 @@ namespace HiddenWeight.Enemies
 
             if (victoryReward != null) victoryReward.Give();
             if (victoryShortcut != null) victoryShortcut.Open();
+            if (victoryObjects != null)
+                foreach (var target in victoryObjects)
+                    if (target != null) target.SetActive(true);
+            foreach (var target in _runtimeVictoryObjects)
+                if (target != null) target.SetActive(true);
         }
 
         void ResetEncounter()

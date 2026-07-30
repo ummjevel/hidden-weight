@@ -4,6 +4,7 @@ using UnityEngine;
 using HiddenWeight.Data;
 using HiddenWeight.World;
 using HiddenWeight.UI;
+using HiddenWeight.Core;
 
 namespace HiddenWeight.Enemies
 {
@@ -16,6 +17,7 @@ namespace HiddenWeight.Enemies
         [SerializeField] EnemyData data;
 
         static readonly List<Enemy> _all = new List<Enemy>();
+        static readonly List<Enemy> _instances = new List<Enemy>();
         public static IReadOnlyList<Enemy> All => _all;
 
         Rigidbody2D _rb;
@@ -29,6 +31,8 @@ namespace HiddenWeight.Enemies
 
         // Encounter가 관리하는 적은 죽어도 파괴하지 않는다(되살릴 수 있어야 하므로).
         bool _managedByEncounter;
+        Vector3 _spawnPosition;
+        Quaternion _spawnRotation;
 
         public void SetManagedByEncounter(bool managed) => _managedByEncounter = managed;
 
@@ -65,11 +69,28 @@ namespace HiddenWeight.Enemies
 
             Health = data.maxHealth;
             if (_sprite != null) _sprite.color = data.tint;
+            _spawnPosition = transform.position;
+            _spawnRotation = transform.rotation;
+            _instances.Add(this);
         }
 
         void OnEnable() => _all.Add(this);
 
         void OnDisable() => _all.Remove(this);
+
+        void OnDestroy() => _instances.Remove(this);
+
+        public static void ResetUnmanagedEnemies()
+        {
+            // 복귀 중 활성 상태가 바뀌므로 원본 목록을 복사해 순회한다.
+            foreach (var enemy in _instances.ToArray())
+            {
+                if (enemy == null || enemy._managedByEncounter) continue;
+                enemy.transform.SetPositionAndRotation(enemy._spawnPosition, enemy._spawnRotation);
+                enemy.ResetForEncounter();
+                enemy.gameObject.SetActive(true);
+            }
+        }
 
         public void TakeDamage(int amount, Vector2 sourcePosition)
         {
@@ -88,6 +109,7 @@ namespace HiddenWeight.Enemies
             }
 
             Health -= amount;
+            AudioManager.Instance?.PlaySfx(SfxCue.EnemyHit, 0.4f);
             HealthChanged?.Invoke(Mathf.Max(0, Health), data.maxHealth);
 
             // 공격 방향의 반대쪽(자신 위치 - 공격 원점)으로 밀려난다.
@@ -100,13 +122,14 @@ namespace HiddenWeight.Enemies
 
             if (Health <= 0)
             {
+                AudioManager.Instance?.PlaySfx(SfxCue.EnemyDeath, 0.55f);
                 Died?.Invoke(this);
 
                 // 조우에 속한 적은 지우지 않고 재운다. 지워 버리면 사망 후 재도전할 때
                 // 이미 잡은 적이 영영 돌아오지 않아, 반복 사망으로 보스·조우를 조금씩 깎는
                 // 흐름이 생긴다(CONTENT_SYSTEM.md 3.2절: 일반 적은 사망 후 재생성).
-                if (_managedByEncounter) gameObject.SetActive(false);
-                else Destroy(gameObject);
+                // 일반 적도 체크포인트 휴식/사망 복귀 때 다시 세워야 하므로 파괴하지 않는다.
+                gameObject.SetActive(false);
             }
         }
 

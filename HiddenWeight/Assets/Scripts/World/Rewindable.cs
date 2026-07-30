@@ -21,6 +21,7 @@ namespace HiddenWeight.World
         SpriteRenderer _sprite;
         Rigidbody2D _rb;
         Coroutine _bounceRoutine;
+        bool _started;
 
         public Transform Transform => transform;
 
@@ -33,6 +34,28 @@ namespace HiddenWeight.World
         // 이미 초기 상태면 false. 위치 변화만 비교한다.
         public bool CanRewind => Vector3.SqrMagnitude(transform.position - _initialPosition) > 0.0001f;
 
+        public void ConfigureLinkedShortcut(Shortcut shortcut, params Rewindable[] siblings)
+        {
+            linkedShortcut = shortcut;
+            requiredSiblings = siblings;
+
+            // 런타임 연결은 Start 이후에 설정될 수 있다. 이전 방문에서 이미 복원된 대상이면
+            // Start 때 놓친 숏컷 동기화를 여기서 즉시 보충한다.
+            if (_started && GameManager.Instance != null && GameManager.Instance.Progress.IsRewound(persistentId))
+                TryOpenLinkedShortcut();
+        }
+
+        // 보스 페이즈가 복원된 전장 구조를 다시 무너뜨릴 때 사용한다. 진행 저장에는
+        // "한 번 복원했다"는 사실을 남기되, 현재 전투 안에서는 다시 되감을 수 있게 한다.
+        public void BreakForEncounter(Vector2 impulse)
+        {
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+            if (_rb == null) return;
+            _rb.bodyType = RigidbodyType2D.Dynamic;
+            _rb.linearVelocity = impulse;
+            transform.position += (Vector3)(impulse.normalized * 0.35f);
+        }
+
         void Start()
         {
             _sprite = GetComponent<SpriteRenderer>();
@@ -43,6 +66,8 @@ namespace HiddenWeight.World
             {
                 persistentId = $"{gameObject.scene.name}:{name}:{_initialPosition.x:F1},{_initialPosition.y:F1}";
             }
+
+            _started = true;
 
             // 이전 방문에서 이미 되감은 오브젝트는 복원 상태 그대로 시작한다.
             if (GameManager.Instance != null && GameManager.Instance.Progress.IsRewound(persistentId))

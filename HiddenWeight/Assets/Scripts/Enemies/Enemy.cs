@@ -102,12 +102,36 @@ namespace HiddenWeight.Enemies
             {
                 Died?.Invoke(this);
 
-                // 조우에 속한 적은 지우지 않고 재운다. 지워 버리면 사망 후 재도전할 때
-                // 이미 잡은 적이 영영 돌아오지 않아, 반복 사망으로 보스·조우를 조금씩 깎는
-                // 흐름이 생긴다(CONTENT_SYSTEM.md 3.2절: 일반 적은 사망 후 재생성).
-                if (_managedByEncounter) gameObject.SetActive(false);
-                else Destroy(gameObject);
+                // 사망 클립이 있으면 끝까지 보여주고 사라진다(없으면 즉시). 응시 적 4종과
+                // 보스들이 여기에 해당한다 — 애써 만든 사망 프레임이 재생될 틈도 없이
+                // 오브젝트가 꺼지는 것이 원래 문제였다.
+                if (_animator != null && !string.IsNullOrEmpty(clipPrefix)
+                    && _animator.Has(clipPrefix + "Death"))
+                    StartCoroutine(DeathRoutine());
+                else
+                    FinishDeath();
             }
+        }
+
+        // 조우에 속한 적은 지우지 않고 재운다. 지워 버리면 사망 후 재도전할 때
+        // 이미 잡은 적이 영영 돌아오지 않아, 반복 사망으로 보스·조우를 조금씩 깎는
+        // 흐름이 생긴다(CONTENT_SYSTEM.md 3.2절: 일반 적은 사망 후 재생성).
+        void FinishDeath()
+        {
+            if (_managedByEncounter) gameObject.SetActive(false);
+            else Destroy(gameObject);
+        }
+
+        IEnumerator DeathRoutine()
+        {
+            // 판정은 즉시 죽는다. 그림만 남아 사망 연출을 마친다.
+            foreach (var col in GetComponentsInChildren<Collider2D>()) col.enabled = false;
+            if (_rb != null) _rb.simulated = false;
+
+            _animator.Play(clipPrefix + "Death", true);
+            while (_animator != null && !_animator.IsFinished) yield return null;
+
+            FinishDeath();
         }
 
         IEnumerator FlashRoutine()

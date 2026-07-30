@@ -50,13 +50,13 @@ namespace HiddenWeight.EditorTools
             // --- 보스 2종 ---
             new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Combat_v1.png", Rows = 7, Pivot = Center,
                         RowClips = new[] { "GatekeeperIdle", "GatekeeperGazeSweep", "GatekeeperEyelid",
-                                           "GatekeeperCharge", "GatekeeperDualGaze", "GatekeeperHurt",
+                                           "GatekeeperCharge", "GatekeeperDualGaze", "GatekeeperHit",
                                            "GatekeeperDeath" } },
             new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Transitions_v1.png", Rows = 3, Pivot = Center,
                         RowClips = new[] { "GatekeeperEntrance", "GatekeeperOverload", "GatekeeperShortcut" } },
             new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Combat_v1.png", Rows = 7, Pivot = Center,
                         RowClips = new[] { "AllEyesIdle", "AllEyesFixedGaze", "AllEyesRotatingGaze",
-                                           "AllEyesProjectile", "AllEyesTrueStrike", "AllEyesHurt",
+                                           "AllEyesProjectile", "AllEyesTrueStrike", "AllEyesHit",
                                            "AllEyesDeath" } },
             new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Deceptions_v1.png", Rows = 4, Pivot = Center,
                         RowClips = new[] { "AllEyesFalseTelegraph", "AllEyesTrueTelegraph",
@@ -156,7 +156,7 @@ namespace HiddenWeight.EditorTools
                 sliced++;
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             Debug.Log($"[GazeAnimationArtSlicer] 시트 {sliced}개 분할 완료");
         }
 

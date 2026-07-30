@@ -105,10 +105,15 @@ namespace HiddenWeight.EditorTools
                 importer.spritesheet = BuildRects(
                     texture.width, texture.height, sheet);
                 importer.SaveAndReimport();
+
+                // SaveAndReimport만으로는 .meta에는 이름이 들어가는데 실제 서브에셋이
+                // 갱신되지 않는 경우가 있다(엄폐물 시트가 실제로 그랬다 — meta에 이름 18개가
+                // 있는데 씬 참조가 0이었다). 강제 재임포트로 확실히 반영시킨다.
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
                 sliced++;
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             Debug.Log(
                 $"[GazeEnvironmentArtSlicer] 시트 {sliced}개 분할 완료");
         }

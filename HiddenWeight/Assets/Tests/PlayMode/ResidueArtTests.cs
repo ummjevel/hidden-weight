@@ -93,23 +93,30 @@ namespace HiddenWeight.Tests
             var animator = player.GetComponentInChildren<SpriteAnimator>();
             Assert.IsNotNull(animator.Renderer, "애니메이터가 그릴 렌더러를 못 잡았다.");
 
-            // 클립을 바꿔 가며 화면 높이가 일정한지 본다.
+            // 클립을 바꿔 가며 배율이 일정한지 본다. renderer.bounds는 셀 사각형 크기라
+            // 시트마다 셀이 다르면(공격·대시 362px vs 이동 256px) 정상이어도 달라진다 —
+            // "캐릭터가 같은 크기로 보인다"의 계약은 배율 고정(uniformScale)이다.
             var report = new StringBuilder();
-            float first = -1f;
+            float firstScale = -1f;
+            float idleHeight = -1f;
             foreach (var clip in new[] { "PlayerIdle", "PlayerRun", "PlayerAttack", "PlayerWallCling" })
             {
                 if (!animator.Has(clip)) continue;
                 animator.Play(clip, true);
                 yield return null;
 
-                float height = animator.Renderer.bounds.size.y;
-                report.AppendLine("  " + clip + " 높이 " + height.ToString("F2"));
-                if (first < 0f) first = height;
-                Assert.AreEqual(first, height, 0.15f,
-                    clip + "에서 캐릭터 높이가 " + height.ToString("F2") + "로 달라진다.\n" + report);
+                float scale = animator.Renderer.transform.localScale.y;
+                report.AppendLine("  " + clip + " 배율 " + scale.ToString("F4"));
+                if (firstScale < 0f)
+                {
+                    firstScale = scale;
+                    idleHeight = animator.Renderer.bounds.size.y;
+                }
+                Assert.AreEqual(firstScale, scale, 0.0001f,
+                    clip + "에서 배율이 " + scale.ToString("F4") + "로 달라진다 — 캐릭터 크기가 널뛴다.\n" + report);
             }
             Debug.Log("===== 캐릭터 크기 =====\n" + report);
-            Assert.Greater(first, 1.2f, "캐릭터가 너무 작다(높이 " + first.ToString("F2") + ").");
+            Assert.Greater(idleHeight, 1.2f, "캐릭터가 너무 작다(높이 " + idleHeight.ToString("F2") + ").");
 
             // 좌우 반전이 보이는 렌더러에 걸리는지.
             var visibleRenderer = animator.Renderer;

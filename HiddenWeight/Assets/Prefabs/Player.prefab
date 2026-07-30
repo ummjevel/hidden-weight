@@ -35,7 +35,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &140239965718779040
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -92,6 +92,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &8590029480345622009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -313,6 +314,7 @@ MonoBehaviour:
     fps: 10
     loop: 0
   normalizedHeight: 1.5
+  uniformScale: 1
   lockFeetToGround: 1
   groundY: -0.7
   autoPlay: 1
@@ -645,6 +647,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Player.AttackVisual
   sprite: {fileID: 21300000, guid: 9109f13a8c1274a2aa597b0158602155, type: 3}
   color: {r: 1, g: 0.95, b: 0.8, a: 0.55}
+  slashFrames:
+  - {fileID: -6117580502359289801, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
+  - {fileID: -238013855494443279, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
+  - {fileID: 5002910299085500807, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
+  - {fileID: -8833217642383318697, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
+  - {fileID: -2086945451913834053, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
+  - {fileID: -3399188480525060262, guid: 5e5e4ff8f56674208a39a3f625596dd9, type: 3}
 --- !u!114 &-7014378276338596000
 MonoBehaviour:
   m_ObjectHideFlags: 0

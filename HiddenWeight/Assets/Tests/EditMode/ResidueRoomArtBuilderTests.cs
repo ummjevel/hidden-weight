@@ -1,6 +1,7 @@
 using HiddenWeight.EditorTools;
 using HiddenWeight.World;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace HiddenWeight.Tests
@@ -17,34 +18,51 @@ namespace HiddenWeight.Tests
         }
 
         [Test]
-        public void BuildRoomArtCreatesThreeOrderedLayers()
+        public void BuildRoomArtCreatesOneCameraLockedBackgroundOnly()
         {
-            _roomObject = new GameObject("Room1");
+            _roomObject = new GameObject("Room01");
             _roomObject.AddComponent<BoxCollider2D>();
             var room = _roomObject.AddComponent<Room>();
 
             ResidueRoomArtBuilder.BuildRoomArt(room);
 
-            AssertLayer("Art/Far", -30, true);
-            AssertLayer("Art/Mid", -20, true);
-            AssertLayer("Art/Foreground", 20, false);
+            Transform background = _roomObject.transform.Find("Art/RoomBackground");
+            Assert.That(background, Is.Not.Null);
+
+            var renderer = background.GetComponent<SpriteRenderer>();
+            Assert.That(renderer, Is.Not.Null);
+            Assert.That(renderer.sprite, Is.Not.Null);
+            Assert.That(
+                AssetDatabase.GetAssetPath(renderer.sprite),
+                Does.Contain("/Rooms4K/"));
+            Assert.That(renderer.sortingOrder, Is.EqualTo(-30));
+            Assert.That(background.GetComponent("CameraLockedRoomBackground"), Is.Not.Null);
+
+            foreach (string forbidden in new[]
+                     {
+                         "Far", "Mid", "Foreground",
+                         "BG_Far", "BG_Mid", "FG_Overlay"
+                     })
+                Assert.That(_roomObject.transform.Find("Art/" + forbidden), Is.Null);
         }
 
-        void AssertLayer(
-            string path,
-            int sortingOrder,
-            bool hasParallax)
+        [Test]
+        public void BuildRoomArtRemovesLegacyForegroundLayer()
         {
-            Transform layer = _roomObject.transform.Find(path);
-            Assert.That(layer, Is.Not.Null, path);
+            _roomObject = new GameObject("Room01");
+            _roomObject.AddComponent<BoxCollider2D>();
+            var room = _roomObject.AddComponent<Room>();
 
-            var renderer = layer.GetComponent<SpriteRenderer>();
-            Assert.That(renderer, Is.Not.Null, path);
-            Assert.That(renderer.sprite, Is.Not.Null, path);
-            Assert.That(renderer.sortingOrder, Is.EqualTo(sortingOrder));
-            Assert.That(
-                layer.GetComponent<ParallaxLayer>() != null,
-                Is.EqualTo(hasParallax));
+            // 이전 버전이 만들어 둔 전경 레이어가 남아 있는 씬을 흉내 낸다.
+            var art = new GameObject("Art");
+            art.transform.SetParent(_roomObject.transform, false);
+            var legacy = new GameObject("Foreground");
+            legacy.transform.SetParent(art.transform, false);
+
+            ResidueRoomArtBuilder.BuildRoomArt(room);
+
+            Assert.That(_roomObject.transform.Find("Art/Foreground"), Is.Null);
+            Assert.That(_roomObject.transform.Find("Art/RoomBackground"), Is.Not.Null);
         }
     }
 }

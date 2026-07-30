@@ -17,6 +17,11 @@ namespace HiddenWeight.Enemies
         Phase _phase = Phase.Idle;
         int _chargeDirection = 1;
         EnemyPatrol _patrol;
+        float _nextChargeTime;
+
+        // 회복 직후 같은 Update에서 다시 돌진하면 순찰 재개가 한 물리 프레임도 보이지 않고,
+        // 플레이어에게도 반격·이탈 틈이 없다. 짧은 호흡만 보장하고 기존 감지 거리는 유지한다.
+        const float ReengageDelay = 0.5f;
 
         public bool IsStunned => _phase == Phase.Stun;
 
@@ -29,6 +34,7 @@ namespace HiddenWeight.Enemies
         void Update()
         {
             if (_phase != Phase.Idle) return;
+            if (Time.time < _nextChargeTime) return;
             if (DistanceToPlayer > Data.detectRange) return;
 
             // 높이가 크게 어긋나면 돌진해도 닿지 않는다. 같은 층일 때만 시작한다.
@@ -99,6 +105,7 @@ namespace HiddenWeight.Enemies
         void ReturnToIdle()
         {
             _phase = Phase.Idle;
+            _nextChargeTime = Time.time + ReengageDelay;
 
             // 돌진 중 FaceTowards()가 스케일(보이는 방향)만 바꿔 놨으므로, 순찰을 다시 켜기 전에
             // 내부 방향(_dir)도 맞춰 준다 — 안 그러면 재개 첫 프레임에 반대 방향으로 미끄러진다.

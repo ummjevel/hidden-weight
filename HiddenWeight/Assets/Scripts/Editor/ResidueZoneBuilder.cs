@@ -1020,7 +1020,7 @@ namespace HiddenWeight.EditorTools
 
             BuildCheckpoint(c.Root.transform, c.P(7f, 3f)); // 체크포인트 2 — 능력 획득 직전
 
-            BuildStoryFragment(c.Root.transform, c.P(10f, 4f), "residue_skill",
+            BuildStoryFragment(c.Root.transform, c.P(8.5f, 4f), "residue_skill",
                 "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
             BuildTutorialHint(c.Root.transform, c.P(11f, 6f), "K 홀드  —  되감기");
 

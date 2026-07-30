@@ -1,8 +1,8 @@
-# RESIDUE_LEVEL_DESIGN.md — 잔재 지역 레벨 디자인
+# LEVEL_20_RESIDUE_DESIGN.md — 잔재 지역 레벨 디자인
 
 > 상위 문서: `GAME_DESIGN.md`, `WORLD_MAP.md`, `EMOTION_SYSTEM.md`
 >
-> 연동 문서: `CONTENT_SYSTEM.md`, `RESIDUE_ROOM_IMPLEMENTATION.md`
+> 연동 문서: `CONTENT_SYSTEM.md`, `LEVEL_01_STANDARD.md`, `LEVEL_21_RESIDUE_ROOMS.md`
 >
 > 문서 상태: 1차 제작 기준안
 >
@@ -90,7 +90,7 @@ R01 또는 연결 관문에서 들어와, 이미 연 R03↔R08 승강기와 R07�
 ## 3. 방별 제작 명세
 
 이 장은 방의 역할과 전체 배치를 정의한다. 실제 발판 간격, 로컬 좌표, 적 활성화 순서,
-낙하 복구, 보스 패턴은 `RESIDUE_ROOM_IMPLEMENTATION.md`를 제작 단일 기준으로 사용한다.
+낙하 복구, 보스 패턴은 `LEVEL_21_RESIDUE_ROOMS.md`를 제작 단일 기준으로 사용한다.
 
 ### 3.1 메인 12개 방
 
@@ -248,4 +248,4 @@ S3는 첫 방문에서 완전히 발견할 수 없어도 “여기에 무언가 
 - 중간 보스 이후 지역 보스까지 재도전 시간이 3분을 넘지 않는다.
 - 균열 클리어 후 잔재에 재진입해 S3까지 5~8분 안에 도달한다.
 - 새로운 적이나 아이템은 방 구조를 다시 작성하지 않고 콘텐츠 슬롯에 추가할 수 있다.
-- 각 방의 지형·조우·실패 복구가 `RESIDUE_ROOM_IMPLEMENTATION.md`의 수치 범위와 일치한다.
+- 각 방의 지형·조우·실패 복구가 `LEVEL_21_RESIDUE_ROOMS.md`의 수치 범위와 일치한다.

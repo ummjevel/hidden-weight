@@ -1,8 +1,8 @@
-# FRACTURE_LEVEL_DESIGN.md — 균열 지역 UX·레벨 디자인
+# LEVEL_40_FRACTURE_DESIGN.md — 균열 지역 UX·레벨 디자인
 
 > 상위 문서: `GAME_DESIGN.md`, `WORLD_MAP.md`, `EMOTION_SYSTEM.md`
 >
-> 연동 문서: `CONTENT_SYSTEM.md`, `RESIDUE_LEVEL_DESIGN.md`, `GAZE_LEVEL_DESIGN.md`
+> 연동 문서: `CONTENT_SYSTEM.md`, `LEVEL_30_GAZE_DESIGN.md`, `LEVEL_41_FRACTURE_ROOMS.md`
 >
 > 문서 상태: 1차 제작 기준안
 >
@@ -16,6 +16,9 @@
 밝고 안전해 보이지만 공간의 다음 상태를 믿을 수 없는 지역이다. 플레이어는 예지를 통해
 위험을 모두 제거하는 것이 아니라, **곧 일어날 변화를 확인하고 불완전한 정보 속에서 이동
 시점을 선택하는 법**을 배운다.
+
+실제 방 크기, 로컬 좌표, 카메라 앵커, 적·기믹 위치는
+`LEVEL_41_FRACTURE_ROOMS.md`를 제작 단일 기준으로 사용한다.
 
 응시에서 얻은 자각은 이 지역에서 사용 감각과 화면 효과는 남지만 숨겨진 진실을 보여주지
 않는다. 이 규칙은 텍스트로 설명하지 않고, 초반의 안전한 사례와 반복 가능한 실패를 통해

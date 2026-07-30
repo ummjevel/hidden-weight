@@ -9,7 +9,7 @@
 ## 2. 기준 자료
 
 - 시각 기준: `docs/concept-art/04-fracture-liminal-paradise-v3.png`
-- 레벨 기준: `docs/FRACTURE_LEVEL_DESIGN.md`
+- 레벨 기준: `docs/LEVEL_40_FRACTURE_DESIGN.md`
 - 기존 제작 방식 기준:
   - `HiddenWeight/Assets/Art/Residue/Room01`~`Room12`, `Secret01`~`Secret03`
   - `HiddenWeight/Assets/Art/Gaze/Room01`~`Room12`, `Secret01`~`Secret03`

@@ -1,8 +1,8 @@
-# GAZE_LEVEL_DESIGN.md — 응시 지역 UX·레벨 디자인
+# LEVEL_30_GAZE_DESIGN.md — 응시 지역 UX·레벨 디자인
 
 > 상위 문서: `GAME_DESIGN.md`, `WORLD_MAP.md`, `EMOTION_SYSTEM.md`
 >
-> 연동 문서: `CONTENT_SYSTEM.md`, `RESIDUE_LEVEL_DESIGN.md`
+> 연동 문서: `CONTENT_SYSTEM.md`, `LEVEL_20_RESIDUE_DESIGN.md`, `LEVEL_31_GAZE_ROOMS.md`
 >
 > 문서 상태: 1차 제작 기준안
 >
@@ -15,6 +15,8 @@
 이 문서는 두 번째 핵심 지역 **응시(凝視)**를 플레이 가능한 공간으로 제작하기 전에,
 플레이어가 어떤 감정과 학습 순서를 경험해야 하는지 고정한다. 좌표와 구현 클래스보다
 방의 역할, 시선 유도, 기믹 소개 순서, 실패 복구, 적과 보스가 요구하는 행동을 우선한다.
+실제 방 크기, 로컬 좌표, 카메라 앵커, 적·기믹 위치는 `LEVEL_31_GAZE_ROOMS.md`를
+제작 단일 기준으로 사용한다.
 
 응시는 잔재의 구조를 그대로 복사하지 않는다. 잔재가 무너진 공간을 되돌리며 과거에
 접근하는 지역이었다면, 응시는 **남의 시선을 피해 몸을 줄이는 경험에서 시작해 스스로의

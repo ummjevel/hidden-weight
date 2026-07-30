@@ -5,7 +5,7 @@ using UnityEngine;
 namespace HiddenWeight.Player
 {
     public enum InputDeviceKind { KeyboardMouse, Gamepad }
-    public enum InputActionId { Move, Jump, Dash, Attack, Skill, Awareness, Map, Pause }
+    public enum InputActionId { Move, Jump, Dash, Attack, Interact, Skill, Awareness, Map, Pause }
 
     // 게임 로직과 표기 문자열 사이의 단일 경계. 향후 Input System 액션 에셋으로 교체할 때
     // UI와 튜토리얼은 이 API를 유지하고 내부 바인딩 공급자만 바꾸면 된다.
@@ -16,6 +16,7 @@ namespace HiddenWeight.Player
             { InputActionId.Jump, LoadKey(InputActionId.Jump, KeyCode.Space) },
             { InputActionId.Dash, LoadKey(InputActionId.Dash, KeyCode.LeftControl) },
             { InputActionId.Attack, LoadKey(InputActionId.Attack, KeyCode.J) },
+            { InputActionId.Interact, LoadKey(InputActionId.Interact, KeyCode.E) },
             { InputActionId.Skill, LoadKey(InputActionId.Skill, KeyCode.K) },
             { InputActionId.Awareness, LoadKey(InputActionId.Awareness, KeyCode.L) },
             { InputActionId.Map, LoadKey(InputActionId.Map, KeyCode.M) },
@@ -32,6 +33,7 @@ namespace HiddenWeight.Player
         {
             { InputActionId.Move, "L Stick" }, { InputActionId.Jump, "A" },
             { InputActionId.Dash, "LB" }, { InputActionId.Attack, "X" },
+            { InputActionId.Interact, "B" },
             { InputActionId.Skill, "Y" }, { InputActionId.Awareness, "RB" },
             { InputActionId.Map, "View" }, { InputActionId.Pause, "Menu" }
         };
@@ -133,6 +135,6 @@ namespace HiddenWeight.Player
         }
 
         public static string ControlsSummary()
-            => $"이동  {Get(InputActionId.Move)}\n점프  {Get(InputActionId.Jump)}\n대시  {Get(InputActionId.Dash)}\n공격  {Get(InputActionId.Attack)}\n감정 스킬  {Get(InputActionId.Skill)}\n자각  {Get(InputActionId.Awareness)}\n지도  {Get(InputActionId.Map)}\n일시정지  {Get(InputActionId.Pause)}";
+            => $"이동  {Get(InputActionId.Move)}\n점프  {Get(InputActionId.Jump)}\n대시  {Get(InputActionId.Dash)}\n공격  {Get(InputActionId.Attack)}\n상호작용  {Get(InputActionId.Interact)}\n감정 스킬  {Get(InputActionId.Skill)}\n자각  {Get(InputActionId.Awareness)}\n지도  {Get(InputActionId.Map)}\n일시정지  {Get(InputActionId.Pause)}";
     }
 }

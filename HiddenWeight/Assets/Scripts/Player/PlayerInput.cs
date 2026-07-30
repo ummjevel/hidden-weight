@@ -25,6 +25,7 @@ namespace HiddenWeight.Player
             public bool jumpHeld;
             public bool dashPressed;
             public bool attackPressed;
+            public bool interactPressed;
             public bool skillPressed;
             public bool skillHeld;
             public bool awarenessHeld;
@@ -80,6 +81,10 @@ namespace HiddenWeight.Player
         public static bool AttackPressed
             => Enabled && (Injected.HasValue ? Injected.Value.attackPressed
                 : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Attack)) || Input.GetKeyDown(KeyCode.JoystickButton2));
+
+        public static bool InteractPressed
+            => Enabled && (Injected.HasValue ? Injected.Value.interactPressed
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Interact)) || Input.GetKeyDown(KeyCode.JoystickButton1));
 
         public static bool SkillPressed
             => Enabled && (Injected.HasValue ? Injected.Value.skillPressed

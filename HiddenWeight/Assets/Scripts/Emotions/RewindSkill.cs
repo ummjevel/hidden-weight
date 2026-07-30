@@ -2,6 +2,7 @@ using UnityEngine;
 using HiddenWeight.Data;
 using HiddenWeight.Player;
 using HiddenWeight.World;
+using HiddenWeight.Core;
 
 namespace HiddenWeight.Emotions
 {
@@ -45,6 +46,7 @@ namespace HiddenWeight.Emotions
             _target = FindNearestTarget();
             _channel = 0f;
             if (_target == null) { End(); return; }   // 대상이 없으면 즉시 취소, 쿨타임 없음
+            AudioManager.Instance?.PlaySfx(SfxCue.RewindStart, 0.55f);
         }
 
         protected override void OnTick(float dt)
@@ -54,6 +56,7 @@ namespace HiddenWeight.Emotions
             if (_channel >= Data.channelTime)
             {
                 _target.Rewind();
+                AudioManager.Instance?.PlaySfx(SfxCue.RewindComplete, 0.75f);
                 End();
             }
         }

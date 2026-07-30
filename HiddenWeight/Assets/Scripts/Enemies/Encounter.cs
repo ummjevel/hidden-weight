@@ -230,7 +230,14 @@ namespace HiddenWeight.Enemies
         {
             int count = 0;
             foreach (var member in waves[index].members)
-                if (member != null && member.activeSelf) count++;
+            {
+                if (member == null || !member.activeSelf) continue;
+
+                // 사망 애니메이션이 재생되는 동안 오브젝트는 잠시 활성 상태로 남는다.
+                // 조우 완료 판정은 그림이 사라지는 시점이 아니라 체력이 0이 된 시점에 한다.
+                var enemy = member.GetComponent<Enemy>();
+                if (enemy == null || enemy.IsAlive) count++;
+            }
             return count;
         }
 

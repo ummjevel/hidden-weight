@@ -1323,11 +1323,23 @@ namespace HiddenWeight.EditorTools
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r12_boss", c.P(15f, 4.5f), 60, true);
-            BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,
+            var finalEncounter = BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,
                 new[] { new[] { boss } }, new int[0], reward, null);
 
+            // 지역 보스 승리 뒤 핵심 기억을 드러내고, 해당 완료 상태가 있어야만 응시로 나간다.
+            var core = BuildStoryFragment(c.Root.transform, c.P(24f, 4.5f), "residue_core",
+                "가르치려던 목소리가 멎자, 남은 것은 내가 고른 기억뿐이었다.", EmotionId.None, false);
+            core.SetActive(false);
+            SetField(finalEncounter, "victoryObjects", p =>
+            {
+                p.arraySize = 1;
+                p.GetArrayElementAtIndex(0).objectReferenceValue = core;
+            });
+
             // 승리 후 열리는 응시 지역 통로.
-            BuildZoneTrigger(c.Root.transform, c.P(28f, 5f), new Vector2(2f, 3f), false);
+            var exit = BuildZoneTrigger(c.Root.transform, c.P(28f, 5f), new Vector2(2f, 3f), false);
+            SetField(exit.GetComponent<ZoneTrigger>(), "requiredEncounterId",
+                p => p.stringValue = "residue_r12_boss");
 
             c.Room("Room12", 30f, 18f);
             BuildBoundary(c.Root.transform, "Zone_EastBoundary", c.P(30.5f, 0f).x);

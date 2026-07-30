@@ -308,5 +308,24 @@ namespace HiddenWeight.Tests
             Debug.Log("===== 예지 대상 " + count + "개 =====");
             Assert.Greater(count, 12, "예지로 볼 수 있는 대상이 너무 적다.");
         }
+
+        [UnityTest]
+        public IEnumerator 균열_모든_방에_승인된_콘셉트_배경이_연결돼_있다()
+        {
+            yield return LoadZone("Zone_Fracture_Full");
+            foreach (var roomSpec in FractureRooms)
+            {
+                var room = GameObject.Find(roomSpec.name);
+                Assert.IsNotNull(room, roomSpec.name + " 방이 없다.");
+                var background = room.transform.Find("FractureRoomBackground");
+                Assert.IsNotNull(background, roomSpec.name + "에 콘셉트 배경이 없다.");
+                var renderer = background.GetComponent<SpriteRenderer>();
+                Assert.IsNotNull(renderer);
+                Assert.IsNotNull(renderer.sprite, roomSpec.name + " 배경 스프라이트가 연결되지 않았다.");
+                Assert.That(renderer.sprite.name, Is.EqualTo(roomSpec.name));
+                Assert.IsNotNull(background.GetComponent<RoomVisualCuller>(),
+                    roomSpec.name + " 배경에 현재 방 렌더링 제한이 없다.");
+            }
+        }
     }
 }

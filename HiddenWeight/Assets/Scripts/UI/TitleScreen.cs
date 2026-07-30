@@ -9,6 +9,7 @@ namespace HiddenWeight.UI
     public class TitleScreen : MonoBehaviour
     {
         Button _newGameButton;
+        Button _continueButton;
         Button _creditsButton;
         Button _settingsButton;
         ConfirmDialog _dialog;
@@ -31,14 +32,28 @@ namespace HiddenWeight.UI
         {
             // EventSystem.Start가 이 컴포넌트보다 늦을 수 있으므로 한 프레임 뒤 포커스를 준다.
             yield return null;
-            UIBuilder.Select(_newGameButton);
+            UIBuilder.Select(_continueButton != null ? _continueButton : _newGameButton);
         }
 
         void StartGame()
         {
-            GameManager.Instance.Progress.ResetAll();
-            GameManager.Instance.SetState(GameState.Playing);
-            SceneFlow.LoadWithFade(SceneFlow.Prologue);
+            if (SaveService.HasSave)
+            {
+                _dialog.ShowConfirm("새 기억 시작", "이어가던 기억을 놓고 처음부터 시작할까요?",
+                    "새로 시작", BeginNewGame, _newGameButton);
+                return;
+            }
+            BeginNewGame();
+        }
+
+        void BeginNewGame() => GameManager.Instance.BeginNewGame();
+
+        void ContinueGame()
+        {
+            if (GameManager.Instance.ContinueGame()) return;
+            _dialog.ShowInfo("기억을 열 수 없습니다",
+                "저장된 기억이 손상되었습니다. 새 게임을 시작하면 새 기억으로 교체됩니다.",
+                _continueButton != null ? _continueButton : _newGameButton);
         }
 
         // 작업 중인 지역으로 바로 들어가는 개발용 입구. 정식 빌드에는 절대 노출하지 않는다.
@@ -86,15 +101,21 @@ namespace HiddenWeight.UI
             subRt.sizeDelta = new Vector2(500f, 50f);
             subRt.anchoredPosition = Vector2.zero;
 
-            _newGameButton = UIBuilder.CreateButton(canvasGO.transform, "새 게임", -20f, StartGame);
-            _settingsButton = UIBuilder.CreateButton(canvasGO.transform, "설정", -90f, ShowSettings);
-            _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", -160f, ShowCredits);
+            float firstY = -20f;
+            if (SaveService.HasSave)
+            {
+                _continueButton = UIBuilder.CreateButton(canvasGO.transform, "이어하기", firstY, ContinueGame);
+                firstY -= 70f;
+            }
+            _newGameButton = UIBuilder.CreateButton(canvasGO.transform, "새 게임", firstY, StartGame);
+            _settingsButton = UIBuilder.CreateButton(canvasGO.transform, "설정", firstY - 70f, ShowSettings);
+            _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", firstY - 140f, ShowCredits);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            UIBuilder.CreateButton(canvasGO.transform, "잔재 지역 (개발용)", -230f, StartResidueTest);
-            UIBuilder.CreateButton(canvasGO.transform, "종료", -300f, Quit);
+            UIBuilder.CreateButton(canvasGO.transform, "잔재 지역 (개발용)", firstY - 210f, StartResidueTest);
+            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 280f, Quit);
 #else
-            UIBuilder.CreateButton(canvasGO.transform, "종료", -230f, Quit);
+            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 210f, Quit);
 #endif
 
             _dialog = canvasGO.AddComponent<ConfirmDialog>();

@@ -38,6 +38,7 @@ namespace HiddenWeight.Player
 
         void PerformAttack()
         {
+            AudioManager.Instance?.PlaySfx(SfxCue.Attack, 0.55f);
             var hits = Physics2D.OverlapCircleAll(transform.position, _data.attackRadius, enemyLayer);
             var facingVec = new Vector2(_controller.Facing, 0f);
 

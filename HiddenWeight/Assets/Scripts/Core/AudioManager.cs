@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using HiddenWeight.UI;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.Core
 {
@@ -30,6 +31,11 @@ namespace HiddenWeight.Core
             _bgmSource = gameObject.AddComponent<AudioSource>();
             _bgmSource.loop = true;
             _bgmSource.playOnAwake = false;
+#if UNITY_EDITOR
+            // 개발 중 씬 재생과 자동 테스트에서 음악이 반복 출력되지 않게 한다.
+            // 클립과 재생 상태는 유지하므로 BGM 와이어링 테스트는 그대로 유효하다.
+            _bgmSource.mute = true;
+#endif
 
             _sfxSource = gameObject.AddComponent<AudioSource>();
             _sfxSource.loop = false;
@@ -58,6 +64,17 @@ namespace HiddenWeight.Core
             CurrentBgm = clip;
             if (_bgmFade != null) StopCoroutine(_bgmFade);
             _bgmFade = StartCoroutine(FadeToClip(clip, fadeSeconds));
+        }
+
+        public void PlayZoneBgm(ZoneData zone, float fadeSeconds = 1f)
+        {
+            if (zone == null) return;
+            PlayBgm(zone.bgm != null ? zone.bgm : AmbientAudioFactory.For(zone.id), fadeSeconds);
+        }
+
+        public void PlaySfx(SfxCue cue, float volume = 1f)
+        {
+            PlaySfx(ProceduralSfx.For(cue), volume);
         }
 
         public void StopBgm(float fadeSeconds = 1f)
@@ -111,6 +128,33 @@ namespace HiddenWeight.Core
             }
 
             source.volume = to;
+        }
+    }
+
+    public enum SfxCue { UiConfirm, Checkpoint, Fragment, Ability, Attack, Jump, Dash, Hurt }
+
+    static class ProceduralSfx
+    {
+        static readonly System.Collections.Generic.Dictionary<SfxCue, AudioClip> Cache =
+            new System.Collections.Generic.Dictionary<SfxCue, AudioClip>();
+
+        public static AudioClip For(SfxCue cue)
+        {
+            if (Cache.TryGetValue(cue, out var clip) && clip != null) return clip;
+            const int rate = 22050;
+            int count = Mathf.RoundToInt(rate * 0.09f);
+            var data = new float[count];
+            float frequency = 220f + (int)cue * 37f;
+            for (int i = 0; i < count; i++)
+            {
+                float t = (float)i / rate;
+                float envelope = 1f - (float)i / count;
+                data[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.12f;
+            }
+            clip = AudioClip.Create("Sfx_" + cue, count, 1, rate, false);
+            clip.SetData(data, 0);
+            Cache[cue] = clip;
+            return clip;
         }
     }
 }

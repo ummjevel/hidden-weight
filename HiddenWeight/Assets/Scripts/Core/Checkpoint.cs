@@ -15,6 +15,7 @@ namespace HiddenWeight.Core
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             GameManager.Instance.Progress.LastCheckpoint = transform.position;
+            AudioManager.Instance?.PlaySfx(SfxCue.Checkpoint, 0.7f);
             _used = true;
 
             // 체크포인트는 복귀 지점이자 휴식처다. 밟는 순간 체력을 채운다

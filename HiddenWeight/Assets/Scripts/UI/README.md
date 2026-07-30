@@ -11,16 +11,18 @@
 | HUD.cs | 플레이 중 상단 HP(하트)·감정 스킬 쿨타임·되감기 채널링 게이지·파편 수를 표시, `GameState.Playing`이 아니면 캔버스를 숨김 | HUD·연출 UI 전반 |
 | PauseMenu.cs | `PlayerInput.PausePressed`로 토글되는 일시정지 화면, `GameManager.SetState`/`PlayerInput.Enabled` 제어 | HUD·연출 UI 전반 |
 | ScreenFader.cs | 씬 전환 시 화면을 검게 덮는 페이드. `SceneFlow.FadeLoader`에 자신을 등록 | 4장 씬 구성 |
-| TitleScreen.cs | 타이틀 화면(제목/부제/시작·종료 버튼), `SceneFlow.LoadWithFade`로 첫 지역 진입 | 4장 씬 구성 |
+| TitleScreen.cs | 타이틀 화면(이어하기/새 게임/설정/제작진), `SaveService`와 연동 | 4장 씬 구성 |
+| PauseSectionPanel.cs | 스크롤 가능한 지역 노드 지도·기억 카드·조작·접근성 설정 | UI_UX_DESIGN |
+| StatusEmblem.cs | 지역 의미에 맞는 능력·노출·위험·진행 문양 | UI_UX_DESIGN |
 | TutorialHint.cs | 월드 공간 `TextMesh` 조작 안내 — 플레이어가 `showRadius`(5유닛) 안에 오면 페이드 인. 프롤로그 3곳(이동/점프·대시/벽점프) + 스킬 획득 지점 4곳에 `ZoneSceneBuilder`가 배치 (2026-07-26 추가) | WORLD_MAP 1.3 튜토리얼 UI |
 
 ## 핵심 규칙 구현
 
-- **FragmentLog**: 텍스트 페이드 인 0.3초 → 화면 유지 기본 4초(`Show(text, seconds = 4f)`의 기본 인자) → 페이드 아웃 0.5초. 연달아 호출되면 진행 중이던 코루틴을 `StopCoroutine`으로 끊고 새 텍스트로 즉시 교체(대기열 없음). uGUI `Text`(TMP 미사용)이며 `Time.unscaledDeltaTime` 기준이라 일시정지 중에도 페이드가 진행된다.
+- **FragmentLog**: 메시지를 순서대로 대기열에 쌓아 페이드 인·유지·페이드 아웃한다. uGUI `Text`이며 `Time.unscaledDeltaTime` 기준이라 일시정지 중에도 흐름이 유지된다.
 - **HUD**: 하트 3개(`HeartCount = 3`, `PlayerHealth.HealthChanged` 이벤트로 갱신), 감정 스킬 그룹은 `EmotionSkillController.Instance.Active`가 없으면 숨김, 있으면 쿨다운 잔여 시간을 `"{표시이름} ({쿨다운:F1})"`으로 표시. `Active`가 `RewindSkill`이고 `IsActive`(채널링 중)일 때만 되감기 게이지를 보여주고 `fillAmount = ChannelProgress`. 파편 수는 `GameManager.Instance.Progress.FragmentCount`를 매 프레임 폴링해 표시. 캔버스 자체는 `GameManager.State == GameState.Playing`일 때만 활성화(`StateChanged` 이벤트 구독 + `Start`에서 최초 1회 동기화).
-- **PauseMenu**: 열릴 때 `PlayerInput.Enabled = false` + `GameManager.SetState(GameState.Paused)`(→ `Time.timeScale = 0`), 닫힐 때 반대로 복원. "타이틀로" 버튼은 `Progress.ResetAll()` 후 `GameState.Title`로 세팅하고 `SceneFlow.LoadWithFade(SceneFlow.Title)` 호출.
+- **PauseMenu**: 열릴 때 입력과 시간을 멈추고 닫을 때 복원한다. 타이틀 복귀 전 `SaveService`에 진행을 저장하며, 보조 화면은 설정 변경 뒤에도 선택 포커스를 복구한다.
 - **ScreenFader**: 전체 화면 검은 `Image`(`raycastTarget = false`)의 알파를 `Time.unscaledDeltaTime` 기준으로 보간. `FadeAndLoad(sceneName, seconds = 0.5f)` 기본 페이드 시간은 0.5초 — 페이드인 → `SceneManager.LoadScene` → 페이드아웃 순서.
-- **TitleScreen**: 제목 "Hidden Weight"(56pt) + 부제 "눈뜨는 꿈"(24pt), 버튼 "시작하기"(`Progress.ResetAll()` → `GameState.Playing` → `SceneFlow.LoadWithFade(SceneFlow.Prologue)`)/"종료"(`Application.Quit()`).
+- **TitleScreen**: 저장이 있으면 `이어하기`에 기본 포커스를 주고, 새 게임은 기존 기억을 교체하기 전에 확인한다. 손상된 주 파일은 백업으로 복구한다.
 - 5개 파일 모두 UI 계층을 인스펙터 프리팹이 아니라 `Awake()`/`BuildHierarchy()`에서 코드로 직접 생성한다(우GUI `Canvas`/`Image`/`Text`/`Button`, `Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")`) — TMP 패키지 의존을 피하기 위함.
 
 ## 씬 배치

@@ -47,6 +47,7 @@ namespace HiddenWeight.Core
             Instance = this;
             DontDestroyOnLoad(gameObject);
             Progress = new ProgressState();
+            SaveService.Bind(Progress);
 
             // 지역 씬이 로드될 때마다 CurrentZoneData/Progress.CurrentZone을 자동으로 맞춘다.
             // (씬 이름 -> ZoneData 매핑. ZoneTrigger는 이 값을 읽기만 할 뿐 채우지 않으므로
@@ -56,7 +57,11 @@ namespace HiddenWeight.Core
 
         void OnDestroy()
         {
-            if (Instance == this) SceneManager.sceneLoaded -= HandleSceneLoaded;
+            if (Instance == this)
+            {
+                SceneManager.sceneLoaded -= HandleSceneLoaded;
+                SaveService.Unbind();
+            }
         }
 
         void Start()
@@ -87,10 +92,31 @@ namespace HiddenWeight.Core
             // 같은 곡이면 AudioManager가 알아서 무시한다. 그래서 EnterZone이 여러 번 불려도
             // (씬 로드 훅 + ZoneMarker) 곡이 처음부터 다시 시작되지 않는다.
             if (AudioManager.Instance != null && CurrentZoneData != null)
-                AudioManager.Instance.PlayBgm(CurrentZoneData.bgm, 1.5f);
+                AudioManager.Instance.PlayZoneBgm(CurrentZoneData, 1.5f);
             // grantedSkill 해금은 여기서 하지 않는다. 지역 안의 픽업(StoryFragment)에서 처리한다.
         }
 
         public void RespawnPlayer() => RespawnRequested?.Invoke(Progress.LastCheckpoint);
+
+        public void BeginNewGame()
+        {
+            Progress.ResetAll();
+            SaveService.Delete();
+            SetState(GameState.Playing);
+            SceneFlow.LoadWithFade(SceneFlow.Prologue);
+        }
+
+        public bool ContinueGame()
+        {
+            if (!SaveService.TryLoad(Progress)) return false;
+            CurrentZoneData = balance != null ? balance.GetZone(Progress.CurrentZone) : null;
+            string scene = CurrentZoneData != null && !string.IsNullOrEmpty(CurrentZoneData.sceneName)
+                ? CurrentZoneData.sceneName : SceneFlow.Prologue;
+            SetState(GameState.Playing);
+            SceneFlow.LoadWithFade(scene);
+            return true;
+        }
+
+        public void SaveProgress() => SaveService.Save(Progress);
     }
 }

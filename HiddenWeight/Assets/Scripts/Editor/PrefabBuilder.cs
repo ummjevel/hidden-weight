@@ -207,6 +207,10 @@ namespace HiddenWeight.EditorTools
             {
                 var enemySo = new SerializedObject(root.GetComponent<Enemy>());
                 enemySo.FindProperty("groundMask").intValue = LayerMask.GetMask("Ground");
+                // 이 필드를 베이스 프리팹에 한 번 박아 두면, 이 프리팹의 인스턴스는(과거에 지은
+                // 것이든 앞으로 어느 지역 빌더가 만들 것이든) Enemy.Awake()가 게임 시작 시 자동으로
+                // 외곽선 머티리얼을 입힌다 — 씬마다 에디터 메뉴를 따로 돌릴 필요가 없어진다.
+                enemySo.FindProperty("outlineMaterial").objectReferenceValue = EnemyOutlineMaterial();
                 enemySo.ApplyModifiedProperties();
 
                 var bodyCol = root.GetComponent<BoxCollider2D>();
@@ -229,12 +233,30 @@ namespace HiddenWeight.EditorTools
                 if (hitbox.GetComponent<ContactDamage>() == null) hitbox.AddComponent<ContactDamage>();
 
                 PrefabUtility.SaveAsPrefabAsset(root, path);
-                Debug.Log("[PrefabBuilder] Enemy 프리팹 갱신 완료(접촉 피해 트리거 분리 + groundMask)");
+                Debug.Log("[PrefabBuilder] Enemy 프리팹 갱신 완료(접촉 피해 트리거 분리 + groundMask + 외곽선 머티리얼)");
             }
             finally
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        // 적 스프라이트용 외곽선 머티리얼. 잔재 지역 적 그림이 전부 어두운 앰버 톤이라
+        // 배경과 실루엣 구분이 잘 안 된다 — 원본 PNG를 다시 뽑는 대신 Shaders/SpriteOutline.shader로
+        // 실루엣 가장자리만 밝혀서 무드(어둡고 무거운 톤)는 그대로 두고 가독성만 올린다.
+        public static Material EnemyOutlineMaterial()
+        {
+            const string path = "Assets/Settings/EnemyOutline.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            var shader = Shader.Find("Hidden Weight/SpriteOutline") ?? Shader.Find("Sprites/Default");
+            var mat = new Material(shader);
+
+            if (!AssetDatabase.IsValidFolder("Assets/Settings"))
+                AssetDatabase.CreateFolder("Assets", "Settings");
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
         }
 
         // 착지·벽점프 더스트 파티클용 언릿 머티리얼. FrictionlessPlayerMaterial()과 같은

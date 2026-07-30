@@ -209,7 +209,7 @@ namespace HiddenWeight.EditorTools
             // 지형 표면을 잔재 전용 아트로 덮을지. 응시·균열은 전용 아트가 아직 없어서 끄고,
             // 대신 타일맵 자체를 지역 색으로 물들여 구분한다(각 지역 빌더의 TintTerrain).
             // 잔재 아트를 그대로 씌우면 세 지역이 같은 폐허로 보인다.
-            public bool FloorArt = true;
+            public bool FloorArt;
 
             public void Floor(int x0, int x1, int top, int depth = 8)
             {
@@ -240,7 +240,9 @@ namespace HiddenWeight.EditorTools
             var visual = new GameObject("Visual");
             visual.transform.SetParent(go.transform, false);
             var sr = visual.AddComponent<SpriteRenderer>();
-            sr.sprite = Art(healthShard ? "Item_HealthShard" : "Item_Currency") ?? LoadSprite("Fragment");
+            sr.sprite = Art(healthShard ? "Item_HealthShard" : "Item_Currency")
+                ?? ZoneArt(healthShard ? "ItemToken_00" : "ItemShard_00")
+                ?? LoadSprite("Fragment");
             sr.sortingOrder = 5;
             FitSprite(sr, 1f, 1f);
 
@@ -470,26 +472,30 @@ namespace HiddenWeight.EditorTools
 
         // 충돌 연출 4종을 지역에 하나만 놓는다. 호출부는 ImpactVFX.Play로 자리와 종류만 넘긴다.
         // 잔재의 충돌 연출 목록. 지역마다 이름만 다르므로 목록을 인자로 받는다.
-        static readonly (string name, float fps, float height)[] ResidueImpacts =
+        static readonly (string name, string clip, float fps, float height)[] ResidueImpacts =
         {
-            ("ImpactMelee", 18f, 1.4f),
-            ("ImpactWall", 16f, 1.6f),
-            ("ImpactLand", 14f, 1.0f),
-            ("ImpactHeavy", 16f, 1.8f),
+            ("ImpactMelee", "ImpactMelee", 18f, 1.4f),
+            ("ImpactWall", "ImpactWall", 16f, 1.6f),
+            ("ImpactLand", "ImpactLand", 14f, 1.0f),
+            ("ImpactHeavy", "ImpactHeavy", 16f, 1.8f),
 
             // 날아가지 않고 그 자리에서 터지는 것들도 같은 재생기로 처리한다.
-            ("ProjChargeTrail", 16f, 1.6f),  // 돌진 시작 잔상
-            ("BossRing", 14f, 3.5f),         // 보스 낙하 착지 고리
-            ("BossRupture", 12f, 3.0f),      // 단계 전환 파열
+            ("ProjChargeTrail", "ProjChargeTrail", 16f, 1.6f),  // 돌진 시작 잔상
+            ("BossRing", "BossRing", 14f, 3.5f),         // 보스 낙하 착지 고리
+            ("BossRupture", "BossRupture", 12f, 3.0f),   // 단계 전환 파열
         };
 
-        static void BuildImpactVFX(Transform parent, (string name, float fps, float height)[] definitions)
+        // name은 런타임이 부르는 등록 이름, clip은 프레임을 꺼낼 시트 클립 이름이다.
+        // 응시처럼 시트 이름에 지역 접두사가 붙은 경우에도 등록 이름은 런타임 호출명
+        // ("ImpactMelee")과 일치해야 한다 — 어긋나면 그 연출은 조용히 재생되지 않는다.
+        static void BuildImpactVFX(Transform parent,
+            (string name, string clip, float fps, float height)[] definitions)
         {
 
             var valid = new List<(string name, float fps, float height, Sprite[] frames)>();
             foreach (var definition in definitions)
             {
-                var frames = ArtFrames(definition.name);
+                var frames = ArtFrames(definition.clip);
                 if (frames.Length > 0) valid.Add((definition.name, definition.fps, definition.height, frames));
             }
             if (valid.Count == 0) return;
@@ -516,6 +522,74 @@ namespace HiddenWeight.EditorTools
             });
         }
 
+        // 발판(안전·회전·승강기)에 지역 발판 아트를 입힌다. 반드시 스케일 1인 자식에
+        // 그린다 — 루트 localScale로 크기를 맞추면 BoxCollider2D가 같은 배율로 줄어,
+        // 3x0.5짜리 발판 판정이 0.56x0.05 슬리버가 된다(실제로 안전 발판 15개가 그랬다.
+        // 봇은 바닥 위주로 다녀서 못 잡았고, 사람이 밟으면 그냥 통과 낙하한다).
+        static void ApplyPlatformArt(GameObject platform, Color? tint = null)
+        {
+            var sprite = ZoneArt("Platform_r1_c1");
+            if (sprite == null) return;
+
+            var rootRenderer = platform.GetComponent<SpriteRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
+            var art = new GameObject("Art");
+            art.transform.SetParent(platform.transform, false);
+
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 2;
+            if (tint.HasValue) renderer.color = tint.Value;
+            FitSprite(renderer, 3f, 0.8f);
+        }
+
+        // 회색 블록(벽·천장)에 지역 지형 셀을 이어 붙인다. 블록 하나에 셀 하나를 늘리면
+        // 긴 벽에서 그림이 죽처럼 번지므로, 정사각형에 가까운 조각을 긴 축 방향으로 쌓는다.
+        // 지역 시트가 없으면(플레이스홀더 단계) 아무것도 하지 않는다 — 회색 블록이 그대로
+        // 남아 눈에 띈다.
+        static void ApplyBlockArt(GameObject block, Vector2 worldSize, int sortingOrder = 1)
+        {
+            var sprite = ZoneArt("Terrain_r1_c1");
+            if (sprite == null) return;
+
+            var blockRenderer = block.GetComponent<SpriteRenderer>();
+            if (blockRenderer != null) blockRenderer.enabled = false;
+
+            // BuildSolidBlock은 localScale로 크기를 내므로 자식에서 역보정한다(ApplyArtOverlay와
+            // 같은 이유 — 스케일 1인 자식에 그려야 그림이 딸려 늘어나지 않는다).
+            var scale = block.transform.localScale;
+            var art = new GameObject("Art");
+            art.transform.SetParent(block.transform, false);
+            art.transform.localScale = new Vector3(
+                scale.x == 0f ? 1f : 1f / scale.x,
+                scale.y == 0f ? 1f : 1f / scale.y, 1f);
+
+            bool vertical = worldSize.y >= worldSize.x;
+            float longSide = vertical ? worldSize.y : worldSize.x;
+            float shortSide = vertical ? worldSize.x : worldSize.y;
+            // 조각 하나는 짧은 변 크기의 정사각형에 가깝게. 너무 잘게 쪼개지 않도록 상한을 둔다.
+            int count = Mathf.Clamp(Mathf.RoundToInt(longSide / Mathf.Max(shortSide, 0.5f)), 1, 16);
+            float step = longSide / count;
+
+            for (int i = 0; i < count; i++)
+            {
+                var piece = new GameObject($"Piece_{i}");
+                piece.transform.SetParent(art.transform, false);
+                float offset = -longSide * 0.5f + step * (i + 0.5f);
+                piece.transform.localPosition = vertical
+                    ? new Vector3(0f, offset, 0f)
+                    : new Vector3(offset, 0f, 0f);
+
+                var renderer = piece.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                renderer.sortingOrder = sortingOrder;
+                FitSprite(renderer,
+                    vertical ? worldSize.x : step,
+                    vertical ? step : worldSize.y);
+            }
+        }
+
         // 방과 방 사이의 평평한 연결 통로. 양쪽 높이를 맞춰 뒀으므로 바닥 한 줄이면 이어진다.
         // 천장을 두어 통로가 "길"로 읽히게 하고, 위로 빠져나가 엉뚱한 방 지붕에 올라서는 것도 막는다.
         static void BuildCorridor(Transform parent, Tilemap map, string name,
@@ -524,8 +598,9 @@ namespace HiddenWeight.EditorTools
             int x0 = Mathf.FloorToInt(Mathf.Min(fromX, toX));
             int x1 = Mathf.CeilToInt(Mathf.Max(fromX, toX));
             Floor(map, x0, x1, surfaceY);
-            BuildSolidBlock(parent, name + "_Ceiling", new Vector2((x0 + x1) * 0.5f, surfaceY + 5.5f),
+            var ceiling = BuildSolidBlock(parent, name + "_Ceiling", new Vector2((x0 + x1) * 0.5f, surfaceY + 5.5f),
                 new Vector2(x1 - x0, 1f), "Ground");
+            ApplyBlockArt(ceiling, new Vector2(x1 - x0, 1f));
         }
 
         // 비밀방으로 내려가는 수직 통로. 양쪽에 벽점프용 벽을 세워 다시 올라올 수 있게 한다
@@ -534,10 +609,12 @@ namespace HiddenWeight.EditorTools
                                int centerX, int topY, int bottomY, int width = 4)
         {
             int half = width / 2;
-            BuildSolidBlock(parent, name + "_L", new Vector2(centerX - half - 0.5f, (topY + bottomY) * 0.5f),
+            var left = BuildSolidBlock(parent, name + "_L", new Vector2(centerX - half - 0.5f, (topY + bottomY) * 0.5f),
                 new Vector2(1f, topY - bottomY), "Wall");
-            BuildSolidBlock(parent, name + "_R", new Vector2(centerX + half + 0.5f, (topY + bottomY) * 0.5f),
+            var right = BuildSolidBlock(parent, name + "_R", new Vector2(centerX + half + 0.5f, (topY + bottomY) * 0.5f),
                 new Vector2(1f, topY - bottomY), "Wall");
+            ApplyBlockArt(left, new Vector2(1f, topY - bottomY));
+            ApplyBlockArt(right, new Vector2(1f, topY - bottomY));
         }
 
         // 날아가는 공격체. 지역에 하나만 놓고 적·보스가 이름으로 쏜다.
@@ -616,9 +693,15 @@ namespace HiddenWeight.EditorTools
             var bounds = room.WorldBounds;
 
             var background = BackgroundMotions[index % BackgroundMotions.Length];
-            BuildMotionLayer(room.transform, "MotionBack", background.clip, background.fps,
+            var motionBack = BuildMotionLayer(room.transform, "MotionBack", background.clip, background.fps,
                 -25, 0.2f, bounds.center + new Vector3(0f, bounds.extents.y * 0.35f, 0f),
                 bounds.size.y * 0.55f);
+            // 배경과 같이 방 밖에서는 꺼지고, 방 진입 시 패럴랙스가 재기준된다.
+            if (motionBack != null) motionBack.AddComponent<RoomVisualCuller>();
+
+            // 전경 모션을 쓰지 않는 지역도 있다(균열). 시트 내용이 방 중앙을 가로막는 형태라
+            // "중앙 65%를 비운다"는 전경 규칙과 충돌하기 때문이다 — 그 경우 null을 넘긴다.
+            if (ForegroundMotions == null || ForegroundMotions.Length == 0) return;
 
             var foreground = ForegroundMotions[index % ForegroundMotions.Length];
             // 전경은 시차를 주지 않는다. 카메라와 함께 움직이면 화면 앞을 가리는 느낌이 사라진다.
@@ -627,11 +710,11 @@ namespace HiddenWeight.EditorTools
                 bounds.size.y * 0.45f);
         }
 
-        static void BuildMotionLayer(Transform parent, string name, string clip, float fps,
+        static GameObject BuildMotionLayer(Transform parent, string name, string clip, float fps,
                                      int sortingOrder, float parallax, Vector3 position, float height)
         {
             var frames = ArtFrames(clip);
-            if (frames.Length == 0) return;
+            if (frames.Length == 0) return null;
 
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -647,10 +730,12 @@ namespace HiddenWeight.EditorTools
 
             AttachAnimator(go, renderer, new[] { (clip, fps, true) }, height);
 
-            if (parallax <= 0f) return;
-
-            var layer = go.AddComponent<ParallaxLayer>();
-            SetField(layer, "multiplier", p => p.floatValue = parallax);
+            if (parallax > 0f)
+            {
+                var layer = go.AddComponent<ParallaxLayer>();
+                SetField(layer, "multiplier", p => p.floatValue = parallax);
+            }
+            return go;
         }
 
         // 주 동선 12룸을 순서대로 잇고, 비밀방 3곳으로 내려가는(올라가는) 수직 통로를 놓는다.
@@ -708,10 +793,15 @@ namespace HiddenWeight.EditorTools
         public static void RunResidueZone()
         {
             EnsureScenesFolder();
+            // 시트 분할을 씬 생성에 묶는다(RunGazeZone과 같은 이유). 기억의 교관 시트처럼
+            // 새로 추가된 항목도 여기서 함께 잘린다.
+            ResidueArtSlicer.SliceAll();
+
             UseArtRoot("Assets/Art/Residue");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Residue", out var root);
+            tilemap.GetComponent<TilemapRenderer>().enabled = false;
             var rooms = new GameObject("Rooms");
             rooms.transform.SetParent(root.transform, true);
 
@@ -721,7 +811,13 @@ namespace HiddenWeight.EditorTools
             var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
             SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Residue);
 
-            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform };
+            var ctx = new RoomCtx
+            {
+                Map = tilemap,
+                Root = root,
+                Rooms = rooms.transform,
+                FloorArt = false
+            };
 
             BuildR01(ctx);
             BuildR02(ctx);
@@ -745,11 +841,6 @@ namespace HiddenWeight.EditorTools
             BuildImpactVFX(root.transform, ResidueImpacts);
             BuildProjectileSpawner(root.transform, ResidueProjectiles);
 
-            // 방마다 전경·배경 모션을 얹는다. 방을 다 지은 뒤에 해야 방 경계가 정해져 있다.
-            int motionIndex = 0;
-            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
-                BuildRoomMotion(room, motionIndex++, BackgroundMotions, ForegroundMotions);
-
             // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다. 만든 곳과 여는 곳이 달라서
             // 여기서 한 번에 처리한다.
             AttachSealAnimator(_shortcutA, new Vector2(4f, 2f));
@@ -760,15 +851,11 @@ namespace HiddenWeight.EditorTools
             ctx.O = R01;
             PlacePlayerAndCamera(root, new Vector3(R01.x + 3f, R01.y + 3f, 0f));
 
-            // 방마다 배경 3층(Far/Mid/FG)을 붙인다. 아직 그림이 없는 방(비밀방 등)은 건너뛴다 —
-            // 지형과 배치를 먼저 검증할 수 있어야 하므로 아트가 없다고 씬 생성이 실패하면 안 된다.
-            ResidueArtImporter.ConfigureAll();
+            // 방마다 원본 콘셉트 한 장을 카메라에 고정한다.
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
-            {
-                try { ResidueRoomArtBuilder.BuildRoomArt(room); }
-                catch (System.Exception e) { Debug.Log($"[ResidueZoneBuilder] {room.name} 배경 생략: {e.Message}"); }
-            }
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Residue");
 
+            HideCollisionPlaceholderRenderers(root);
             SaveScene(scene, "Zone_Residue_Full");
             RegisterBuildSettings();
             AssetDatabase.SaveAssets();
@@ -1064,7 +1151,7 @@ namespace HiddenWeight.EditorTools
             LinkRewindToShortcut(pulleyA, _shortcutB, pulleyB);
             LinkRewindToShortcut(pulleyB, _shortcutB, pulleyA);
 
-            c.Room("Room08", 24f, 28f);
+            c.Room("Room08", 24f, 30f);
         }
 
         // ---------------- R09 끊어진 상층 고가교 (D4) ----------------
@@ -1127,7 +1214,10 @@ namespace HiddenWeight.EditorTools
                     BossController.Move.GroundSweep, BossController.Move.Projectile,
                     BossController.Move.Charge, BossController.Move.Slam,
                 },
-                new[] { 0.5f }, new Color(0.66f, 0.5f, 0.45f));
+                new[] { 0.5f }, new Color(0.66f, 0.5f, 0.45f),
+                moveClips: new[] { "WatcherAnimSweep", "WatcherAnimSweep",
+                                   "WatcherAnimCharge", "WatcherAnimDrop" },
+                phaseClip: "WatcherAnimStun");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
@@ -1203,13 +1293,33 @@ namespace HiddenWeight.EditorTools
             ResidueRewindable(c.Root.transform, c.P(20f, 4f));
 
             // 기억침을 섞는다. 되감기로 복원한 발판 뒤에 숨어 피하는 것이 공략의 일부다.
+            // 전용 시트(MemoryInstructor_*)를 쓴다 — 손목 감시자 그림을 재사용하던 것을
+            // 교체했다. 행 의미는 residue-animation-sprites/PROMPTS.md 납품 표 그대로.
             var boss = BuildBoss(c.Root.transform, c.P(15f, 5f), "Enemy_Residue_Professor", 18,
                 new[]
                 {
                     BossController.Move.GroundSweep, BossController.Move.Projectile,
                     BossController.Move.Slam, BossController.Move.Charge,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.5f, 0.42f, 0.55f));
+                new[] { 0.6f, 0.3f }, new Color(0.5f, 0.42f, 0.55f),
+                new[]
+                {
+                    ("InstructorHalo",     8f,  true),   // 후광 순환 = 대기
+                    ("InstructorSweep",    14f, false),
+                    ("InstructorHook",     14f, false),
+                    ("InstructorSlam",     12f, false),
+                    ("InstructorRecover",  10f, false),
+                    ("InstructorCore",     10f, false),
+                    ("InstructorOverload", 14f, false),
+                    ("InstructorHit",      16f, false),
+                    ("InstructorPhase",    12f, false),
+                    ("InstructorDeath",    10f, false),
+                },
+                "InstructorHalo_00",
+                clipPrefix: "Instructor",
+                moveClips: new[] { "InstructorSweep", "InstructorCore",
+                                   "InstructorSlam", "InstructorHook" },
+                phaseClip: "InstructorPhase");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r12_boss", c.P(15f, 4.5f), 60, true);

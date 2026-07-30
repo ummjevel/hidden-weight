@@ -136,12 +136,24 @@ namespace HiddenWeight.EditorTools
 
                 if (root.GetComponent<PlayerInputPump>() == null) root.AddComponent<PlayerInputPump>();
 
-                if (root.GetComponent<AttackVisual>() == null)
                 {
-                    var visual = root.AddComponent<AttackVisual>();
+                    var visual = root.GetComponent<AttackVisual>();
+                    if (visual == null) visual = root.AddComponent<AttackVisual>();
+
                     var so = new SerializedObject(visual);
                     so.FindProperty("sprite").objectReferenceValue = LoadSprite("Tile");
+
+                    // 참격 궤적(CombatVFX_v1 2행). 있으면 사각 섬광 대신 이것이 재생된다.
+                    var slash = FindFrames("SwingSlash");
+                    var frames = so.FindProperty("slashFrames");
+                    frames.arraySize = slash.Length;
+                    for (int i = 0; i < slash.Length; i++)
+                        frames.GetArrayElementAtIndex(i).objectReferenceValue = slash[i];
                     so.ApplyModifiedPropertiesWithoutUndo();
+
+                    if (slash.Length == 0)
+                        Debug.LogWarning("[PrefabBuilder] SwingSlash 프레임을 찾지 못했다 — " +
+                            "ResidueArtSlicer.SliceAll()을 먼저 실행할 것.");
                 }
 
                 // 루트 스케일은 절대 건드리지 않는다. 캡슐 콜라이더와 GroundCheck가 함께 줄어든다.
@@ -395,6 +407,11 @@ namespace HiddenWeight.EditorTools
             so.FindProperty("target").objectReferenceValue = renderer;
             so.FindProperty("normalizedHeight").floatValue = displayHeight;
 
+            // 프레임별 재정규화가 아니라 대기 포즈 기준 고정 배율을 쓴다. 프레임별로 다시
+            // 재면 웅크린 대시 포즈가 서 있는 키까지 뻥튀기되고, 잔상이 섞인 프레임은 몸이
+            // 줄어든다("공격·대시 때 작아진다") — 첫 클립이 PlayerIdle이어야 기준이 맞는다.
+            so.FindProperty("uniformScale").boolValue = true;
+
             // 콜라이더 바닥(CapsuleCollider2D size.y=1.4, offset 0 → 로컬 -0.7)에 그림 속
             // 발을 고정한다. 프레임마다 캔버스 여백이 달라 피벗만으로는 "공중에 뜬 것처럼
             // 보인다" 버그가 났다 — SpriteAnimator.Apply()가 매 프레임 다시 계산한다.
@@ -462,8 +479,12 @@ namespace HiddenWeight.EditorTools
                 "StatusRewind", "StatusDanger", "StatusProgress");
             total += FillZoneStatus("Zone_Gaze", "Assets/Art/Gaze",
                 "GazeStatusTruth", "GazeStatusExposed", "GazeStatusProgress");
+            // 균열: 예지(지역 능력) / 가능성(위험) / 진행. 행 이름은 FractureAnimationArtSlicer.
+            total += FillZoneStatus("Zone_Fracture", "Assets/Art/Fracture",
+                "FractureStatusForesight", "FractureStatusPossibility", "FractureStatusProgress");
             total += FillZoneMapIcons("Zone_Residue", "Assets/Art/Residue/UI", "UIIcon_r4_c");
             total += FillZoneMapIcons("Zone_Gaze", "Assets/Art/Gaze/UI", "GazeUIIcon_r4_c");
+            total += FillZoneMapIcons("Zone_Fracture", "Assets/Art/Fracture/UI", "FractureUIIcon_r4_c");
 
             AssetDatabase.SaveAssets();
             Debug.Log($"[PrefabBuilder] 지역 상태 문양 프레임 {total}장 연결");

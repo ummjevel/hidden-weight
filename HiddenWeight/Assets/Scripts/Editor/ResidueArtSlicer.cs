@@ -81,6 +81,11 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Gameplay/VFX/PlayerVFX_v1.png",
                         Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0f),
                         RowClips = new[] { "PlayerHit", "PlayerDeath", "PlayerRespawn" } },
+            // 2행(참격 궤적)이 공격 스윙 연출로 쓰인다(AttackVisual). 나머지 행도 이름을
+            // 붙여 두면 나중에 히트·폭발·링 연출에 그대로 가져다 쓸 수 있다.
+            new Sheet { Path = "Gameplay/VFX/CombatVFX_v1.png",
+                        Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "SwingSpark", "SwingSlash", "SwingBurst", "SwingRing" } },
 
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
@@ -100,7 +105,21 @@ namespace HiddenWeight.EditorTools
                         RowClips = new[] { "WatcherAnimIdle", "WatcherAnimSweep", "WatcherAnimCharge", "WatcherAnimStun" } },
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Reactions_v1.png",
                         Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "WatcherAnimDrop", "WatcherAnimHurt", "WatcherAnimDeath" } },
+                        RowClips = new[] { "WatcherAnimDrop", "WatcherAnimHit", "WatcherAnimDeath" } },
+
+            // --- R12 기억의 교관. 행 구성은 residue-animation-sprites/PROMPTS.md 납품 표 그대로.
+            // 전용 대기 행이 없어 CoreHalo 1행(후광 순환)을 대기 클립으로 쓴다.
+            // 피격 행 이름이 Hit인 것은 Enemy.PlayClip("Hit") 계약 때문이다(Watcher와 같다).
+            new Sheet { Path = "Gameplay/Bosses/Animation/MemoryInstructor_Attacks_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "InstructorSweep", "InstructorHook",
+                                           "InstructorSlam", "InstructorRecover" } },
+            new Sheet { Path = "Gameplay/Bosses/Animation/MemoryInstructor_Reactions_v1.png",
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "InstructorHit", "InstructorPhase", "InstructorDeath" } },
+            new Sheet { Path = "Gameplay/Bosses/Animation/MemoryInstructor_CoreHalo_v1.png",
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "InstructorHalo", "InstructorCore", "InstructorOverload" } },
 
             new Sheet { Path = "Environment/Interactables/Animation/RewindPlatforms_Animation_v1.png",
                         Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
@@ -176,10 +195,13 @@ namespace HiddenWeight.EditorTools
                 importer.spritesheet =
                     BuildRects(sourceWidth, sourceHeight, sheet);
                 importer.SaveAndReimport();
+                // 서브에셋 강제 갱신(엄폐물 시트가 meta만 갱신되고 씬 참조 0이던 것과 같은
+                // 실패를 막는다 — GazeEnvironmentArtSlicer의 같은 자리 주석 참고).
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
                 sliced++;
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             Debug.Log($"[ResidueArtSlicer] 시트 {sliced}개 분할 완료");
         }
 

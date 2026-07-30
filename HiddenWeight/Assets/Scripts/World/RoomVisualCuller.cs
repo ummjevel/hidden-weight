@@ -46,6 +46,12 @@ namespace HiddenWeight.World
             bool visible = current == null || current == _owner;
             foreach (var renderer in _renderers)
                 if (renderer != null) renderer.enabled = visible;
+
+            // 방이 화면에 들어오는 순간 패럴랙스를 다시 기준 잡는다. 씬 시작 때 잡힌 앵커를
+            // 그대로 쓰면 멀리 있는 방일수록 배경이 방 중심에서 밀려나 있다(ParallaxLayer 주석).
+            if (visible && _camera != null)
+                foreach (var layer in GetComponentsInChildren<ParallaxLayer>(true))
+                    layer.Rebase(_camera.transform.position);
         }
     }
 }

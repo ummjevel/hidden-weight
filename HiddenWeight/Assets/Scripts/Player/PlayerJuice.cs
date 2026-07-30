@@ -31,10 +31,12 @@ namespace HiddenWeight.Player
 
         void HandleStateChanged(PlayerState state)
         {
+            // 착지 흔들림은 뺐다(팀 결정 2026-07-30). 일반 이동의 매 착지마다 화면이 흔들려
+            // 탐험 중 시각적 소음이 됐다. 더스트만 남긴다 — RoomCamera.Shake 자체는 보스
+            // 낙하 등 큰 충격 연출을 위해 남아 있다.
             if (state == PlayerState.Land)
             {
                 SpawnDust(landDustPrefab, groundCheck);
-                if (!UISettings.ReduceMotion) RoomCamera.Instance?.Shake();
             }
             else if (state == PlayerState.WallJump)
             {

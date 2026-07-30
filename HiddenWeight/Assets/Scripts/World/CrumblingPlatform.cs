@@ -43,7 +43,15 @@ namespace HiddenWeight.World
         void Awake()
         {
             _collider = GetComponent<Collider2D>();
+
+            // 지역 아트는 루트 렌더러를 끄고 "Art" 자식에 그린다(ReplaceArt). 루트만 잡으면
+            // 무너질 때 이미 꺼진 렌더러를 다시 끄는 셈이라, 아트가 그려진 발판은 사라지지
+            // 않은 채 충돌만 없어진다 — 보이는 렌더러를 잡아야 한다.
             _sprite = GetComponent<SpriteRenderer>();
+            if (_sprite == null || !_sprite.enabled)
+                foreach (var renderer in GetComponentsInChildren<SpriteRenderer>())
+                    if (renderer.enabled) { _sprite = renderer; break; }
+
             _animator = GetComponentInChildren<SpriteAnimator>();
         }
 

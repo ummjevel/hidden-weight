@@ -68,6 +68,14 @@ namespace HiddenWeight.Enemies
         [SerializeField] string slamImpactEffect = "BossRing";
         [SerializeField] string phaseChangeEffect = "BossRupture";
 
+        [Header("전투 애니메이션")]
+        // moves와 나란한 배열. moves[i]를 시작할 때 moveClipNames[i]를 튼다. 비어 있거나
+        // 클립이 시트에 없으면 조용히 넘어간다 — 아트가 덜 들어온 보스도 싸울 수는 있어야 한다.
+        // 피격·사망은 여기 없다: Enemy가 clipPrefix+"Hit"/"Death"로 직접 재생한다.
+        [SerializeField] string[] moveClipNames;
+        [SerializeField] string idleClipName;
+        [SerializeField] string phaseClipName;
+
         // 체력 비율이 이 값 아래로 내려가면 다음 단계. 명세의 R12 3단계(1.0 → 0.6 → 0.3)를 기본값으로.
         [SerializeField] float[] phaseThresholds = { 0.6f, 0.3f };
 
@@ -94,6 +102,14 @@ namespace HiddenWeight.Enemies
             _body = GetComponent<Rigidbody2D>();
             _sprite = GetComponentInChildren<SpriteRenderer>();
             _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+        }
+
+        // 클립이 시트에 있으면 튼다. 피격 애니메이션(Enemy.PlayClip)이 재생 중일 수 있으므로
+        // restart로 밀어 넣는다 — 공격 시작이 피격 잔상에 가려지면 예고를 읽을 수 없다.
+        void PlayBossClip(string clipName)
+        {
+            if (_animator == null || string.IsNullOrEmpty(clipName)) return;
+            if (_animator.Has(clipName)) _animator.Play(clipName, true);
         }
 
         public void ConfigurePresentation(string idle, string sweep, string charge, string slam,
@@ -130,10 +146,16 @@ namespace HiddenWeight.Enemies
                 int combo = Phase == 0 ? 1 : 2;
                 for (int i = 0; i < combo && _self.IsAlive; i++)
                 {
-                    yield return PerformMove(moves[_moveIndex % moves.Length]);
+                    int index = _moveIndex % moves.Length;
+                    if (moveClipNames != null && index < moveClipNames.Length)
+                        PlayBossClip(moveClipNames[index]);
+                    yield return PerformMove(moves[index]);
                     _moveIndex++;
                 }
 
+                // 공격이 끝나면 대기 자세로 돌아와 회복 시간을 보낸다 — 마지막 공격의
+                // 정지 프레임으로 굳어 있으면 "쉬는 틈"이 화면에서 읽히지 않는다.
+                PlayBossClip(idleClipName);
                 yield return new WaitForSeconds(recoverSeconds);
             }
         }
@@ -150,6 +172,9 @@ namespace HiddenWeight.Enemies
             if (phase != Phase)
             {
                 HiddenWeight.World.ImpactVFX.Play(phaseChangeEffect, transform.position);
+                // 공통 보스용 클립 배열과 잔재 보스의 동적 프레젠테이션을 모두 유지한다.
+                // 해당 애니메이터에 없는 클립은 각 헬퍼가 조용히 건너뛴다.
+                PlayBossClip(phaseClipName);
                 AudioManager.Instance?.PlaySfx(SfxCue.BossPhase, 0.75f);
                 PlayClip(phaseClip, true);
                 if (phase > Phase && arenaRewindables != null && arenaRewindables.Length > 0)

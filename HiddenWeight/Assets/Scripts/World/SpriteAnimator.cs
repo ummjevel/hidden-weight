@@ -27,6 +27,14 @@ namespace HiddenWeight.World
         // 0보다 크면 매 프레임 이 높이에 맞춰 스케일을 다시 잡아 크기를 일정하게 유지한다.
         [SerializeField] float normalizedHeight = 0f;
 
+        // 프레임별 재정규화의 함정: 웅크린 대시 프레임(트리밍 높이가 작다)은 뻥튀기되고,
+        // 잔상·이펙트가 섞여 트리밍 박스가 커진 프레임은 몸이 줄어든다 — "공격·대시 때
+        // 캐릭터가 작아진다"가 이것이다. 켜면 첫 클립의 첫 프레임(대기 포즈)을 기준으로
+        // 배율을 한 번만 정하고 모든 프레임에 같은 배율을 쓴다. 같은 시트 계열(같은 PPU,
+        // 같은 캐릭터 픽셀 크기)이라는 전제가 있는 플레이어 전용 옵션이다.
+        [SerializeField] bool uniformScale = false;
+        float _uniformScaleFactor = -1f;
+
         // 프레임마다 캔버스 안 여백(머리 위·발 아래 공백)이 달라, 피벗(캔버스 중앙)만 믿으면
         // 발 위치가 프레임/클립마다 들쭉날쭉해진다(플레이어 "공중에 뜬 것처럼 보인다" 버그).
         // 켜두면 매 프레임 스프라이트의 실제(트리밍된) 바닥이 항상 groundY(로컬 좌표)에 오도록
@@ -124,7 +132,8 @@ namespace HiddenWeight.World
             if (height <= 0f) return;
 
             // 가로세로 비율은 유지한 채 높이만 맞춘다.
-            float scale = normalizedHeight / height;
+            float scale = uniformScale ? UniformScaleFactor() : normalizedHeight / height;
+            if (scale <= 0f) return;
             target.transform.localScale = new Vector3(scale, scale, 1f);
 
             if (!lockFeetToGround) return;
@@ -134,6 +143,24 @@ namespace HiddenWeight.World
             var pos = target.transform.localPosition;
             pos.y = groundY - sprite.bounds.min.y * scale;
             target.transform.localPosition = pos;
+        }
+
+        // 기준 배율은 첫 클립의 첫 프레임(플레이어는 PlayerIdle_00 = 서 있는 포즈)에서
+        // 한 번만 계산해 캐시한다.
+        float UniformScaleFactor()
+        {
+            if (_uniformScaleFactor > 0f) return _uniformScaleFactor;
+            if (clips == null || clips.Length == 0) return -1f;
+
+            var reference = clips[0].frames != null && clips[0].frames.Length > 0
+                ? clips[0].frames[0] : null;
+            if (reference == null) return -1f;
+
+            float height = reference.bounds.size.y;
+            if (height <= 0f) return -1f;
+
+            _uniformScaleFactor = normalizedHeight / height;
+            return _uniformScaleFactor;
         }
     }
 }

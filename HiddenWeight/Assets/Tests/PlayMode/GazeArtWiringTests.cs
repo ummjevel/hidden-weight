@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.Tilemaps;
 using HiddenWeight.Core;
 using HiddenWeight.Enemies;
 using HiddenWeight.Player;
@@ -80,12 +81,13 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
-        public IEnumerator 열다섯_방에_배경_3층과_모션이_있다()
+        public IEnumerator 열다섯_방에_단일_배경만_있다()
         {
             yield return LoadGaze();
 
             int rooms = 0;
             var missing = new List<string>();
+            var unwanted = new List<string>();
 
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
             {
@@ -93,16 +95,45 @@ namespace HiddenWeight.Tests
                 var art = room.transform.Find("Art");
                 if (art == null) { missing.Add(room.name + "(Art 없음)"); continue; }
 
-                foreach (var layer in new[] { "BG_Far", "BG_Mid", "FG_Overlay" })
-                    if (art.Find(layer) == null) missing.Add($"{room.name}/{layer}");
+                var background = art.Find("RoomBackground");
+                if (background == null) missing.Add(room.name + "/RoomBackground");
+                else if (background.GetComponent<CameraLockedRoomBackground>() == null)
+                    missing.Add(room.name + "/CameraLockedRoomBackground");
 
-                if (room.transform.Find("MotionBack") == null) missing.Add(room.name + "/MotionBack");
-                if (room.transform.Find("MotionFront") == null) missing.Add(room.name + "/MotionFront");
+                foreach (var path in new[]
+                         {
+                             "BG_Far", "BG_Mid", "FG_Overlay",
+                             "Far", "Mid", "Foreground"
+                         })
+                    if (art.Find(path) != null) unwanted.Add($"{room.name}/Art/{path}");
+                if (room.transform.Find("MotionBack") != null) unwanted.Add(room.name + "/MotionBack");
+                if (room.transform.Find("MotionFront") != null) unwanted.Add(room.name + "/MotionFront");
             }
 
             Debug.Log("===== 응시 방 아트 ===== " + rooms + "방");
             Assert.AreEqual(15, rooms, "응시는 15룸이다.");
-            Assert.IsEmpty(missing, "배경·모션이 빠진 방이 있다: " + string.Join(", ", missing));
+            Assert.IsEmpty(missing, "단일 배경이 빠진 방이 있다: " + string.Join(", ", missing));
+            Assert.IsEmpty(unwanted, "제거해야 할 레거시 전경·모션이 있다: " + string.Join(", ", unwanted));
+
+            var tilemaps = Object.FindObjectsByType<TilemapRenderer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Assert.Greater(tilemaps.Length, 0, "응시 TilemapRenderer가 없다.");
+            foreach (var tilemap in tilemaps)
+                Assert.IsFalse(tilemap.enabled, tilemap.name + " 플레이스홀더 렌더러가 켜져 있다.");
+
+            var visibleCollisionPlaceholders = new List<string>();
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (renderer.enabled &&
+                    renderer.sprite != null &&
+                    renderer.sprite.name == "Tile" &&
+                    (renderer.GetComponent<Collider2D>() != null ||
+                     renderer.sortingOrder < 0))
+                    visibleCollisionPlaceholders.Add(renderer.name);
+            Assert.IsEmpty(
+                visibleCollisionPlaceholders,
+                "충돌용 단색 블록이 보인다: " +
+                string.Join(", ", visibleCollisionPlaceholders));
         }
 
         [UnityTest]
@@ -113,8 +144,11 @@ namespace HiddenWeight.Tests
             Assert.IsNotNull(ImpactVFX.Instance, "응시에 ImpactVFX가 없다.");
             Assert.IsNotNull(ProjectileSpawner.Instance, "응시에 ProjectileSpawner가 없다.");
 
-            foreach (var name in new[] { "GazeImpactMelee", "GazeImpactBeam",
-                                         "GazeImpactLand", "GazeImpactGuardBreak" })
+            // 런타임이 실제로 부르는 이름을 검사한다. 예전에는 Gaze 접두사 이름만 검사해서
+            // "응시에서 타격·착지 연출이 통째로 안 나온다"를 테스트가 놓쳤다.
+            foreach (var name in new[] { "ImpactMelee", "ImpactLand", "ImpactHeavy",
+                                         "BossRing", "BossRupture",
+                                         "GazeImpactBeam", "GazeImpactGuardBreak" })
                 Assert.IsTrue(ImpactVFX.Instance.Has(name), name + " 효과가 없다.");
 
             foreach (var name in new[] { "GazeProjSound", "GazeProjScream", "GazeProjShadow",

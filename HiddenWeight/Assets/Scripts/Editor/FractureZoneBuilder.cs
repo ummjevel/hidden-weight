@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 using HiddenWeight.Data;
 using HiddenWeight.Enemies;
 using HiddenWeight.World;
@@ -62,9 +63,16 @@ namespace HiddenWeight.EditorTools
             if (platform != null)
                 SetField(platform, "respawnDelay", p => p.floatValue = FractureRespawn);
 
-            var sr = go.GetComponentInChildren<SpriteRenderer>();
             // 겉모습으로는 안전한 발판과 구분되지 않아야 한다(2.1절: "평상시 금이 없거나
-            // 매우 약하게 보여 외형만으로 구분할 수 없게 한다"). 그래서 색까지 똑같이 둔다.
+            // 매우 약하게 보여 외형만으로 구분할 수 없게 한다"). 그래서 BuildSafePlatform과
+            // 같은 시트 셀·같은 크기(3x0.8)를 그대로 쓴다 — 프리팹의 플레이스홀더가 남으면
+            // 그림만 보고 안전한 발판을 골라낼 수 있어 이 방들의 설계가 사라진다.
+            ReplaceArt(go, "FracturePlatform_r1_c1", new Vector2(3f, 0.8f), 2);
+            // 밟은 뒤의 균열·붕괴 상태(FracturePlatformStates 3·4행). 밟기 전에는 안전
+            // 발판과 같은 그림이어야 하므로 자동 재생은 끈 채로 붙는다(AttachPlatformStates).
+            AttachPlatformStates(go);
+
+            var sr = go.GetComponentInChildren<SpriteRenderer>();
             if (sr != null) sr.color = FractureStone;
             return go;
         }
@@ -94,6 +102,11 @@ namespace HiddenWeight.EditorTools
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(3f, 0.5f);
 
+            // 공용 BuildSafePlatform과 같은 발판 아트를 쓴다. 여기만 플레이스홀더로 두면
+            // 같은 방의 고정 발판과 회전 발판이 서로 다른 그림으로 보인다.
+            // 스케일 1 자식에 그리는 이유는 ApplyPlatformArt 주석 참고(콜라이더 보호).
+            ApplyPlatformArt(go, FractureStone);
+
             go.AddComponent<Rigidbody2D>();
 
             var orbit = go.AddComponent<OrbitPlatform>();
@@ -117,9 +130,16 @@ namespace HiddenWeight.EditorTools
             visual.transform.SetParent(go.transform, false);
             visual.transform.localScale = new Vector3(size.x, size.y, 1f);
             var sr = visual.AddComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite("Tile");
+            // 미래 구조물의 잔상. 사각 타일 대신 예지 기물 셀을 쓴다 — 반투명 톤은 유지한다.
+            var ghostArt = Art("FractureForesight_r1_c1");
+            sr.sprite = ghostArt != null ? ghostArt : LoadSprite("Tile");
             sr.color = FractureGhost;
             sr.sortingOrder = 3;
+            if (ghostArt != null)
+            {
+                visual.transform.localScale = Vector3.one;
+                FitSprite(sr, size.x, size.y);
+            }
 
             BoxCollider2D col = null;
             if (solidWhenFixed)
@@ -148,6 +168,8 @@ namespace HiddenWeight.EditorTools
             go.transform.position = new Vector3(center.x, center.y, 0f);
 
             var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", tint);
+            // 닫힌 문의 겉모습. 열리면 blocker째 꺼지므로 열림 그림은 필요 없다.
+            ApplyArtOverlay(blocker, _shortcutClosedArt, size, 5);
 
             var shortcut = go.AddComponent<Shortcut>();
             SetField(shortcut, "shortcutId", p => p.stringValue = id);
@@ -177,6 +199,7 @@ namespace HiddenWeight.EditorTools
 
                 var solid = BuildSolidBlock(go.transform, $"Branch_{i}",
                     branches[i].platform, new Vector2(6f, 0.6f), "Ground", FractureStone);
+                ApplyArtOverlay(solid, "FracturePlatform_r1_c2", new Vector2(6f, 0.6f), 2);
                 solid.SetActive(false);
                 solids[i] = solid;
 
@@ -185,9 +208,17 @@ namespace HiddenWeight.EditorTools
                 preview.transform.position = new Vector3(branches[i].platform.x, branches[i].platform.y, 0f);
                 preview.transform.localScale = new Vector3(6f, 0.6f, 1f);
                 var sr = preview.AddComponent<SpriteRenderer>();
-                sr.sprite = LoadSprite("Tile");
+                // 아직 선택되지 않은 갈래의 잔상. 실제 발판과 같은 그림이어야
+                // "이 자리에 발판이 올 수 있다"로 읽힌다.
+                var previewArt = Art("FracturePlatform_r1_c2");
+                sr.sprite = previewArt != null ? previewArt : LoadSprite("Tile");
                 sr.color = FractureGhost;
                 sr.sortingOrder = 4;
+                if (previewArt != null)
+                {
+                    preview.transform.localScale = Vector3.one;
+                    FitSprite(sr, 6f, 0.6f);
+                }
                 previews[i] = sr;
             }
 
@@ -257,9 +288,59 @@ namespace HiddenWeight.EditorTools
             return data;
         }
 
+        // 적 종류별 애니메이션. 시트는 4행(idle / movement / attack / hit·death)이라
+        // 공용 EnemyClips와 행 수가 정확히 맞는다. 2행 이름이 Walk인 이유는
+        // FractureAnimationArtSlicer 주석에 있다.
+        static (string, float, bool)[] FractureEnemyClips(string prefix) => new[]
+        {
+            ($"{prefix}Idle",   8f,  true),
+            ($"{prefix}Walk",   10f, true),
+            ($"{prefix}Attack", 14f, false),
+            ($"{prefix}Hit",    12f, false),
+        };
+
+        // 겉모습을 균열 전용 스프라이트로 바꾼다. 루트 스케일은 건드리지 않는다 —
+        // 콜라이더가 함께 줄어 판정이 통째로 어긋난다(잔재·응시에서 겪은 문제 그대로다).
+        static void ApplyFractureEnemyArt(GameObject enemy, FractureEnemyKind kind)
+        {
+            string prefix = kind.ToString();
+            var idle = Art($"{prefix}Idle_00");
+            if (idle == null)
+            {
+                // 조용히 넘어가면 그 적만 플레이스홀더 사각형으로 남는다. 아트가 죽는 자리는
+                // 늘 여기라서 빠진 것은 반드시 눈에 띄게 남긴다.
+                Debug.LogWarning($"[FractureZoneBuilder] {prefix} 아트를 찾지 못했다: {prefix}Idle_00");
+                return;
+            }
+
+            var rootRenderer = enemy.GetComponent<SpriteRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
+            var artObject = new GameObject("Art");
+            artObject.transform.SetParent(enemy.transform, false);
+
+            var artRenderer = artObject.AddComponent<SpriteRenderer>();
+            artRenderer.sprite = idle;
+            artRenderer.color = Color.white;
+            artRenderer.sortingOrder = 8;
+
+            // 갈라진 자아만 정예라 한 뼘 크게 보인다.
+            float displayHeight = kind == FractureEnemyKind.SplitSelf ? 1.8f : 1.3f;
+            var size = idle.bounds.size;
+            if (size.y > 0f)
+            {
+                float scale = displayHeight / size.y;
+                artObject.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            AttachAnimator(artObject, artRenderer, FractureEnemyClips(prefix), displayHeight);
+            SetField(enemy.GetComponent<Enemy>(), "clipPrefix", p => p.stringValue = prefix);
+        }
+
         static GameObject BuildFractureEnemy(Transform parent, Vector2 pos, FractureEnemyKind kind)
         {
             var go = BuildEnemy(parent, pos, FractureEnemyData(kind));
+            ApplyFractureEnemyArt(go, kind);
             int playerMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 
             switch (kind)
@@ -308,6 +389,36 @@ namespace HiddenWeight.EditorTools
             mirrorSr.sprite = LoadSprite("Enemy");
             mirrorSr.color = FractureEnemyData(FractureEnemyKind.SplitSelf).tint;
             mirrorSr.sortingOrder = 7;
+
+            // 거울상은 본체와 완전히 같아 보여야 한다 — 본체에 균열 아트를 씌우면서 거울상만
+            // 플레이스홀더로 남기면 실루엣만 보고 실체를 골라낼 수 있어 이 전투가 사라진다.
+            //
+            // 배율은 반드시 자식에 준다. SplitSelfBehavior.UpdateMirror가 매 프레임
+            // mirror.localScale을 본체 스케일로 덮어쓰므로 루트에 준 배율은 첫 프레임에 사라진다.
+            var mirrorArt = Art("SplitSelfIdle_00");
+            if (mirrorArt != null)
+            {
+                mirrorSr.enabled = false;
+
+                var mirrorArtObject = new GameObject("Art");
+                mirrorArtObject.transform.SetParent(mirror.transform, false);
+
+                var mirrorArtRenderer = mirrorArtObject.AddComponent<SpriteRenderer>();
+                mirrorArtRenderer.sprite = mirrorArt;
+                mirrorArtRenderer.color = Color.white;
+                mirrorArtRenderer.sortingOrder = 7;
+
+                const float mirrorHeight = 1.8f;   // ApplyFractureEnemyArt의 정예 높이와 같다
+                var size = mirrorArt.bounds.size;
+                if (size.y > 0f)
+                {
+                    float scale = mirrorHeight / size.y;
+                    mirrorArtObject.transform.localScale = new Vector3(scale, scale, 1f);
+                }
+
+                AttachAnimator(mirrorArtObject, mirrorArtRenderer,
+                    FractureEnemyClips("SplitSelf"), mirrorHeight);
+            }
 
             var mirrorShadow = new GameObject("Shadow");
             mirrorShadow.transform.SetParent(mirror.transform, false);
@@ -383,8 +494,21 @@ namespace HiddenWeight.EditorTools
         {
             EnsureScenesFolder();
 
+            // 시트 분할을 씬 생성에 묶어 둔다. 메뉴로 따로 돌리게 두면 "잘라 두는 것을 잊고
+            // 씬만 다시 지어" 아트가 전부 플레이스홀더로 돌아가는 실패가 반복된다.
+            FractureEnvironmentArtSlicer.SliceAll();
+            FractureAnimationArtSlicer.SliceAll();
+
+            // 균열 시트는 전부 "Fracture" 접두사를 쓴다(FractureTerrain / FracturePlatform …).
+            // 숏컷 겉모습은 문 시트(Fracture_DoorsShortcuts_v1)의 1행을 닫힘/열림으로,
+            // 2행을 승강기용으로 쓴다.
+            UseArtRoot("Assets/Art/Fracture", "Fracture",
+                "FractureDoor_r1_c1", "FractureDoor_r1_c2",
+                "FractureDoor_r2_c1", "FractureDoor_r2_c2");
+
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Fracture", out var root);
+            tilemap.GetComponent<TilemapRenderer>().enabled = false;
             TintTerrain(tilemap, FractureTerrain);
 
             var rooms = new GameObject("Rooms");
@@ -395,7 +519,14 @@ namespace HiddenWeight.EditorTools
             var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
             SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Fracture);
 
-            var ctx = new RoomCtx { Map = tilemap, Root = root, Rooms = rooms.transform, FloorArt = false };
+            // 이제 균열 전용 지형 시트가 있으므로 바닥 표면 아트를 켠다(응시와 같은 전환).
+            var ctx = new RoomCtx
+            {
+                Map = tilemap,
+                Root = root,
+                Rooms = rooms.transform,
+                FloorArt = false
+            };
 
             BuildF01(ctx);
             BuildF02(ctx);
@@ -414,11 +545,25 @@ namespace HiddenWeight.EditorTools
             BuildF12(ctx);
 
             BuildFractureConnections(ctx);
-            ApplyFractureRoomBackgrounds(rooms.transform);
 
             ctx.O = F01;
             PlacePlayerAndCamera(root, new Vector3(F01.x + 3f, F01.y + 3f, 0f));
 
+            // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
+            BuildImpactVFX(root.transform, FractureImpacts);
+            BuildProjectileSpawner(root.transform, FractureProjectiles);
+
+            // 숏컷 3곳과 FS3 입구 벽에 봉쇄·해제 애니메이션을 붙인다.
+            AttachFractureSealAnimator(_fractureShortcutA, new Vector2(4f, 2f));
+            AttachFractureSealAnimator(_fractureShortcutB, new Vector2(3f, 2.5f));
+            AttachFractureSealAnimator(_fractureShortcutC, new Vector2(4f, 2f));
+            AttachFractureSealAnimator(_fractureSecretDoor, new Vector2(3f, 2.5f));
+
+            // 방마다 원본 콘셉트 한 장만 카메라에 고정한다.
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture");
+
+            HideCollisionPlaceholderRenderers(root);
             SaveScene(scene, "Zone_Fracture_Full");
             RegisterBuildSettings();
             AssetDatabase.SaveAssets();
@@ -426,29 +571,70 @@ namespace HiddenWeight.EditorTools
             Debug.Log("[FractureZoneBuilder] 균열 전체 지역(15룸) 생성 완료");
         }
 
-        static void ApplyFractureRoomBackgrounds(Transform rooms)
-        {
-            foreach (Transform room in rooms)
-            {
-                var bounds = room.GetComponent<Room>()?.WorldBounds;
-                if (!bounds.HasValue) continue;
-                string path = $"Assets/Art/Fracture/Rooms/{room.name}.png";
-                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-                if (sprite == null)
-                {
-                    Debug.LogWarning("[FractureZoneBuilder] 룸 배경이 없습니다: " + path);
-                    continue;
-                }
+        // ------------------------------------------------------------
+        // 균열 지역의 연출 목록. 잔재·응시와 같은 모듈을 쓰고 이름과 수치만 다르다.
+        // ------------------------------------------------------------
 
-                var background = new GameObject("FractureRoomBackground");
-                background.transform.SetParent(room, false);
-                var renderer = background.AddComponent<SpriteRenderer>();
-                renderer.sprite = sprite;
-                renderer.sortingOrder = -100;
-                renderer.color = new Color(0.86f, 0.90f, 0.92f, 0.82f);
-                FitSprite(renderer, bounds.Value.size.x, bounds.Value.size.y);
-                background.AddComponent<RoomVisualCuller>();
-            }
+        // 타격 연출 이름에 지역 접두사를 붙이지 않는다 — 런타임이 "ImpactMelee"/"ImpactLand"를
+        // 이름 그대로 부르기 때문이다(PlayerAttack, PlayerController, BossController).
+        // 지역별 분리는 아트 폴더가 이미 보장한다.
+        static readonly (string name, string clip, float fps, float height)[] FractureImpacts =
+        {
+            ("ImpactMelee", "ImpactMelee", 18f, 1.4f),
+            ("ImpactHeavy", "ImpactHeavy", 16f, 1.8f),
+            ("ImpactLand",  "ImpactLand",  14f, 1.0f),
+            ("ImpactWall",  "ImpactWall",  16f, 1.6f),
+            ("BossRing",    "BossRing",    14f, 3.5f),   // 보스 낙하 착지 고리
+            ("BossRupture", "BossRupture", 12f, 3.0f),   // 단계 전환 파열
+        };
+
+        static readonly (string name, float fps, float speed, float lifetime,
+                         float radius, int damage, float height, bool ignoreTerrain)[] FractureProjectiles =
+        {
+            ("FractureProjShards",    14f, 8f,   2.0f, 0.5f, 1, 1.0f, false),
+            ("FractureProjArc",       14f, 6f,   2.2f, 0.7f, 1, 1.2f, false),
+            ("FractureProjRing",      12f, 5f,   2.4f, 0.8f, 1, 1.4f, true),
+            ("FractureBossShard",     16f, 10f,  2.0f, 0.5f, 1, 1.2f, false),
+            ("FractureBossCrystals",  14f, 7f,   2.6f, 0.7f, 1, 1.6f, false),
+        };
+
+        static readonly (string clip, float fps)[] FractureBackgroundMotions =
+        {
+            ("FractureBgArches", 4f), ("FractureBgWater", 5f), ("FractureBgSkyCrack", 3f),
+            // 앰비언트 시트의 잔잔한 행을 원경 변형으로 섞는다 — 이웃 방이 같은 움직임을
+            // 반복하지 않게 하는 변형 풀을 넓힌다(GAME_DESIGN.md의 랜드마크 규칙).
+            ("FractureAmbientPetals", 5f), ("FractureAmbientMist", 4f), ("FractureAmbientGlass", 5f),
+        };
+
+        // 전경 모션 표가 없는 것은 의도다. FractureForegroundMotion_v1의 세 행(줄기꽃·꽃·유리
+        // 굴절)은 방 높이의 45%로 커져 방 중앙에 놓이는데, 균열 아트 설계 1절이 전경 요소를
+        // "화면 가장자리"로 한정하고 중앙 65%를 비우라고 못박고 있다. 실제로 붙여 보니
+        // 검은 여백 위에 줄기 세 개가 떠 있는 모양이 됐다. 전경 연출은 FG_Overlay 45장이 맡는다.
+
+        // 숏컷의 봉쇄·해제 애니메이션(DoorShortcutTransitions_v1의 1·2행).
+        static void AttachFractureSealAnimator(Shortcut shortcut, Vector2 size)
+        {
+            if (shortcut == null) return;
+
+            var sealObject = new GameObject("SealAnimation");
+            sealObject.transform.SetParent(shortcut.transform, false);
+
+            var renderer = sealObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6;
+
+            AttachAnimator(sealObject, renderer, new[]
+            {
+                ("FractureSealClose", 10f, false),
+                ("FractureSealOpen", 10f, false),
+            }, size.y);
+
+            var animator = sealObject.GetComponent<SpriteAnimator>();
+            if (animator == null) { Object.DestroyImmediate(sealObject); return; }
+
+            SetField(animator, "autoPlay", p => p.boolValue = false);
+            SetField(shortcut, "transitionAnimator", p => p.objectReferenceValue = animator);
+            SetField(shortcut, "closedClip", p => p.stringValue = "FractureSealClose");
+            SetField(shortcut, "openClip", p => p.stringValue = "FractureSealOpen");
         }
 
         // ---------------- F01 유리 정원 (D0) ----------------
@@ -466,9 +652,9 @@ namespace HiddenWeight.EditorTools
             {
                 float x = 9f + i * 4f;
                 BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}", c.P(x, 4.5f), new Vector2(1.6f, 3f),
-                    "Gate", FractureStone, 0f, -5);
+                    "FractureDoor_r1_c3", FractureStone, 0f, -5);
                 BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}_Echo", c.P(x + 0.25f, 4.6f), new Vector2(1.6f, 3f),
-                    "Gate", new Color(1f, 1f, 1f, 0.35f), 0f, -6);
+                    "FractureDoor_r1_c3", new Color(1f, 1f, 1f, 0.35f), 0f, -6);
             }
 
             // 하늘의 세로 균열 — 지역 전체의 진행 방향이자 결말(2.3절 랜드마크).
@@ -477,9 +663,9 @@ namespace HiddenWeight.EditorTools
 
             // 방 끝에서, 닿기도 전에 스스로 무너져 있는 발판 조각을 보여준다(4.1절).
             BuildDecor(c.Root.transform, "F01_BrokenPlatform_A", c.P(22f, 6f), new Vector2(1.4f, 0.5f),
-                "Platform", FractureStone, -18f, -3);
+                "FracturePlatform_r2_c1", FractureStone, -18f, -3);
             BuildDecor(c.Root.transform, "F01_BrokenPlatform_B", c.P(23.6f, 5.2f), new Vector2(1f, 0.5f),
-                "Platform", FractureStone, 24f, -3);
+                "FracturePlatform_r2_c2", FractureStone, 24f, -3);
 
             for (int i = 0; i < 4; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(10f + i * 1.5f, 3.2f));
@@ -534,13 +720,13 @@ namespace HiddenWeight.EditorTools
 
             // 숏컷 A의 문틀. 문짝은 미래 위치에서 깜빡이고, F05에서 예지로 확정된다.
             BuildDecor(c.Root.transform, "F03_DoorFrame", c.P(5f, 10.5f), new Vector2(4.4f, 3f),
-                "Gate", FractureStone, 0f, -4);
+                "FractureDoor_r1_c4", FractureStone, 0f, -4);
 
             // 랜드마크: 떠 있는 시계탑과 하늘 균열을 중앙에서 동시에 본다(4.3절).
             BuildDecor(c.Root.transform, "F03_ClockTower", c.P(10f, 13f), new Vector2(3.4f, 12f),
-                "Tile", new Color(0.86f, 0.83f, 0.94f), -3f, -7);
+                "FractureTransit_r1_c2", new Color(0.86f, 0.83f, 0.94f), -3f, -7);
             BuildDecor(c.Root.transform, "F03_InvertedGreenhouse", c.P(20f, 14f), new Vector2(6f, 5f),
-                "Tile", new Color(0.8f, 0.92f, 0.88f), 184f, -7);
+                "FractureProp_r1_c3", new Color(0.8f, 0.92f, 0.88f), 184f, -7);
             BuildDecor(c.Root.transform, "F03_SkyFracture", c.P(27f, 14f), new Vector2(0.8f, 14f),
                 "Tile", new Color(0.9f, 0.86f, 0.95f), 5f, -8);
 
@@ -591,7 +777,7 @@ namespace HiddenWeight.EditorTools
             // 완성되지 못한 미래들의 잔해.
             for (int i = 0; i < 4; i++)
                 BuildDecor(c.Root.transform, $"FS1_Unbuilt_{i}", c.P(3f + i * 4f, 4f), new Vector2(1.2f, 4f),
-                    "Gate", new Color(0.86f, 0.84f, 0.94f, 0.7f), i * 3f - 5f, -6);
+                    "FractureDoor_r2_c3", new Color(0.86f, 0.84f, 0.94f, 0.7f), i * 3f - 5f, -6);
 
             BuildStoryFragment(c.Root.transform, c.P(14f, 9.5f), "fracture_fs1",
                 "고르지 않은 쪽에도 문은 있었다.", EmotionId.None, false);
@@ -647,7 +833,7 @@ namespace HiddenWeight.EditorTools
             // 발판이 왼쪽 끝에 있을 때만 구멍 위를 비켜 준다.
             BuildMovingPlatform(c.Root.transform, c.P(4.5f, 2.4f), new Vector2(-3f, 0f), 6f);
             BuildDecor(c.Root.transform, "F06_FS2_Marker", c.P(4.5f, 6f), new Vector2(1.2f, 1.2f),
-                "Gate", FracturePeach, 0f, -4);
+                "FractureForesight_r1_c2", FracturePeach, 0f, -4);
 
             // 서로 다른 주기의 이동 발판 3개(3초 / 5초 / 7초).
             BuildMovingPlatform(c.Root.transform, c.P(9f, 6f), new Vector2(3f, 0f), 3f);
@@ -659,7 +845,7 @@ namespace HiddenWeight.EditorTools
 
             // 거꾸로 선 온실 — F03에서 보이던 랜드마크에 여기서 도달한다(2.3절).
             BuildDecor(c.Root.transform, "F06_Greenhouse", c.P(16f, 12f), new Vector2(18f, 6f),
-                "Tile", new Color(0.8f, 0.92f, 0.88f), 182f, -7);
+                "FractureProp_r1_c3", new Color(0.8f, 0.92f, 0.88f), 182f, -7);
 
             BuildRewardChest(c.Root.transform, "fracture_f06_material", c.P(30f, 5f), 20, false);
 
@@ -675,7 +861,7 @@ namespace HiddenWeight.EditorTools
             // 멈춰 있는 오후 — 아무것도 움직이지 않는 유일한 방.
             for (int i = 0; i < 5; i++)
                 BuildDecor(c.Root.transform, $"FS2_StoppedThing_{i}", c.P(3f + i * 4.5f, 5f), new Vector2(1.4f, 3f),
-                    "Tile", new Color(0.92f, 0.88f, 0.8f), 0f, -6);
+                    "FractureProp_r2_c3", new Color(0.92f, 0.88f, 0.8f), 0f, -6);
 
             BuildFractureSafePlatform(c.Root.transform, c.P(8f, 6f));
             BuildFractureSafePlatform(c.Root.transform, c.P(14f, 8f));
@@ -749,11 +935,11 @@ namespace HiddenWeight.EditorTools
             BuildFractureSafePlatform(c.Root.transform, c.P(12f, 23f));
 
             BuildDecor(c.Root.transform, "F08_NoDoorYet", c.P(20f, 30f), new Vector2(3f, 5f),
-                "Gate", new Color(0.95f, 0.93f, 1f, 0.5f), 0f, -7);
+                "FractureDoor_r2_c4", new Color(0.95f, 0.93f, 1f, 0.5f), 0f, -7);
 
             BuildHealingPickup(c.Root.transform, c.P(20f, 27f));
 
-            c.Room("FractureRoom08", 24f, 28f);
+            c.Room("FractureRoom08", 24f, 30f);
         }
 
         // ---------------- F09 거울 가능성실 (D4, 정예) ----------------
@@ -812,7 +998,25 @@ namespace HiddenWeight.EditorTools
 
             var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Fracture_SecondHand", 15,
                 new[] { BossController.Move.GroundSweep, BossController.Move.TimeSkip, BossController.Move.Charge },
-                new[] { 0.5f }, new Color(0.8f, 0.76f, 0.92f));
+                new[] { 0.5f }, new Color(0.8f, 0.76f, 0.92f),
+                new[]
+                {
+                    ("SecondHandIdle",      8f,  true),
+                    ("SecondHandStalk",     10f, true),
+                    ("SecondHandSlash",     14f, false),
+                    ("SecondHandDelayed",   12f, false),
+                    ("SecondHandTimeBolt",  12f, false),
+                    ("SecondHandHit",       12f, false),
+                    ("SecondHandDeath",     10f, false),
+                    ("SecondHandTeleport",  14f, false),
+                    ("SecondHandPhase",     10f, false),
+                },
+                "SecondHandIdle_00",
+                clipPrefix: "SecondHand",
+                moveClips: new[] { "SecondHandSlash", "SecondHandTeleport", "SecondHandDelayed" },
+                phaseClip: "SecondHandPhase");
+            SetField(boss.GetComponent<BossController>(), "projectileName",
+                p => p.stringValue = "FractureBossShard");
 
             // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
             var reward = BuildRewardChest(c.Root.transform, "fracture_f10_boss", c.P(6f, 4.5f), 45, false);
@@ -840,7 +1044,7 @@ namespace HiddenWeight.EditorTools
             // 현재에는 기초와 문틀만 있다.
             for (int i = 0; i < 4; i++)
                 BuildDecor(c.Root.transform, $"F11_Foundation_{i}", c.P(13f + i * 3.5f, 3.6f), new Vector2(2.4f, 0.8f),
-                    "Tile", FractureStone, 0f, -3);
+                    "FracturePlatform_r3_c1", FractureStone, 0f, -3);
 
             // 예지 안에서만 완성된 폐허의 윤곽이 나타난다. 밟을 수는 없다(solidWhenFixed=false).
             for (int i = 0; i < 4; i++)
@@ -855,7 +1059,7 @@ namespace HiddenWeight.EditorTools
 
             // 방 끝에서 F12 전장이 한 번 무너졌다 돌아오는 모습을 안전하게 본다.
             BuildDecor(c.Root.transform, "F11_DistantArena", c.P(26f, 10f), new Vector2(8f, 6f),
-                "Tile", new Color(0.88f, 0.84f, 0.94f, 0.6f), 0f, -7);
+                "FractureTransit_r1_c1", new Color(0.88f, 0.84f, 0.94f, 0.6f), 0f, -7);
 
             c.Room("FractureRoom11", 28f, 16f);
         }
@@ -869,7 +1073,7 @@ namespace HiddenWeight.EditorTools
             // 선택되지 않은 미래들이 흔적으로만 남아 있다.
             for (int i = 0; i < 5; i++)
                 BuildDecor(c.Root.transform, $"FS3_UnchosenDoor_{i}", c.P(3f + i * 3.5f, 4.5f), new Vector2(1.6f, 3.4f),
-                    "Gate", new Color(0.93f, 0.91f, 1f, 0.45f), (i - 2) * 4f, -5);
+                    "FractureDoor_r2_c3", new Color(0.93f, 0.91f, 1f, 0.45f), (i - 2) * 4f, -5);
 
             BuildStoryFragment(c.Root.transform, c.P(16f, 3f), "fracture_final",
                 "고르지 않은 문들도, 끝까지 나를 따라왔다.", EmotionId.None, false);
@@ -886,8 +1090,10 @@ namespace HiddenWeight.EditorTools
             c.Floor(10, 20, 4);    // 중앙 변화 지대
             c.Floor(20, 30, 4);    // 우측 공격 지대
 
-            BuildSolidBlock(c.Root.transform, "F12_Wall_L", c.P(0.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
-            BuildSolidBlock(c.Root.transform, "F12_Wall_R", c.P(29.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
+            var wallL = BuildSolidBlock(c.Root.transform, "F12_Wall_L", c.P(0.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
+            var wallR = BuildSolidBlock(c.Root.transform, "F12_Wall_R", c.P(29.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
+            ApplyBlockArt(wallL, new Vector2(1.2f, 10f));
+            ApplyBlockArt(wallR, new Vector2(1.2f, 10f));
 
             // 단계마다 일부 발판이 사라지지만 좌측 안정 지대는 언제나 반응 가능한 안전 경로다.
             BuildFractureCrumbling(c.Root.transform, c.P(13f, 7f));
@@ -902,7 +1108,27 @@ namespace HiddenWeight.EditorTools
                     BossController.Move.Charge,
                     BossController.Move.GroundSweep,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.72f, 0.68f, 0.9f));
+                new[] { 0.6f, 0.3f }, new Color(0.72f, 0.68f, 0.9f),
+                new[]
+                {
+                    ("NotYetMeIdle",      8f,  true),
+                    ("NotYetMeGlide",     10f, true),
+                    ("NotYetMeRibbon",    14f, false),
+                    ("NotYetMeShards",    12f, false),
+                    ("NotYetMeStagger",   10f, false),
+                    ("NotYetMeHit",       12f, false),
+                    ("NotYetMeDeath",     10f, false),
+                    ("NotYetMeDivided",   10f, false),
+                    ("NotYetMePhase",     10f, false),
+                    ("NotYetMeAcceptance", 8f, false),
+                },
+                "NotYetMeIdle_00",
+                clipPrefix: "NotYetMe",
+                moveClips: new[] { "NotYetMeDivided", "NotYetMeShards",
+                                   "NotYetMeGlide", "NotYetMeRibbon" },
+                phaseClip: "NotYetMePhase");
+            SetField(boss.GetComponent<BossController>(), "projectileName",
+                p => p.stringValue = "FractureBossCrystals");
 
             var reward = BuildRewardChest(c.Root.transform, "fracture_f12_boss", c.P(16f, 5.5f), 70, true);
             BuildEncounter(c.Root.transform, "fracture_f12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,

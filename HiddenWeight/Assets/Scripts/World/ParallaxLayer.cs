@@ -10,9 +10,28 @@ namespace HiddenWeight.World
         Vector3 _anchorCamera;
         Transform _cameraTransform;
 
+        // 배치된 원위치(방 중앙). 앵커가 씬 시작 카메라 기준으로 한 번만 잡히면, 시작점에서
+        // 300유닛 떨어진 방에 도착했을 때 원경이 0.15×300 = 45유닛 밀려 방 밖으로 나가 있다.
+        // 방에 들어올 때마다 여기로 되돌리고 다시 앵커를 잡는다(RoomVisualCuller가 호출).
+        Vector3 _initialPosition;
+        bool _initialCaptured;
+
+        void Awake()
+        {
+            _initialPosition = transform.position;
+            _initialCaptured = true;
+        }
+
         void OnEnable()
         {
             BindMainCamera();
+        }
+
+        // 방 진입 시 원위치로 되돌리고 지금 카메라 위치를 새 기준으로 삼는다.
+        public void Rebase(Vector3 cameraPosition)
+        {
+            if (_initialCaptured) transform.position = _initialPosition;
+            SetAnchor(cameraPosition);
         }
 
         void LateUpdate()

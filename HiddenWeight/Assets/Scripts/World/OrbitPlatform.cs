@@ -31,7 +31,12 @@ namespace HiddenWeight.World
         {
             _rb = GetComponent<Rigidbody2D>();
             _rb.bodyType = RigidbodyType2D.Kinematic;
+            // 지역 아트는 루트를 끄고 자식에 그린다(ApplyPlatformArt). 예지 고스트가
+            // 실제 보이는 그림을 복사하도록 보이는 렌더러를 잡는다.
             _sprite = GetComponent<SpriteRenderer>();
+            if (_sprite == null || !_sprite.enabled)
+                foreach (var candidate in GetComponentsInChildren<SpriteRenderer>())
+                    if (candidate.enabled) { _sprite = candidate; break; }
             _box = GetComponent<BoxCollider2D>();
             _riderMask = 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed");
 

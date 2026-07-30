@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
+using HiddenWeight.Data;
 
 namespace HiddenWeight.UI
 {
@@ -56,12 +57,20 @@ namespace HiddenWeight.UI
                 _continueButton != null ? _continueButton : _newGameButton);
         }
 
-        // 작업 중인 지역으로 바로 들어가는 개발용 입구. 정식 빌드에는 절대 노출하지 않는다.
-        void StartResidueTest()
+        // 지역으로 바로 들어가는 QA용 입구. 정식 빌드에는 절대 노출하지 않는다.
+        // 감정 능력 3종과 자각을 전부 열어 둔다 — 응시는 숨죽이기·자각, 균열은 예지가
+        // 없으면 필수 동선 자체가 막혀서 지역 단독 검증이 불가능하다.
+        void StartZoneTest(string sceneName)
         {
-            GameManager.Instance.Progress.ResetAll();
+            var progress = GameManager.Instance.Progress;
+            progress.ResetAll();
+            progress.UnlockSkill(EmotionId.Rewind);
+            progress.UnlockSkill(EmotionId.Hush);
+            progress.UnlockSkill(EmotionId.Foresight);
+            progress.GrantAwareness();
+
             GameManager.Instance.SetState(GameState.Playing);
-            SceneFlow.LoadWithFade("Zone_Residue_Full");
+            SceneFlow.LoadWithFade(sceneName);
         }
 
         void Quit()
@@ -112,14 +121,43 @@ namespace HiddenWeight.UI
             _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", firstY - 140f, ShowCredits);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            UIBuilder.CreateButton(canvasGO.transform, "잔재 지역 (개발용)", firstY - 210f, StartResidueTest);
-            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 280f, Quit);
+            BuildQaZoneRow(canvasGO.transform, firstY - 225f);
+            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 295f, Quit);
 #else
             UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 210f, Quit);
 #endif
 
             _dialog = canvasGO.AddComponent<ConfirmDialog>();
             _sections = canvasGO.AddComponent<PauseSectionPanel>();
+        }
+
+        // QA용 지역 바로가기 한 줄. 세로 목록에 끼우면 타이틀 버튼 4개 + 지역 4개가
+        // 화면을 넘어가므로 가로로 눕힌다. CreateButton은 x=0 고정이라 만든 뒤 옮긴다.
+        void BuildQaZoneRow(Transform parent, float y)
+        {
+            var caption = UIBuilder.CreateText(parent, "지역 바로가기 (QA)", 15);
+            var captionRt = caption.rectTransform;
+            captionRt.anchorMin = captionRt.anchorMax = new Vector2(0.5f, 0.5f);
+            captionRt.sizeDelta = new Vector2(400f, 24f);
+            captionRt.anchoredPosition = new Vector2(0f, y + 42f);
+            caption.color = new Color(1f, 1f, 1f, 0.45f);
+
+            var zones = new (string label, string scene)[]
+            {
+                ("프롤로그", "Zone_Prologue"),
+                ("잔재", "Zone_Residue_Full"),
+                ("응시", "Zone_Gaze_Full"),
+                ("균열", "Zone_Fracture_Full"),
+            };
+
+            for (int i = 0; i < zones.Length; i++)
+            {
+                string scene = zones[i].scene; // 클로저가 루프 변수를 공유하지 않게 복사
+                var button = UIBuilder.CreateButton(parent, zones[i].label, y, () => StartZoneTest(scene));
+                var rt = (RectTransform)button.transform;
+                rt.sizeDelta = new Vector2(150f, 48f);
+                rt.anchoredPosition = new Vector2((i - (zones.Length - 1) * 0.5f) * 160f, y);
+            }
         }
     }
 }

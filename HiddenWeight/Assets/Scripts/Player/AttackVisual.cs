@@ -15,6 +15,11 @@ namespace HiddenWeight.Player
         [SerializeField] Sprite sprite;
         [SerializeField] Color color = new Color(1f, 0.95f, 0.8f, 0.55f);
 
+        // 참격 프레임(CombatVFX_v1의 SwingSlash 행). 채워져 있으면 사각 섬광 대신 이것을
+        // 공격 시간에 맞춰 한 번 재생한다 — 비어 있으면 예전 방식으로 떨어져, 아트가 아직
+        // 없는 지역에서도 공격 피드백 자체는 사라지지 않는다.
+        [SerializeField] Sprite[] slashFrames;
+
         PlayerAttack _attack;
         PlayerController _controller;
         SpriteRenderer _flash;
@@ -63,8 +68,44 @@ namespace HiddenWeight.Player
 
             // 바라보는 쪽으로 판정 반경만큼 내민다.
             _flash.transform.localPosition = new Vector3(_controller.Facing * radius * 0.5f, 0f, 0f);
-            _flash.transform.localScale = new Vector3(radius, radius * 1.2f, 1f);
             _flash.enabled = true;
+
+            if (slashFrames != null && slashFrames.Length > 0)
+            {
+                // 참격 프레임을 공격 시간에 정확히 맞춰 한 번 재생한다. 시트는 오른쪽 방향
+                // 기준이라 왼쪽을 볼 때는 뒤집는다.
+                _flash.flipX = _controller.Facing < 0;
+                _flash.color = Color.white;
+
+                float frameTime = duration / slashFrames.Length;
+                for (int i = 0; i < slashFrames.Length; i++)
+                {
+                    var frame = slashFrames[i];
+                    _flash.sprite = frame;
+
+                    // 판정 반경과 그림 크기를 맞춘다(참격 궤적이 실제 닿는 범위를 보여주는
+                    // 디버그 겸 연출이라는 원래 목적 그대로).
+                    float spriteWidth = frame != null ? frame.bounds.size.x : 0f;
+                    float scale = spriteWidth > 0f ? radius * 1.6f / spriteWidth : 1f;
+                    _flash.transform.localScale = new Vector3(scale, scale, 1f);
+
+                    float elapsedInFrame = 0f;
+                    while (elapsedInFrame < frameTime)
+                    {
+                        elapsedInFrame += Time.deltaTime;
+                        yield return null;
+                    }
+                }
+
+                _flash.enabled = false;
+                _flash.sprite = sprite;
+                _flash.flipX = false;
+                _flash.color = color;
+                _routine = null;
+                yield break;
+            }
+
+            _flash.transform.localScale = new Vector3(radius, radius * 1.2f, 1f);
 
             float elapsed = 0f;
             while (elapsed < duration)

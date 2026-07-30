@@ -193,6 +193,18 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
+        // 생성 배경이 지형의 외형을 담당하므로 충돌 제작용 단색 Tile은 렌더링하지 않는다.
+        // Collider와 Rigidbody는 그대로 두어 플레이 동작에는 영향을 주지 않는다.
+        static void HideCollisionPlaceholderRenderers(GameObject root)
+        {
+            foreach (var renderer in root.GetComponentsInChildren<SpriteRenderer>(true))
+                if (renderer.sprite != null &&
+                    renderer.sprite.name == "Tile" &&
+                    (renderer.GetComponent<Collider2D>() != null ||
+                     renderer.sortingOrder < 0))
+                    renderer.enabled = false;
+        }
+
         // 균열 지역의 "안전한" 발판. CrumblingPlatform과 같은 Platform 스프라이트(96x16px, 이미
         // 3x0.5 유닛 네이티브 크기)를 그대로 써서 시각적으로 구분되지 않게 한다 — 결코 무너지지
         // 않는다는 점만 다르다.
@@ -204,12 +216,15 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Ground");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = ZoneArt("Platform_r1_c1") ?? LoadSprite("Platform");
+            sr.sprite = LoadSprite("Platform");
             sr.sortingOrder = 2;
-            FitRenderer(sr, 3f, 0.8f);
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = new Vector2(3f, 0.5f);
+
+            // 지역 아트는 루트가 아니라 스케일 1 자식에 그린다. 루트 스케일로 맞추면
+            // 콜라이더가 같이 줄어 발판이 슬리버가 된다(ApplyPlatformArt 주석 참고).
+            ApplyPlatformArt(go);
 
             return go;
         }
@@ -297,6 +312,7 @@ namespace HiddenWeight.EditorTools
             var mp = go.GetComponent<HiddenWeight.World.MovingPlatform>();
             SetField(mp, "offset", p => p.vector2Value = offset);
             SetField(mp, "period", p => p.floatValue = period);
+            ApplyPlatformArt(go);
             return go;
         }
 
@@ -331,8 +347,12 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Interactable");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = ResidueArt("Item_Currency") ?? LoadSprite("Fragment");
+            // 잔재는 전용 아틀라스, 응시·균열은 수집물 시트의 첫 프레임(GazeItemShard_00 /
+            // FractureItemShard_00)을 쓴다. 둘 다 없을 때만 플레이스홀더로 떨어진다.
+            sr.sprite = ResidueArt("Item_Currency") ?? ZoneArt("ItemShard_00") ?? LoadSprite("Fragment");
             if (sr.sprite.name == "Fragment") sr.color = new Color(0.95f, 0.86f, 0.6f);
+            // 수집물 시트가 있으면 반짝임 순환을 튼다 — 정지 그림이면 배경 기물과 구분되지 않는다.
+            AttachAnimator(go, sr, new[] { (_artPrefix + "ItemShard", 8f, true) }, 0f);
             sr.sortingOrder = 5; // Art/Residue/README.md의 Interactables 레이어 기준
             FitRenderer(sr, 1.6f, 1.6f); // localScale 0.5가 곱해져 실제 0.8유닛
 
@@ -496,10 +516,17 @@ namespace HiddenWeight.EditorTools
         // 보스. 체력·패턴만 다르고 나머지는 같은 BossController를 쓴다.
         // clips/idleSprite를 주면 그 지역 보스 아트를 쓰고, 비우면 잔재의 감시자 시트를 쓴다.
         // 지역마다 보스 빌더를 따로 만들지 않기 위한 선택적 인자다.
+        //
+        // clipPrefix는 Enemy.PlayClip("Hit"/"Death")의 접두사다 — 시트의 피격 행이
+        // "{접두사}Hit"로 잘려 있어야 맞아 들어간다(각 슬라이서 주석 참고).
+        // moveClips는 moves와 나란한 배열로, 그 공격을 시작할 때 트는 클립이다.
         static GameObject BuildBoss(Transform parent, Vector2 pos, string assetName, int health,
                                     BossController.Move[] moves, float[] phases, Color tint,
                                     (string clip, float fps, bool loop)[] clips = null,
-                                    string idleSprite = null)
+                                    string idleSprite = null,
+                                    string clipPrefix = null,
+                                    string[] moveClips = null,
+                                    string phaseClip = null)
         {
             var data = LoadData<EnemyData>(assetName);
             if (data == null)
@@ -544,15 +571,34 @@ namespace HiddenWeight.EditorTools
                     ("WatcherAnimCharge",14f, false),
                     ("WatcherAnimStun",  10f, false),
                     ("WatcherAnimDrop",  14f, false),
-                    ("WatcherAnimHurt",  12f, false),
+                    ("WatcherAnimHit",   12f, false),
                     ("WatcherAnimDeath", 10f, false),
                 }, bossHeight);
             }
+
+            // 피격·사망 클립을 Enemy가 스스로 틀 수 있게 접두사를 준다. 기본은 잔재 감시자.
+            SetField(go.GetComponent<HiddenWeight.Enemies.Enemy>(), "clipPrefix",
+                p => p.stringValue = clipPrefix ?? "WatcherAnim");
 
             var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
             if (patrol != null) patrol.enabled = false;
 
             var boss = go.AddComponent<BossController>();
+
+            // 무브별 전투 클립. 첫 클립(대기)으로 돌아오는 것까지 BossController가 맡는다.
+            var effectiveClips = clips;
+            string idleClip = effectiveClips != null && effectiveClips.Length > 0
+                ? effectiveClips[0].clip : "WatcherAnimIdle";
+            SetField(boss, "idleClipName", p => p.stringValue = idleClip);
+            if (phaseClip != null)
+                SetField(boss, "phaseClipName", p => p.stringValue = phaseClip);
+            if (moveClips != null)
+                SetField(boss, "moveClipNames", p =>
+                {
+                    p.arraySize = moveClips.Length;
+                    for (int i = 0; i < moveClips.Length; i++)
+                        p.GetArrayElementAtIndex(i).stringValue = moveClips[i];
+                });
             SetField(boss, "playerMask", p => p.intValue =
                 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed"));
             SetField(boss, "shadowSprite", p => p.objectReferenceValue = LoadSprite("Tile"));
@@ -584,8 +630,9 @@ namespace HiddenWeight.EditorTools
             go.layer = LayerMask.NameToLayer("Interactable");
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = ResidueArt("Item_Healing") ?? LoadSprite("Fragment");
+            sr.sprite = ResidueArt("Item_Healing") ?? ZoneArt("ItemHealing_00") ?? LoadSprite("Fragment");
             if (sr.sprite.name == "Fragment") sr.color = new Color(0.6f, 0.9f, 0.75f);
+            AttachAnimator(go, sr, new[] { (_artPrefix + "ItemHealing", 8f, true) }, 0f);
             sr.sortingOrder = 5;
             FitRenderer(sr, 1.4f, 1.4f);
 
@@ -650,17 +697,31 @@ namespace HiddenWeight.EditorTools
         }
 
         // 충돌 없는 배경 연출용 스프라이트 (새장·무너진 탑·거울 기둥 등).
+        //
+        // spriteName이 지역 시트의 스프라이트(예: "FractureDoor_r1_c3")면 그것을 쓰고,
+        // 아니면 플레이스홀더로 떨어진다. 두 경로의 크기 의미를 같게 유지한다 — 플레이스홀더
+        // Tile은 1x1 유닛이라 localScale이 곧 월드 크기지만, 시트 셀은 8유닛쯤 되므로
+        // FitSprite로 같은 월드 크기에 맞춘다.
         static SpriteRenderer BuildDecor(Transform parent, string name, Vector2 pos, Vector2 scale,
             string spriteName, Color tint, float rotationZ = 0f, int sortingOrder = -5)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.position = new Vector3(pos.x, pos.y, 0f);
-            go.transform.localScale = new Vector3(scale.x, scale.y, 1f);
             go.transform.rotation = Quaternion.Euler(0f, 0f, rotationZ);
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite(spriteName);
+            var zoneSprite = Art(spriteName);
+            if (zoneSprite != null)
+            {
+                sr.sprite = zoneSprite;
+                FitSprite(sr, scale.x, scale.y);
+            }
+            else
+            {
+                sr.sprite = LoadSprite(spriteName);
+                go.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            }
             sr.color = tint;
             sr.sortingOrder = sortingOrder;
             return sr;

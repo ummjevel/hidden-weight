@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.Tilemaps;
 using HiddenWeight.Core;
 using HiddenWeight.Player;
 using HiddenWeight.World;
@@ -152,39 +153,50 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
-        public IEnumerator 방마다_전경과_배경_모션이_돈다()
+        public IEnumerator 방마다_단일_배경만_있다()
         {
             yield return LoadResidue();
 
-            int rooms = 0, withMotion = 0;
+            int rooms = 0;
             var missing = new List<string>();
+            var unwanted = new List<string>();
 
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
             {
                 rooms++;
-                var back = room.transform.Find("MotionBack");
-                var front = room.transform.Find("MotionFront");
-                if (back == null || front == null) { missing.Add(room.name); continue; }
-
-                var backAnimator = back.GetComponent<SpriteAnimator>();
-                var frontAnimator = front.GetComponent<SpriteAnimator>();
-                if (backAnimator == null || frontAnimator == null) { missing.Add(room.name + "(애니메이터)"); continue; }
-
-                withMotion++;
+                var background = room.transform.Find("Art/RoomBackground");
+                if (background == null) missing.Add(room.name + "/RoomBackground");
+                else if (background.GetComponent<CameraLockedRoomBackground>() == null)
+                    missing.Add(room.name + "/CameraLockedRoomBackground");
+                if (room.transform.Find("MotionBack") != null) unwanted.Add(room.name + "/MotionBack");
+                if (room.transform.Find("MotionFront") != null) unwanted.Add(room.name + "/MotionFront");
             }
 
-            // 모션은 배치 직후 자동 재생된다(환경 모션은 Loop Time을 쓴다 — 명세 공통 규칙).
-            yield return null;
-            var sample = Object.FindObjectsByType<Room>(FindObjectsSortMode.None)[0]
-                .transform.Find("MotionBack")?.GetComponent<SpriteAnimator>();
-
-            Debug.Log("===== 방 모션 ===== " + withMotion + "/" + rooms
-                + " 방 / 샘플 재생 클립=" + (sample != null ? sample.CurrentClip : "(없음)"));
-
-            Assert.IsEmpty(missing, "전경·배경 모션이 없는 방이 있다: " + string.Join(", ", missing));
+            Debug.Log("===== 잔재 단일 배경 ===== " + rooms + "방");
+            Assert.IsEmpty(missing, "단일 배경이 빠진 방이 있다: " + string.Join(", ", missing));
+            Assert.IsEmpty(unwanted, "제거해야 할 전경·배경 모션이 있다: " + string.Join(", ", unwanted));
             Assert.AreEqual(15, rooms, "잔재는 15룸이다.");
-            Assert.IsNotNull(sample != null ? sample.CurrentClip : null,
-                "배경 모션이 재생되지 않는다(환경 모션은 자동 재생·루프여야 한다).");
+
+            var tilemaps = Object.FindObjectsByType<TilemapRenderer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Assert.Greater(tilemaps.Length, 0, "잔재 TilemapRenderer가 없다.");
+            foreach (var tilemap in tilemaps)
+                Assert.IsFalse(tilemap.enabled, tilemap.name + " 플레이스홀더 렌더러가 켜져 있다.");
+
+            AssertNoVisibleCollisionPlaceholders();
+        }
+
+        static void AssertNoVisibleCollisionPlaceholders()
+        {
+            var visible = new List<string>();
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (renderer.enabled && renderer.sprite != null &&
+                    renderer.sprite.name == "Tile" &&
+                    (renderer.GetComponent<Collider2D>() != null ||
+                     renderer.sortingOrder < 0))
+                    visible.Add(renderer.name);
+            Assert.IsEmpty(visible, "충돌용 단색 블록이 보인다: " + string.Join(", ", visible));
         }
 
         [UnityTest]

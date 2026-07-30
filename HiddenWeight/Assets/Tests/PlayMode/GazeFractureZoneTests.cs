@@ -44,7 +44,7 @@ namespace HiddenWeight.Tests
             ("GazeRoom01", 26, 14), ("GazeRoom02", 28, 16), ("GazeRoom03", 30, 18),
             ("GazeRoom04", 24, 22), ("GazeSecret01", 18, 14), ("GazeRoom05", 26, 14),
             ("GazeRoom06", 32, 16), ("GazeSecret02", 24, 16), ("GazeRoom07", 34, 18),
-            ("GazeRoom08", 24, 28), ("GazeRoom09", 32, 16), ("GazeRoom10", 24, 18),
+            ("GazeRoom08", 24, 30), ("GazeRoom09", 32, 16), ("GazeRoom10", 24, 18),
             ("GazeRoom11", 28, 16), ("GazeSecret03", 20, 14), ("GazeRoom12", 30, 18),
         };
 
@@ -53,7 +53,7 @@ namespace HiddenWeight.Tests
             ("FractureRoom01", 26, 14), ("FractureRoom02", 28, 16), ("FractureRoom03", 30, 18),
             ("FractureRoom04", 24, 22), ("FractureSecret01", 18, 14), ("FractureRoom05", 26, 14),
             ("FractureRoom06", 32, 16), ("FractureSecret02", 24, 16), ("FractureRoom07", 34, 18),
-            ("FractureRoom08", 24, 28), ("FractureRoom09", 32, 16), ("FractureRoom10", 24, 18),
+            ("FractureRoom08", 24, 30), ("FractureRoom09", 32, 16), ("FractureRoom10", 24, 18),
             ("FractureRoom11", 28, 16), ("FractureSecret03", 20, 14), ("FractureRoom12", 30, 18),
         };
 
@@ -310,21 +310,31 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
-        public IEnumerator 균열_모든_방에_승인된_콘셉트_배경이_연결돼_있다()
+        public IEnumerator 균열_모든_방에_원본_단일_배경이_연결돼_있다()
         {
             yield return LoadZone("Zone_Fracture_Full");
             foreach (var roomSpec in FractureRooms)
             {
                 var room = GameObject.Find(roomSpec.name);
                 Assert.IsNotNull(room, roomSpec.name + " 방이 없다.");
-                var background = room.transform.Find("FractureRoomBackground");
-                Assert.IsNotNull(background, roomSpec.name + "에 콘셉트 배경이 없다.");
+
+                var art = room.transform.Find("Art");
+                Assert.IsNotNull(art, roomSpec.name + "에 배경이 없다.");
+                Assert.IsNotNull(art.GetComponent<RoomVisualCuller>(),
+                    roomSpec.name + " 배경에 현재 방 렌더링 제한이 없다.");
+
+                var background = art.Find("RoomBackground");
+                Assert.IsNotNull(background, roomSpec.name + "/RoomBackground가 없다.");
                 var renderer = background.GetComponent<SpriteRenderer>();
                 Assert.IsNotNull(renderer);
-                Assert.IsNotNull(renderer.sprite, roomSpec.name + " 배경 스프라이트가 연결되지 않았다.");
+                Assert.IsNotNull(renderer.sprite, roomSpec.name + " 원본 배경이 연결되지 않았다.");
                 Assert.That(renderer.sprite.name, Is.EqualTo(roomSpec.name));
-                Assert.IsNotNull(background.GetComponent<RoomVisualCuller>(),
-                    roomSpec.name + " 배경에 현재 방 렌더링 제한이 없다.");
+                Assert.IsNotNull(background.GetComponent<CameraLockedRoomBackground>());
+
+                foreach (var legacy in new[] { "BG_Far", "BG_Mid", "FG_Overlay" })
+                    Assert.IsNull(art.Find(legacy), roomSpec.name + "/" + legacy + "는 빠져야 한다.");
+                Assert.IsNull(room.transform.Find("MotionBack"), roomSpec.name + "/MotionBack은 빠져야 한다.");
+                Assert.IsNull(room.transform.Find("MotionFront"), roomSpec.name + "/MotionFront는 빠져야 한다.");
             }
         }
     }

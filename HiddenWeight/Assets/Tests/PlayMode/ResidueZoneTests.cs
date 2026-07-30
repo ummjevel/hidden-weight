@@ -151,8 +151,13 @@ namespace HiddenWeight.Tests
             var player = PlayerController.Instance;
             var progress = GameManager.Instance.Progress;
 
-            // 되감기 파편(방 로컬 10,4)을 밟는다.
-            var fragmentPos = (Vector2)room.WorldBounds.min + new Vector2(10f, 4f);
+            // 배치 좌표가 바뀌어도 실제 되감기 파편을 찾아 밟는다.
+            StoryFragment skillFragment = null;
+            foreach (var fragment in Object.FindObjectsByType<StoryFragment>(FindObjectsSortMode.None))
+                if (fragment.FragmentId == "residue_skill") skillFragment = fragment;
+            Assert.IsNotNull(skillFragment, "R05에 되감기 파편이 없다.");
+
+            var fragmentPos = (Vector2)skillFragment.transform.position;
             player.TeleportTo(fragmentPos + new Vector2(3f, 2f));
             yield return new WaitForFixedUpdate();
             player.TeleportTo(fragmentPos);

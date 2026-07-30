@@ -936,9 +936,9 @@ namespace HiddenWeight.EditorTools
                 "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
             BuildTutorialHint(c.Root.transform, c.P(11f, 6f), "K 홀드  —  되감기");
 
-            // 대상 1: 원래 자리는 턱 중간 높이(11,4.5)다. 시작하면 중력으로 바닥까지 굴러떨어져
-            // 있고, 되감으면 제자리로 올라가 4유닛 턱을 오르는 디딤돌이 된다.
-            ResidueRewindable(c.Root.transform, c.P(11f, 4.5f));
+            // 대상 1: 바닥 표면 2 → 블록 상단 4 → 턱 표면 6의 두 번 점프로 잇는다.
+            // 중심 4.5에서는 블록 상단이 너무 높아 실제 점프·대시로도 측면에 걸렸다.
+            ResidueRewindable(c.Root.transform, c.P(11f, 3.5f));
             // 대상 2: 끊어진 다리 조각. 원래 자리는 틈 한가운데 공중이라, 복원해야 발판이 생긴다.
             ResidueRewindable(c.Root.transform, c.P(20f, 6.5f));
             // 대상 3: R03 숏컷 A를 여는 사슬장치.
@@ -960,8 +960,8 @@ namespace HiddenWeight.EditorTools
             c.Floor(8, 20, 7);
             c.Floor(20, 32, 5);   // 출구 (32,5)
 
-            // 필수 대상. 원래 자리(7, 4.5)로 복원하면 5유닛 턱을 오르는 디딤돌이 된다.
-            ResidueRewindable(c.Root.transform, c.P(7f, 4.5f));
+            // 필수 대상. 바닥 표면 2와 상층 표면 7의 중간에 블록 상단 4.5를 둔다.
+            ResidueRewindable(c.Root.transform, c.P(7f, 4f));
 
             // 매복 적. 착지점 좌우 3유닛은 비워 둔다.
             BuildResidueEnemy(c.Root.transform, c.P(18f, 11f), ResidueEnemyKind.Finger);
@@ -1209,15 +1209,51 @@ namespace HiddenWeight.EditorTools
                     BossController.Move.GroundSweep, BossController.Move.Projectile,
                     BossController.Move.Slam, BossController.Move.Charge,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.5f, 0.42f, 0.55f));
+                new[] { 0.6f, 0.3f }, new Color(0.5f, 0.42f, 0.55f),
+                new[]
+                {
+                    ("InstructorRecover", 10f, true), ("InstructorBlade", 14f, false),
+                    ("InstructorHook", 14f, false), ("InstructorSlam", 12f, false),
+                    ("InstructorHurt", 16f, false), ("InstructorPhase", 12f, false),
+                    ("InstructorDeath", 10f, false),
+                }, "InstructorTorso");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
 
+            var arenaRewindables = new List<Rewindable>();
+            foreach (var rewindable in c.Root.GetComponentsInChildren<Rewindable>(true))
+                if (new Bounds(c.P(15f, 9f), new Vector3(30f, 18f, 1f)).Contains(rewindable.transform.position))
+                    arenaRewindables.Add(rewindable);
+            SetField(boss.GetComponent<BossController>(), "arenaRewindables", p =>
+            {
+                p.arraySize = arenaRewindables.Count;
+                for (int i = 0; i < arenaRewindables.Count; i++)
+                    p.GetArrayElementAtIndex(i).objectReferenceValue = arenaRewindables[i];
+            });
+
+            var bossController = boss.GetComponent<BossController>();
+            SetField(bossController, "idleClip", p => p.stringValue = "InstructorRecover");
+            SetField(bossController, "sweepClip", p => p.stringValue = "InstructorBlade");
+            SetField(bossController, "chargeClip", p => p.stringValue = "InstructorHook");
+            SetField(bossController, "slamClip", p => p.stringValue = "InstructorSlam");
+            SetField(bossController, "projectileClip", p => p.stringValue = "InstructorHook");
+            SetField(bossController, "phaseClip", p => p.stringValue = "InstructorPhase");
+
             var reward = BuildRewardChest(c.Root.transform, "residue_r12_boss", c.P(15f, 4.5f), 60, true);
-            BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,
+            var finalEncounter = BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,
                 new[] { new[] { boss } }, new int[0], reward, null);
 
+            var core = BuildStoryFragment(c.Root.transform, c.P(24f, 4.5f), "residue_core",
+                "가르치려던 목소리가 멎자, 남은 것은 내가 고른 기억뿐이었다.", EmotionId.None, false);
+            core.SetActive(false);
+            SetField(finalEncounter, "victoryObjects", p =>
+            {
+                p.arraySize = 1;
+                p.GetArrayElementAtIndex(0).objectReferenceValue = core;
+            });
+
             // 승리 후 열리는 응시 지역 통로.
-            BuildZoneTrigger(c.Root.transform, c.P(28f, 5f), new Vector2(2f, 3f), false);
+            var exit = BuildZoneTrigger(c.Root.transform, c.P(28f, 5f), new Vector2(2f, 3f), false);
+            SetField(exit.GetComponent<ZoneTrigger>(), "requiredEncounterId", p => p.stringValue = "residue_r12_boss");
 
             c.Room("Room12", 30f, 18f);
             BuildBoundary(c.Root.transform, "Zone_EastBoundary", c.P(30.5f, 0f).x);

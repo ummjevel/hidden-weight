@@ -63,6 +63,11 @@ namespace HiddenWeight.EditorTools
                         Columns = 3, Rows = 2, Pivot = new Vector2(0.5f, 0.5f),
                         Names = new[] { "Watcher_Idle", "Watcher_SweepAnticipation", "Watcher_ChargeAnticipation",
                                         "Watcher_ChargeImpact", "Watcher_DropAttack", "Watcher_Hurt" } },
+            new Sheet { Path = "Gameplay/Bosses/MemoryInstructor_Parts_v1.png",
+                        Columns = 3, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        Names = new[] { "InstructorTorso", "InstructorHead", "InstructorRoot",
+                                        "InstructorBladeArm", "InstructorHookArm", "InstructorHalo",
+                                        "InstructorChain", "InstructorHookChain", "InstructorSafetyPlatform" } },
 
             // --- 애니메이션 시트 (행 = 클립, 열 = 프레임) ---
             // 이름은 "클립_00" 형식이라 런타임에서 클립 단위로 모을 수 있다.
@@ -101,6 +106,12 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Reactions_v1.png",
                         Columns = 6, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "WatcherAnimDrop", "WatcherAnimHurt", "WatcherAnimDeath" } },
+            new Sheet { Path = "Gameplay/Bosses/Animation/MemoryInstructor_Attacks_v1.png",
+                        Columns = 8, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "InstructorBlade", "InstructorHook", "InstructorSlam", "InstructorRecover" } },
+            new Sheet { Path = "Gameplay/Bosses/Animation/MemoryInstructor_Reactions_v1.png",
+                        Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "InstructorHurt", "InstructorPhase", "InstructorDeath" } },
 
             new Sheet { Path = "Environment/Interactables/Animation/RewindPlatforms_Animation_v1.png",
                         Columns = 8, Rows = 3, Pivot = new Vector2(0.5f, 0f),
@@ -181,6 +192,15 @@ namespace HiddenWeight.EditorTools
 
             AssetDatabase.Refresh();
             Debug.Log($"[ResidueArtSlicer] 시트 {sliced}개 분할 완료");
+        }
+
+        // CI/배치 검증에서 아트 분할과 씬 재생성을 한 Unity 프로세스 안에서 끝낸다.
+        // 라이선스 클라이언트 초기화가 느린 환경에서도 두 번 부팅하지 않게 하는 진입점이다.
+        [MenuItem("Hidden Weight/Build Residue Zone From Source Art")]
+        public static void PrepareFullScene()
+        {
+            SliceAll();
+            ZoneSceneBuilder.RunResidueZone();
         }
 
         static SpriteMetaData[] BuildRects(int width, int height, Sheet sheet)

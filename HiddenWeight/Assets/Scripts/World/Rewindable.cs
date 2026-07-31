@@ -29,14 +29,26 @@ namespace HiddenWeight.World
         // "복원이 세계를 바꾼다"는 연결을 만든다(RESIDUE_LEVEL_DESIGN.md 숏컷 A/B).
         // 여러 개를 요구하는 숏컷(R08 도르래 2개)은 requiredSiblings로 함께 묶는다.
         [SerializeField] Shortcut linkedShortcut;
+        // 방이 씬으로 갈라진 뒤로 되감기 대상과 숏컷은 서로 다른 씬에 산다(R05→R03, R08→R03).
+        // 유니티는 씬을 넘는 오브젝트 참조를 저장하지 못해 위 필드가 null로 구워지므로,
+        // 오브젝트가 없어도 여는 길을 id로 하나 더 둔다. 저장 계층은 이미 id 기반이다.
+        [SerializeField] string linkedShortcutId;
         [SerializeField] Rewindable[] requiredSiblings;
 
         // 이미 초기 상태면 false. 위치 변화만 비교한다.
         public bool CanRewind => Vector3.SqrMagnitude(transform.position - _initialPosition) > 0.0001f;
 
         public void ConfigureLinkedShortcut(Shortcut shortcut, params Rewindable[] siblings)
+            => ApplyLink(shortcut, null, siblings);
+
+        // 같은 씬에 숏컷 오브젝트가 없을 때 쓰는 연결. 여는 대상을 id로만 지정한다.
+        public void ConfigureLinkedShortcut(string shortcutId, params Rewindable[] siblings)
+            => ApplyLink(null, shortcutId, siblings);
+
+        void ApplyLink(Shortcut shortcut, string shortcutId, Rewindable[] siblings)
         {
             linkedShortcut = shortcut;
+            linkedShortcutId = shortcutId;
             requiredSiblings = siblings;
 
             // 런타임 연결은 Start 이후에 설정될 수 있다. 이전 방문에서 이미 복원된 대상이면
@@ -104,13 +116,24 @@ namespace HiddenWeight.World
         // 묶인 대상이 전부 복원됐을 때만 숏컷을 연다.
         void TryOpenLinkedShortcut()
         {
-            if (linkedShortcut == null) return;
-
+            // 게이트 판정을 먼저 한다. 오브젝트 참조가 비어 있다고 여기서 빠져나가면
+            // id로 여는 길까지 함께 막힌다.
             if (requiredSiblings != null)
                 foreach (var sibling in requiredSiblings)
                     if (sibling != null && sibling.CanRewind) return; // 아직 안 돌아온 것이 있다
 
-            linkedShortcut.Open();
+            if (linkedShortcut != null)
+            {
+                linkedShortcut.Open();
+                return;
+            }
+
+            // 숏컷이 다른 방 씬에 있어 지금 메모리에 없는 경우다. 진행 상태에만 열림을 남긴다.
+            // 개방 효과음과 봉인 애니메이션은 일부러 생략한다 — 플레이어가 서 있지도 않은 방의
+            // 소리는 어디서 났는지 알 수 없고, 로드되지 않은 씬의 연출은 재생할 수도 없다.
+            // 그 방에 다음에 들어설 때 Shortcut.Start가 저장값을 읽어 이미 열린 채로 맞이한다.
+            if (!string.IsNullOrEmpty(linkedShortcutId) && GameManager.Instance != null)
+                GameManager.Instance.Progress.MarkShortcutOpen(linkedShortcutId);
         }
 
         void Freeze()

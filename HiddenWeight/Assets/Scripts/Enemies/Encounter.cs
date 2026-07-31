@@ -34,6 +34,9 @@ namespace HiddenWeight.Enemies
         [SerializeField] GameObject[] lockObjects;  // 전투 중에만 켜지는 잠금 콜라이더
         [SerializeField] RewardChest victoryReward;
         [SerializeField] Shortcut victoryShortcut;
+        // 숏컷이 다른 방 씬에 있으면 오브젝트 참조가 null로 구워진다(R10 보스 → R07 숏컷 C).
+        // 그때는 id만으로 진행 상태에 열림을 남긴다 — Rewindable.linkedShortcutId와 같은 계약이다.
+        [SerializeField] string victoryShortcutId;
         [SerializeField] GameObject[] victoryObjects;
         [SerializeField] string displayName = "보스";
 
@@ -89,7 +92,7 @@ namespace HiddenWeight.Enemies
             {
                 DeactivateAll();
                 _finished = true;
-                if (victoryShortcut != null) victoryShortcut.Open();
+                OpenVictoryShortcut();
                 if (victoryObjects != null)
                     foreach (var target in victoryObjects)
                         if (target != null) target.SetActive(true);
@@ -184,12 +187,21 @@ namespace HiddenWeight.Enemies
                 GameManager.Instance.Progress.MarkEncounterCleared(encounterId);
 
             if (victoryReward != null) victoryReward.Give();
-            if (victoryShortcut != null) victoryShortcut.Open();
+            OpenVictoryShortcut();
             if (victoryObjects != null)
                 foreach (var target in victoryObjects)
                     if (target != null) target.SetActive(true);
             foreach (var target in _runtimeVictoryObjects)
                 if (target != null) target.SetActive(true);
+        }
+
+        // 같은 씬에 있으면 연출과 효과음까지, 다른 씬에 있으면 저장값만. 없는 씬의 봉인
+        // 애니메이션은 재생할 수 없고, 플레이어가 없는 방의 개방음은 길잡이가 되지 못한다.
+        void OpenVictoryShortcut()
+        {
+            if (victoryShortcut != null) { victoryShortcut.Open(); return; }
+            if (!string.IsNullOrEmpty(victoryShortcutId) && GameManager.Instance != null)
+                GameManager.Instance.Progress.MarkShortcutOpen(victoryShortcutId);
         }
 
         void ResetEncounter()

@@ -155,13 +155,14 @@ namespace HiddenWeight.EditorTools
         static Shortcut _shortcutA;
         static Shortcut _shortcutB;
 
-        // 되감기 대상에 "복원되면 이 숏컷을 연다"를 연결한다.
-        static void LinkRewindToShortcut(GameObject rewindable, Shortcut shortcut, params GameObject[] siblings)
+        // 되감기 대상에 "복원되면 이 숏컷을 연다"를 연결한다. 오브젝트가 아니라 숏컷 id를 굽는다 —
+        // 대상과 숏컷이 서로 다른 방 씬에 있어 씬을 넘는 참조는 저장되지 않기 때문이다.
+        static void LinkRewindToShortcut(GameObject rewindable, string shortcutId, params GameObject[] siblings)
         {
             var component = rewindable.GetComponent<Rewindable>();
-            if (component == null || shortcut == null) return;
+            if (component == null || string.IsNullOrEmpty(shortcutId)) return;
 
-            SetField(component, "linkedShortcut", p => p.objectReferenceValue = shortcut);
+            SetField(component, "linkedShortcutId", p => p.stringValue = shortcutId);
             if (siblings == null || siblings.Length == 0) return;
 
             SetField(component, "requiredSiblings", p =>
@@ -240,7 +241,7 @@ namespace HiddenWeight.EditorTools
         // advanceWhenRemaining[k]는 waves[k+1]이 열리는 "이전 단계 잔존 수" 조건이다(-1이면 시간만).
         static Encounter BuildEncounter(Transform parent, string id, Vector2 center, Vector2 size, bool oneTime,
                                         GameObject[][] waves, int[] advanceWhenRemaining,
-                                        RewardChest reward, Shortcut shortcut)
+                                        RewardChest reward, Shortcut shortcut, string shortcutId = null)
         {
             var go = new GameObject($"Encounter_{id}");
             go.transform.SetParent(parent, false);
@@ -290,6 +291,8 @@ namespace HiddenWeight.EditorTools
             });
             if (reward != null) SetField(encounter, "victoryReward", p => p.objectReferenceValue = reward);
             if (shortcut != null) SetField(encounter, "victoryShortcut", p => p.objectReferenceValue = shortcut);
+            if (!string.IsNullOrEmpty(shortcutId))
+                SetField(encounter, "victoryShortcutId", p => p.stringValue = shortcutId);
 
             return encounter;
         }
@@ -1041,10 +1044,9 @@ namespace HiddenWeight.EditorTools
             // 블록 상단 y=4를 밟은 뒤 1유닛 더 올라가므로 밑면에 머리가 걸리지 않는다.
             var primary = ResidueRewindable(c.Root.transform, c.P(10.5f, 3.5f));
             primary.name = "R05_PrimaryRestore";
-            // 숏컷 A는 R03 씬에 있다. 씬을 넘는 오브젝트 참조는 저장할 수 없어 이 연결은 지금
-            // 비어 있다(_shortcutA가 null이라 조용히 건너뛴다) — 되감아도 R03 사슬다리가 열리지
-            // 않는다. 되살리려면 오브젝트가 아니라 숏컷 id로 여는 길이 필요하다(설계 9.1).
-            LinkRewindToShortcut(primary, _shortcutA);
+            // 숏컷 A는 R03 씬에 있다. 오브젝트 참조 대신 id를 구워, 되감는 순간 진행 상태에
+            // 열림을 남긴다. R03에 다시 들어서면 사슬다리가 이미 내려와 있다.
+            LinkRewindToShortcut(primary, "residue_shortcut_a");
 
             // 선택 대상: 끊어진 다리 조각. 복원하면 위쪽 재화 가지를 편하게 건넌다.
             ResidueRewindable(c.Root.transform, c.P(20f, 6.5f));
@@ -1173,9 +1175,9 @@ namespace HiddenWeight.EditorTools
             var pulleyB = ResidueRewindable(c.Root.transform, c.P(19f, 26f));
             pulleyA.name = "R08_PulleySafe";
             pulleyB.name = "R08_PulleyFast";
-            // 숏컷 B는 R03 씬에 있다 — R05의 숏컷 A와 같은 이유로 지금은 연결되지 않는다(설계 9.1).
-            LinkRewindToShortcut(pulleyA, _shortcutB);
-            LinkRewindToShortcut(pulleyB, _shortcutB);
+            // 숏컷 B도 R03 씬에 있어 R05의 숏컷 A와 같이 id로 연결한다.
+            LinkRewindToShortcut(pulleyA, "residue_shortcut_b");
+            LinkRewindToShortcut(pulleyB, "residue_shortcut_b");
 
             c.Room("Room08", 24f, 30f);
         }
@@ -1254,9 +1256,10 @@ namespace HiddenWeight.EditorTools
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
             // 입장 후 2초 관찰 뒤 출구 잠금. 승리하면 잠금 해제 + 큰 재화.
-            // 숏컷 C는 R07 씬에 있어 지금은 연결되지 않는다 — R05·R08과 같은 이유다(설계 9.1).
+            // 숏컷 C를 여는 것은 이 보스의 승리다(LEVEL_21_RESIDUE_ROOMS.md R10 "승리 후 R07 숏컷").
+            // 숏컷 자체는 R07 씬에 있으므로 오브젝트가 아니라 id로 연결한다.
             BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
-                new[] { new[] { boss } }, new int[0], reward, _shortcutC);
+                new[] { new[] { boss } }, new int[0], reward, _shortcutC, "residue_shortcut_c");
 
             c.Room("Room10", 24f, 18f);
         }
@@ -1284,10 +1287,27 @@ namespace HiddenWeight.EditorTools
             BuildDecor(c.Root.transform, "R11_S3_Hint", c.P(14f, 10f), new Vector2(2f, 2f),
                 "Tile", new Color(0.32f, 0.3f, 0.4f));
 
-            // S3 비밀방 문 앞을 막는 되감기 게이트. 예전 샤프트 입구에 있던 것을 그대로 옮겼다.
-            // 문의 파라미터가 아니라 별개 블로커라 RoomDoor에 잠금이 없어도 그대로 산다(설계 9.1).
+            // S3로 오르는 서쪽 계단. R12로 가는 길(발판 13.5·18)에서 완전히 떨어진 서쪽 바닥
+            // (x 0~10, 표면 y=3) 위에만 세운다 — 되감기 게이트를 R12 동선에 놓지 않으려면
+            // 비밀방 가지가 주 동선과 물리적으로 갈라져 있어야 한다.
+            // 발판 콜라이더는 3x0.5, 중심 기준이라 윗면 = y+0.25, 아랫면 = y-0.25다.
+            //   1단 (3, 5.0)   : 윗면 5.25. 바닥 3 → 2.25 상승(점프 2.72, 여유 0.47).
+            //                    아랫면 4.75 > 바닥 위 몸통 상단 4.4라 밑을 걸어 지나갈 수 있다.
+            //   2단 (7, 7.2)   : 윗면 7.45. 1단 5.25 → 2.20 상승(여유 0.52).
+            //                    가로 간격 1단 오른끝 4.5 → 2단 왼끝 5.5 = 1.0. 2.2 오르는 데
+            //                    0.21초, 걷기 6로도 1.27 나아가므로 넉넉하다.
+            BuildSafePlatform(c.Root.transform, c.P(3f, 5f));
+            BuildSafePlatform(c.Root.transform, c.P(7f, 7.2f));
+
+            // S3 문 앞을 막는 되감기 게이트. 블로커는 1x3 중심 기준이라 x 4.0~5.0, y 5.25~8.25를
+            // 차지한다. 1단 윗면(5.25)에 밑을 붙여 세워 아래로 빠져나갈 틈이 없고, 윗면 8.25는
+            // 1단에서 뛰어 닿는 최고 발높이 7.97보다 높아 넘어갈 수도 없다. 오른끝 5.0은 2단
+            // 왼끝 5.5와 맞물려, 열리기 전에는 2단에 올라설 방법이 아예 없다(2단은 바닥에서
+            // 4.45 위라 직접 못 뛴다).
+            // R12 동선은 막지 않는다 — 게이트 밑면 5.25는 서쪽 바닥을 걷는 몸통 상단 4.4보다
+            // 0.85 높고, 게이트는 x 4~5라 R12로 가는 발판(x 12~15, 16.5~19.5)과 닿지 않는다.
             // 이 게이트가 "균열 클리어 후 잔재 재방문"을 성립시킨다(LEVEL_00_INDEX.md §0).
-            BuildGate(c.Root.transform, c.P(14f, 11f), EmotionId.Rewind, true);
+            BuildGate(c.Root.transform, c.P(4.5f, 6.75f), EmotionId.Rewind, true);
 
             c.Room("Room11", 28f, 16f);
         }

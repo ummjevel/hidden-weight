@@ -289,7 +289,7 @@ ls HiddenWeight/Assets/Scenes/*.unity
 
 | 지역 | 진입점 | 결과 씬 | 제작 기준 문서 |
 |---|---|---|---|
-| 잔재 | `ZoneSceneBuilder.RunResidueZone` | `Zone_Residue_Full` | `docs/LEVEL_21_RESIDUE_ROOMS.md` |
+| 잔재 | `ZoneSceneBuilder.BuildResidueRooms` | `Room_Residue_R01`~`_S3` 15개 + 셸 `Zone_Residue` | `docs/LEVEL_21_RESIDUE_ROOMS.md` |
 | 응시 | `ZoneSceneBuilder.RunGazeZone` | `Zone_Gaze_Full` | `docs/LEVEL_30_GAZE_DESIGN.md` |
 | 균열 | `ZoneSceneBuilder.RunFractureZone` | `Zone_Fracture_Full` | `docs/LEVEL_40_FRACTURE_DESIGN.md` |
 

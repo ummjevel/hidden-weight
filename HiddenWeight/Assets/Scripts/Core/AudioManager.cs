@@ -107,10 +107,6 @@ namespace HiddenWeight.Core
         {
             var clips = ClipsFor(cue);
 
-            // 벽점프 전용음이 완성되기 전까지 일반 점프음을 재사용한다.
-            if (clips.Length == 0 && cue == SfxCue.WallJump)
-                clips = ClipsFor(SfxCue.Jump);
-
             if (clips.Length == 0) return ProceduralSfx.For(cue);
             if (clips.Length == 1)
             {
@@ -233,9 +229,34 @@ namespace HiddenWeight.Core
 
     public enum SfxCue
     {
-        UiConfirm, Checkpoint, Fragment, Ability, Attack, Jump, Dash, Hurt,
-        RewindStart, RewindComplete, ShortcutOpen, EnemyHit, EnemyDeath,
-        BossTelegraph, BossPhase, BossVictory
+        UiConfirm,
+        Checkpoint,
+        Fragment,
+        Ability,
+        Attack,
+        AttackHit,
+        Jump,
+        WallJump,
+        Dash,
+        Land,
+        FootstepWalk,
+        FootstepRun,
+        WallGrab,
+        WallSlide,
+        Hurt,
+        Death,
+        Respawn,
+        Heal,
+        ItemPickup,
+        Reward,
+        RewindStart,
+        RewindComplete,
+        ShortcutOpen,
+        EnemyHit,
+        EnemyDeath,
+        BossTelegraph,
+        BossPhase,
+        BossVictory
     }
 
     static class ProceduralSfx

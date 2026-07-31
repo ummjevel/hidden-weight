@@ -76,6 +76,31 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator Camera_FollowsPlayerToRoomEdgeAndRevealsNextPath()
+        {
+            yield return RoomTestHarness.EnterRoom("Residue", "R01");
+
+            var roomCamera = RoomCamera.Instance;
+            var room = roomCamera.CurrentRoom;
+            var camera = roomCamera.GetComponent<Camera>();
+            Assert.That(room, Is.Not.Null);
+
+            // 문 트리거를 직접 밟으면 다른 씬으로 넘어가므로, 문 앞에서 카메라가 다음
+            // 통로를 이미 보여 주는지를 확인한다.
+            var edge = new Vector3(room.WorldBounds.max.x - 2f, 4f, 0f);
+            PlayerController.Instance.TeleportTo(edge);
+            roomCamera.SnapToPlayer();
+            yield return null;
+
+            float cameraRight = roomCamera.transform.position.x
+                + camera.orthographicSize * camera.aspect;
+            Assert.That(cameraRight, Is.GreaterThan(room.WorldBounds.max.x + 2f),
+                "방 끝에서 다음 통로를 미리 보여 주지 않아 플레이어만 화면 밖으로 나간다.");
+            Assert.That(Mathf.Abs(roomCamera.transform.position.x - edge.x), Is.LessThan(1f),
+                "방 경계에서 카메라가 플레이어를 따라오지 않는다.");
+        }
+
+        [UnityTest]
         public IEnumerator MissingRoom_LeavesPlayerAndRestoresInput()
         {
             yield return RoomTestHarness.EnterRoom("Residue", "R01");

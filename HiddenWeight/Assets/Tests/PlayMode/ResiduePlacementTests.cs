@@ -69,6 +69,56 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 벽타기_굴뚝의_충돌면이_눈에_보인다()
+        {
+            ResetProgress();
+            yield return SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
+            yield return null;
+
+            foreach (string wallName in new[]
+                     {
+                         "R04_Chimney_L", "R04_Chimney_R",
+                         "R08_Chimney_L", "R08_Chimney_R",
+                         "R12_Wall_L", "R12_Wall_R",
+                     })
+            {
+                var wall = GameObject.Find(wallName);
+                Assert.IsNotNull(wall, wallName + " 벽 충돌체가 없다.");
+                var visual = wall.transform.Find("WallClimbSurfaces_Runtime");
+                Assert.IsNotNull(visual, wallName + "에 보이는 벽타기 표면이 없다.");
+                Assert.IsNotNull(visual.Find("WallClimbSurface"), wallName + "의 세로 면이 없다.");
+                Assert.IsTrue(visual.Find("WallClimbEdgeLeft").GetComponent<SpriteRenderer>().enabled,
+                    wallName + "의 왼쪽 테두리가 보이지 않는다.");
+                Assert.IsTrue(visual.Find("WallClimbEdgeRight").GetComponent<SpriteRenderer>().enabled,
+                    wallName + "의 오른쪽 테두리가 보이지 않는다.");
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator K홀드_구간의_타일맵_세로턱이_눈에_보인다()
+        {
+            ResetProgress();
+            yield return SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
+            yield return null;
+
+            var skillFragment = System.Array.Find(
+                Object.FindObjectsByType<StoryFragment>(FindObjectsSortMode.None),
+                fragment => fragment.FragmentId == "residue_skill");
+            Assert.IsNotNull(skillFragment, "K 홀드 구간의 되감기 파편이 없다.");
+
+            bool foundTallWall = false;
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None))
+            {
+                if (renderer.name != "TraversalWallEdge") continue;
+                if (Vector2.Distance(renderer.bounds.center, skillFragment.transform.position) > 8f) continue;
+                if (renderer.bounds.size.y >= 2.5f) foundTallWall = true;
+            }
+
+            Assert.IsTrue(foundTallWall,
+                "K 홀드 안내 옆의 3유닛 턱에 보이는 세로 벽면이 만들어지지 않았다.");
+        }
+
+        [UnityTest]
         public IEnumerator 새_지역에서_되감기가_대상을_되돌린다()
         {
             ResetProgress();
@@ -107,6 +157,20 @@ namespace HiddenWeight.Tests
                 if (d < best) { best = d; target = rewindable; }
             }
             Assert.IsNotNull(target, "밀려난 되감기 대상이 하나도 없다 — 되감을 것이 없다.");
+
+            Transform outline = null;
+            Transform marker = null;
+            foreach (var child in target.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == "RewindOutline") outline = child;
+                if (child.name == "RewindTargetMarker") marker = child;
+            }
+            Assert.IsNotNull(outline, "K 홀드 대상에 실제 외형을 따르는 골드 강조가 없다.");
+            Assert.IsNotNull(marker, "K 홀드 대상 위에 위치 표식이 없다.");
+            Assert.IsTrue(outline.GetComponent<SpriteRenderer>().enabled,
+                "되감기 가능한데 골드 강조가 보이지 않는다.");
+            Assert.IsTrue(marker.GetComponent<MeshRenderer>().enabled,
+                "되감기 가능한데 대상 위치 표식이 보이지 않는다.");
 
             // 대상 옆에 서서 채널링한다.
             var displaced = target.transform.position;

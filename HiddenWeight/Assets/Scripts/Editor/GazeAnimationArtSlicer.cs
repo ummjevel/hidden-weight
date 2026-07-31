@@ -164,12 +164,30 @@ namespace HiddenWeight.EditorTools
         {
             int cellWidth = width / Columns;
             int cellHeight = height / sheet.Rows;
+            bool fixMouthVerticalBleed = sheet.Path.EndsWith("InformingMouth_v1.png");
             var sprites = new List<SpriteMetaData>(Columns * sheet.Rows);
 
             for (int row = 0; row < sheet.Rows; row++)
             {
+                // 밀고하는 입은 원본 그림이 각 170px 행 아래로 약 20px씩 넘쳐 있다.
+                // 균등 분할하면 이전 행의 꼬리가 다음 프레임 위에 사각 조각으로 붙고 본체
+                // 하단은 잘린다. 첫 행은 아래 여백까지 넓히고, 이후 행은 창을 20px 내린다.
+                int cropTop = row * cellHeight;
+                int cropHeight = cellHeight;
+                if (fixMouthVerticalBleed)
+                {
+                    const int bleed = 20;
+                    if (row == 0)
+                        cropHeight += bleed;
+                    else
+                    {
+                        cropTop += bleed;
+                        if (row == sheet.Rows - 1) cropHeight -= bleed;
+                    }
+                }
+
                 // 문서는 맨 위를 1행으로 적고 Unity 텍스처 좌표는 아래가 0이라 여기서 뒤집는다.
-                int y = height - (row + 1) * cellHeight;
+                int y = height - cropTop - cropHeight;
 
                 for (int column = 0; column < Columns; column++)
                 {
@@ -180,7 +198,7 @@ namespace HiddenWeight.EditorTools
                     sprites.Add(new SpriteMetaData
                     {
                         name = name,
-                        rect = new Rect(column * cellWidth, y, cellWidth, cellHeight),
+                        rect = new Rect(column * cellWidth, y, cellWidth, cropHeight),
                         alignment = (int)SpriteAlignment.Custom,
                         pivot = sheet.Pivot,
                     });

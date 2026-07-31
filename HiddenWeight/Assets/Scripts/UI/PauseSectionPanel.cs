@@ -68,9 +68,9 @@ namespace HiddenWeight.UI
 
         void BuildMap()
         {
-            _title.text = "지나온 공간";
+            _title.text = "전체 지역 지도";
             var progress = GameManager.Instance != null ? GameManager.Instance.Progress : null;
-            if (progress == null || progress.VisitedRooms.Count == 0)
+            if (progress == null)
             {
                 _body.text = "아직 기억에 남은 방이 없습니다.\n공간을 지나면 이곳에 흔적이 이어집니다.";
                 return;
@@ -80,9 +80,16 @@ namespace HiddenWeight.UI
                 && HiddenWeight.World.RoomCamera.Instance.CurrentRoom != null
                 ? HiddenWeight.World.RoomCamera.Instance.CurrentRoom.gameObject.name : string.Empty;
 
-            if (GameManager.Instance.Progress.CurrentZone == ZoneId.Residue)
+            ZoneId currentZone = GameManager.Instance.Progress.CurrentZone;
+            if (currentZone == ZoneId.Residue || currentZone == ZoneId.Gaze || currentZone == ZoneId.Fracture)
             {
-                BuildResidueMap(progress, currentRoom);
+                BuildFullZoneMap(progress, currentRoom, currentZone);
+                return;
+            }
+
+            if (progress.VisitedRooms.Count == 0)
+            {
+                _body.text = "아직 기억에 남은 방이 없습니다.\n공간을 지나면 이곳에 흔적이 이어집니다.";
                 return;
             }
 
@@ -96,15 +103,15 @@ namespace HiddenWeight.UI
             for (int i = 0; i < rooms.Count; i++)
             {
                 string room = rooms[i];
-                string zone = ZonePart(room);
-                if (zone != lastZone)
+                string zonePart = ZonePart(room);
+                if (zonePart != lastZone)
                 {
-                    CreateSectionLabel(ZoneDisplayName(zone));
-                    lastZone = zone;
+                    CreateSectionLabel(ZoneDisplayName(zonePart));
+                    lastZone = zonePart;
                 }
 
                 bool current = !string.IsNullOrEmpty(currentRoom) && room.EndsWith("/" + currentRoom);
-                CreateMapNode(room, current, i > 0 && ZonePart(rooms[i - 1]) == zone);
+                CreateMapNode(room, current, i > 0 && ZonePart(rooms[i - 1]) == zonePart);
             }
 
             CreateSectionLabel("열린 지름길  " + progress.OpenedShortcutCount
@@ -112,28 +119,25 @@ namespace HiddenWeight.UI
                 + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
         }
 
-        void BuildResidueMap(ProgressState progress, string currentRoom)
+        void BuildFullZoneMap(ProgressState progress, string currentRoom, ZoneId zone)
         {
             _body.text = string.Join("\n", progress.VisitedRooms);
             _body.enabled = false;
-            CreateSectionLabel("과거 · 잔재    R01 → R12");
+            CreateSectionLabel(ZoneDisplayName(zone.ToString()) + "    R01 → R12");
 
             var visited = new HashSet<string>(progress.VisitedRooms
-                .Where(id => id.StartsWith("Residue/"))
-                .Select(id => id.Substring(id.IndexOf('/') + 1)));
-            string[] main = { "Room01", "Room02", "Room03", "Room04", "Room05", "Room06",
-                              "Room07", "Room08", "Room09", "Room10", "Room11", "Room12" };
+                .Where(id => id.StartsWith(zone + "/")));
+            string prefix = zone == ZoneId.Residue ? string.Empty : zone.ToString();
 
-            bool previousVisible = false;
-            foreach (string room in main)
+            for (int i = 1; i <= 12; i++)
             {
-                if (!visited.Contains(room)) continue;
-                CreateMapNode("Residue/" + room, room == currentRoom, previousVisible);
-                previousVisible = true;
+                string room = prefix + "Room" + i.ToString("00");
+                string roomId = zone + "/" + room;
+                CreateMapNode(roomId, room == currentRoom, i > 1, visited.Contains(roomId));
 
-                if (room == "Room04") CreateSecretBranch(visited, "Secret01", "R04 아래 · 납골당", currentRoom);
-                if (room == "Room06") CreateSecretBranch(visited, "Secret02", "R06 되감기 길 · 죄인의 심층", currentRoom);
-                if (room == "Room11") CreateSecretBranch(visited, "Secret03", "R11 위 · 감춰진 눈", currentRoom);
+                if (i == 4) CreateSecretBranch(visited, zone, prefix + "Secret01", "R04 분기 · 비밀 1", currentRoom);
+                if (i == 6) CreateSecretBranch(visited, zone, prefix + "Secret02", "R06 분기 · 비밀 2", currentRoom);
+                if (i == 11) CreateSecretBranch(visited, zone, prefix + "Secret03", "R11 분기 · 비밀 3", currentRoom);
             }
 
             CreateSectionLabel("지름길 A  R05↔R03    ·    B  R08↔R03    ·    C  R10↔R07");
@@ -142,11 +146,12 @@ namespace HiddenWeight.UI
                 + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
         }
 
-        void CreateSecretBranch(HashSet<string> visited, string room, string label, string currentRoom)
+        void CreateSecretBranch(HashSet<string> visited, ZoneId zone, string room,
+                                string label, string currentRoom)
         {
-            if (!visited.Contains(room)) return;
             CreateSectionLabel("↳  " + label);
-            CreateMapNode("Residue/" + room, room == currentRoom, false);
+            string roomId = zone + "/" + room;
+            CreateMapNode(roomId, room == currentRoom, false, visited.Contains(roomId));
         }
 
         void BuildJournal()
@@ -269,7 +274,7 @@ namespace HiddenWeight.UI
             _dynamicItems.Add(text.gameObject);
         }
 
-        void CreateMapNode(string roomId, bool current, bool connected)
+        void CreateMapNode(string roomId, bool current, bool connected, bool discovered = true)
         {
             if (connected)
             {
@@ -285,7 +290,7 @@ namespace HiddenWeight.UI
             row.transform.SetParent(_content, false);
             row.AddComponent<Image>().color = current
                 ? new Color(UIBuilder.AccentColor.r, UIBuilder.AccentColor.g, UIBuilder.AccentColor.b, 0.34f)
-                : new Color(1f, 1f, 1f, 0.055f);
+                : discovered ? new Color(1f, 1f, 1f, 0.055f) : new Color(0.3f, 0.3f, 0.3f, 0.04f);
             row.AddComponent<LayoutElement>().preferredHeight = 72f;
             var layout = row.AddComponent<HorizontalLayoutGroup>();
             layout.padding = new RectOffset(18, 18, 10, 10);
@@ -299,13 +304,15 @@ namespace HiddenWeight.UI
             var icon = iconGo.AddComponent<Image>();
             icon.preserveAspect = true;
             icon.raycastTarget = false;
-            icon.sprite = MapIcon(current ? 4 : 1);
-            icon.color = icon.sprite != null ? Color.white : UIBuilder.AccentColor;
+            icon.sprite = MapIcon(current ? 4 : discovered ? 1 : 0);
+            icon.color = icon.sprite != null ? (discovered ? Color.white : new Color(1f, 1f, 1f, 0.28f))
+                : (discovered ? UIBuilder.AccentColor : new Color(1f, 1f, 1f, 0.2f));
             var iconLayout = iconGo.AddComponent<LayoutElement>();
             iconLayout.preferredWidth = iconLayout.preferredHeight = 48f;
 
             var label = UIBuilder.CreateText(row.transform, "RoomLabel", 22, TextAnchor.MiddleLeft);
             label.text = RoomDisplayName(roomId) + (current ? "    현재 머무는 곳" : string.Empty);
+            if (!discovered) label.color = new Color(label.color.r, label.color.g, label.color.b, 0.42f);
             label.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
             _dynamicItems.Add(row);
         }
@@ -363,7 +370,12 @@ namespace HiddenWeight.UI
                 case "Secret01": return "S1  납골당";
                 case "Secret02": return "S2  죄인의 심층";
                 case "Secret03": return "S3  감춰진 눈";
-                default: return id;
+                default:
+                    if (id.StartsWith("GazeRoom")) return "R" + id.Substring("GazeRoom".Length) + "  응시 구역";
+                    if (id.StartsWith("GazeSecret")) return "S" + int.Parse(id.Substring("GazeSecret".Length)) + "  응시 비밀 구역";
+                    if (id.StartsWith("FractureRoom")) return "R" + id.Substring("FractureRoom".Length) + "  균열 구역";
+                    if (id.StartsWith("FractureSecret")) return "S" + int.Parse(id.Substring("FractureSecret".Length)) + "  균열 비밀 구역";
+                    return id;
             }
         }
         static string RoomSortKey(string room) => ZonePart(room) + "/" + RoomDisplayName(room).PadLeft(16, '0');

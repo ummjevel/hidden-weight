@@ -16,7 +16,6 @@ namespace HiddenWeight.World
         [SerializeField] float defaultShakeDuration = 0.12f;
         [SerializeField] float defaultShakeMagnitude = 0.06f;
 
-        Camera _cam;
         Vector2 _shakeOffset;
         Coroutine _shakeRoutine;
 
@@ -27,7 +26,6 @@ namespace HiddenWeight.World
         void Awake()
         {
             Instance = this;
-            _cam = GetComponent<Camera>();
         }
 
         void LateUpdate()
@@ -69,15 +67,14 @@ namespace HiddenWeight.World
         {
             if (CurrentRoom == null) return target;
 
-            var half = new Vector2(_cam.orthographicSize * _cam.aspect, _cam.orthographicSize);
             var b = CurrentRoom.WorldBounds;
-            // 룸이 화면보다 작으면 룸 중심에 고정한다.
-            float x = b.size.x <= half.x * 2f
-                ? b.center.x
-                : Mathf.Clamp(target.x, b.min.x + half.x, b.max.x - half.x);
-            float y = b.size.y <= half.y * 2f
-                ? b.center.y
-                : Mathf.Clamp(target.y, b.min.y + half.y, b.max.y - half.y);
+
+            // 화면 전체를 룸 안에 가두면 방 사이의 짧은 통로에서 카메라만 멈춘다.
+            // 플레이어는 화면 끝으로 사라지고 다음 룸 트리거에 닿은 뒤에야 카메라가 크게
+            // 튀는 결과가 된다. 카메라의 '중심'만 룸 안에 두면 가장자리에서 이웃 공간을
+            // 미리 보여 주면서도 현재 룸에서 완전히 벗어나지는 않아 전환이 연속적으로 읽힌다.
+            float x = Mathf.Clamp(target.x, b.min.x, b.max.x);
+            float y = Mathf.Clamp(target.y, b.min.y, b.max.y);
             return new Vector2(x, y);
         }
 

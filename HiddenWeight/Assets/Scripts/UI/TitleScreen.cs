@@ -120,22 +120,18 @@ namespace HiddenWeight.UI
             _settingsButton = UIBuilder.CreateButton(canvasGO.transform, "설정", firstY - 70f, ShowSettings);
             _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", firstY - 140f, ShowCredits);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            BuildQaZoneRow(canvasGO.transform, firstY - 225f);
+            BuildStageRow(canvasGO.transform, firstY - 225f);
             UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 295f, Quit);
-#else
-            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 210f, Quit);
-#endif
 
             _dialog = canvasGO.AddComponent<ConfirmDialog>();
             _sections = canvasGO.AddComponent<PauseSectionPanel>();
         }
 
-        // QA용 지역 바로가기 한 줄. 세로 목록에 끼우면 타이틀 버튼 4개 + 지역 4개가
-        // 화면을 넘어가므로 가로로 눕힌다. CreateButton은 x=0 고정이라 만든 뒤 옮긴다.
-        void BuildQaZoneRow(Transform parent, float y)
+        // 테스트용 단계 바로가기. 정식 진행 저장은 건드리지 않고 해당 단계에 필요한 능력만
+        // 임시로 열어 바로 맵과 전투를 검수할 수 있게 한다.
+        void BuildStageRow(Transform parent, float y)
         {
-            var caption = UIBuilder.CreateText(parent, "지역 바로가기 (QA)", 15);
+            var caption = UIBuilder.CreateText(parent, "단계 선택 · 테스트", 15);
             var captionRt = caption.rectTransform;
             captionRt.anchorMin = captionRt.anchorMax = new Vector2(0.5f, 0.5f);
             captionRt.sizeDelta = new Vector2(400f, 24f);
@@ -144,10 +140,12 @@ namespace HiddenWeight.UI
 
             var zones = new (string label, string scene)[]
             {
-                ("프롤로그", "Zone_Prologue"),
-                ("잔재", "Zone_Residue_Full"),
-                ("응시", "Zone_Gaze_Full"),
-                ("균열", "Zone_Fracture_Full"),
+                // 방별 additive 로딩용 셸(Zone_Residue)은 화면을 암전하고 로컬 좌표로
+                // 순간이동하므로 테스트 플레이에서 방과 방이 끊겨 보인다. 정식 진행 데이터와
+                // 동일한 전체 연결 씬을 사용해야 세 지역 모두 연속 카메라 이동으로 검수된다.
+                ("1단계 · 잔재", "Zone_Residue_Full"),
+                ("2단계 · 응시", "Zone_Gaze_Full"),
+                ("3단계 · 균열", "Zone_Fracture_Full"),
             };
 
             for (int i = 0; i < zones.Length; i++)
@@ -155,8 +153,8 @@ namespace HiddenWeight.UI
                 string scene = zones[i].scene; // 클로저가 루프 변수를 공유하지 않게 복사
                 var button = UIBuilder.CreateButton(parent, zones[i].label, y, () => StartZoneTest(scene));
                 var rt = (RectTransform)button.transform;
-                rt.sizeDelta = new Vector2(150f, 48f);
-                rt.anchoredPosition = new Vector2((i - (zones.Length - 1) * 0.5f) * 160f, y);
+                rt.sizeDelta = new Vector2(190f, 48f);
+                rt.anchoredPosition = new Vector2((i - (zones.Length - 1) * 0.5f) * 200f, y);
             }
         }
     }

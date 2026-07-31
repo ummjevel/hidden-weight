@@ -34,6 +34,28 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 잔재_마지막_출구가_잠금_조건과_다음_지역을_보여준다()
+        {
+            yield return LoadResidue();
+
+            ZoneTrigger trigger = null;
+            foreach (var candidate in Object.FindObjectsByType<ZoneTrigger>(FindObjectsSortMode.None))
+                if (candidate.RequiredEncounterId == "residue_r12_boss") { trigger = candidate; break; }
+            Assert.IsNotNull(trigger, "R12 보스 클리어 조건이 연결된 출구가 없다.");
+
+            var exitVisual = trigger.transform.Find("RegionExitVisual");
+            Assert.IsNotNull(exitVisual, "R12 우측 끝에 다음 지역 출구가 보이지 않는다.");
+            var exitLabel = exitVisual.Find("ExitLabel").GetComponent<TextMesh>();
+            Assert.That(exitLabel.text, Does.Contain("쓰러뜨려야"),
+                "잠긴 출구가 보스 승리 조건을 알려 주지 않는다.");
+
+            GameManager.Instance.Progress.MarkEncounterCleared("residue_r12_boss");
+            yield return null;
+            Assert.That(exitLabel.text, Does.Contain("응시"),
+                "열린 출구가 다음 지역인 응시를 알려 주지 않는다.");
+        }
+
+        [UnityTest]
         public IEnumerator 지역_보스_전에는_나갈_수_없고_승리_후_응시로_전환한다()
         {
             yield return LoadResidue();

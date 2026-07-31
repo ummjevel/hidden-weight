@@ -100,6 +100,22 @@ namespace HiddenWeight.EditorTools
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedAttack", "HardenedHit" } },
 
+            // _v2는 b33de01에서 추가된 새 원화(부드러운 렌더링)로, 아직 어느 빌더에서도 쓰지
+            // 않는다. 격자가 _v1(4×4, 셀 314px)과 다르다 — 실측하면 8×6, 셀은 캐릭터마다
+            // 181px 또는(캐리어) 202×161px로 제각각이다. 312×312 같은 고정 셀 크기를
+            // 억지로 맞추는 대신 각 파일의 실제 격자에 맞게 Columns/Rows를 넣는다.
+            // 행별 동작(Idle/Walk/Attack/...)은 Gameplay/README.md에 아직 정리돼 있지 않아
+            // 추측하지 않고 Prefix_r{행}_c{열} 형식으로만 이름 붙인다 — 실제로 교체해
+            // 쓰려면 행 순서를 먼저 확인하고 RowClips로 바꿔야 한다.
+            new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v2.png",
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "WalkerV2" },
+            new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v2.png",
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "FingerV2" },
+            new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v2.png",
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "CarrierV2" },
+            new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v2.png",
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "HardenedV2" },
+
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Combat_v1.png",
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "WatcherAnimIdle", "WatcherAnimSweep", "WatcherAnimCharge", "WatcherAnimStun" } },

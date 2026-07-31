@@ -876,23 +876,32 @@ namespace HiddenWeight.EditorTools
             c.Floor(24, 28, 3, 2);
             c.Floor(28, 32, 4, 2);  // 출구 (32,4)
 
-            // 낮은 천장 두 곳. 그 사이는 열린 공간이라 숨어서만 가면 오히려 느리다.
+            // 첫 낮은 천장만 주 동선의 필수 응용이다.
             BuildSolidBlock(c.Root.transform, "G06_LowCeiling_A",
                 c.P(6f, 2f + CrawlClearance + 1f), new Vector2(4f, 2f), "Ground", GazeStone);
+
+            // 두 번째 낮은 천장과 밀고하는 입은 상단 선택 분기에 둔다. 숙련 재방문은 아래
+            // 주 동선으로 곧장 달리고, 재화가 필요한 플레이어만 추가 은신을 치른다.
+            BuildSafePlatform(c.Root.transform, c.P(10f, 5f));
+            BuildSafePlatform(c.Root.transform, c.P(12f, 7f));
+            c.Tiles(13, 20, 7, 8);
             BuildSolidBlock(c.Root.transform, "G06_LowCeiling_B",
-                c.P(16f, 2f + CrawlClearance + 1f), new Vector2(4f, 2f), "Ground", GazeStone);
+                c.P(16f, 8f + CrawlClearance + 1f), new Vector2(4f, 2f), "Ground", GazeStone);
 
             // 밀고하는 입 2마리. 각자 자기 위의 휴면 시선을 켠다.
             var dormantA = PlaceGaze(c.Root.transform, c.P(11f, 8f), 270f, 0f, dormant: true);
-            var dormantB = PlaceGaze(c.Root.transform, c.P(23f, 8f), 270f, 0f, dormant: true);
+            var dormantB = PlaceGaze(c.Root.transform, c.P(17f, 14f), 270f, 0f, dormant: true);
 
             var mouthA = BuildGazeEnemy(c.Root.transform, c.P(12f, 3f), GazeEnemyKind.Mouth);
-            var mouthB = BuildGazeEnemy(c.Root.transform, c.P(24f, 4f), GazeEnemyKind.Mouth);
+            var mouthB = BuildGazeEnemy(c.Root.transform, c.P(17f, 9f), GazeEnemyKind.Mouth);
             LinkScreamer(mouthA, dormantA);
             LinkScreamer(mouthB, dormantB);
 
             BuildCoverPillar(c.Root.transform, "G06_Cover_A", c.P(9f, 4f), new Vector2(1.2f, 4f));
-            BuildCoverPillar(c.Root.transform, "G06_Cover_B", c.P(19f, 4f), new Vector2(1.2f, 4f));
+            BuildCoverPillar(c.Root.transform, "G06_Cover_B", c.P(19f, 10f), new Vector2(1.2f, 4f));
+
+            for (int i = 0; i < 5; i++)
+                BuildCurrencyPickup(c.Root.transform, c.P(14f + i * 1.1f, 9f));
 
             // GS2 입구 — 숨죽인 몸만 들어가는 좁은 세로 틈. 바닥 구멍(로컬 20~21) 위에 얹는다.
             // 틈 폭이 0.48(숨죽임) < 0.66 < 0.8(평상시)이라 평소에는 몸이 끼어 들어가지 못한다.
@@ -948,27 +957,31 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- G07 회전 홍채교 (D3) ----------------
-        // 이동과 은신의 결합. 회전 시선 3개가 읽을 수 있는 반복 주기를 만든다(4.7절).
+        // 이동과 은신의 결합. 주 동선 2개 뒤 상단 선택 분기에서 세 번째 시선을 시험한다.
         static void BuildG07(RoomCtx c)
         {
             c.O = G07;
             c.Floor(0, 34, 4);
 
-            // 같은 속도, 다른 시작 각도. 구간마다 겹치는 수를 1 → 2 → 3으로 늘린다.
+            // 같은 속도, 다른 시작 각도. 주 동선은 두 번만 읽으면 통과한다.
             PlaceGaze(c.Root.transform, c.P(7f, 9f), 0f, 55f);
             PlaceGaze(c.Root.transform, c.P(16f, 9f), 120f, 55f);
-            PlaceGaze(c.Root.transform, c.P(25f, 9f), 240f, 55f);
+
+            // 세 번째 시선과 관객은 상단 보상 분기 전용이다.
+            BuildSafePlatform(c.Root.transform, c.P(21.5f, 7.5f));
+            c.Tiles(23, 31, 10, 11);
+            PlaceGaze(c.Root.transform, c.P(27f, 16f), 240f, 55f);
 
             // 구간 사이 완전한 안전지대(폭 3 이상). 시선이 닿지 않는 기둥 그림자다.
             BuildCoverPillar(c.Root.transform, "G07_Cover_A", c.P(11.5f, 6f), new Vector2(3f, 2f));
             BuildCoverPillar(c.Root.transform, "G07_Cover_B", c.P(20.5f, 6f), new Vector2(3f, 2f));
 
             BuildGazeEnemy(c.Root.transform, c.P(30f, 5f), GazeEnemyKind.Pilgrim);
-            BuildGazeEnemy(c.Root.transform, c.P(22f, 12f), GazeEnemyKind.Audience);
+            BuildGazeEnemy(c.Root.transform, c.P(26f, 12f), GazeEnemyKind.Audience);
 
-            BuildRewardChest(c.Root.transform, "gaze_g07_currency", c.P(16f, 5f), 25, false);
+            BuildRewardChest(c.Root.transform, "gaze_g07_currency", c.P(29f, 12f), 25, false);
             for (int i = 0; i < 5; i++)
-                BuildCurrencyPickup(c.Root.transform, c.P(12f + i * 1.2f, 8f));
+                BuildCurrencyPickup(c.Root.transform, c.P(24f + i * 1.2f, 12f));
 
             // 숏컷 C는 G07 쪽에 놓인 홍채문이다. 여는 것은 G10 중간 보스 승리다.
             _gazeShortcutC = BuildShortcut(c.Root.transform, "gaze_shortcut_c", c.P(32f, 11f),
@@ -1020,7 +1033,7 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- G09 상층 관객석 (D4, 정예) ----------------
-        // 숨죽이기만으로는 이길 수 없다는 것을 처음 시험한다(4.9절).
+        // 일반 전투는 주 동선, 숨죽이기만으로는 이길 수 없는 재판관은 상단 선택 분기다.
         static void BuildG09(RoomCtx c)
         {
             c.O = G09;
@@ -1029,6 +1042,8 @@ namespace HiddenWeight.EditorTools
 
             // 전투 전 전장을 2초 이상 내려다볼 수 있는 발코니.
             c.Tiles(2, 8, 9, 10);
+            BuildSafePlatform(c.Root.transform, c.P(17f, 6.5f));
+            c.Tiles(18, 29, 9, 10);
 
             // 점멸 시선 2개. 둘이 동시에 꺼지는 순간이 정예의 빈틈이다.
             var gazeA = PlaceGaze(c.Root.transform, c.P(12f, 10f), 270f, 0f, 3f, 2.5f, 0f);
@@ -1036,18 +1051,20 @@ namespace HiddenWeight.EditorTools
             _g09Gazes = new[] { gazeA, gazeB };
 
             var pilgrim = BuildGazeEnemy(c.Root.transform, c.P(11f, 4f), GazeEnemyKind.Pilgrim);
-            var mouth = BuildGazeEnemy(c.Root.transform, c.P(18f, 11f), GazeEnemyKind.Mouth);
+            var mouth = BuildGazeEnemy(c.Root.transform, c.P(18f, 4f), GazeEnemyKind.Mouth);
             LinkScreamer(mouth, gazeA);
 
-            var judge = BuildGazeEnemy(c.Root.transform, c.P(22f, 4f), GazeEnemyKind.Judge);
-            var exitBlock = BuildRetreatPoint(c.Root.transform, "G09_ExitBlock", c.P(27f, 4f));
-            ConfigureJudge(judge, _g09Gazes, exitBlock);
+            var judge = BuildGazeEnemy(c.Root.transform, c.P(23f, 11f), GazeEnemyKind.Judge);
+            var branchBlock = BuildRetreatPoint(c.Root.transform, "G09_BranchBlock", c.P(27f, 11f));
+            ConfigureJudge(judge, _g09Gazes, branchBlock);
 
             // 실패해도 G08 끝 안전 발판에서 20초 안에 재도전한다(4.9절).
-            var reward = BuildRewardChest(c.Root.transform, "gaze_g09_elite", c.P(24f, 4.5f), 40, false);
-            BuildEncounter(c.Root.transform, "gaze_g09", c.P(16f, 7f), new Vector2(22f, 12f), false,
-                new[] { new[] { pilgrim, mouth }, new[] { judge } },
-                new[] { 1, -1 }, reward, null);
+            BuildEncounter(c.Root.transform, "gaze_g09_main", c.P(16f, 5f), new Vector2(22f, 6f), false,
+                new[] { new[] { pilgrim, mouth } }, System.Array.Empty<int>(), null, null);
+
+            var reward = BuildRewardChest(c.Root.transform, "gaze_g09_elite", c.P(27f, 11.5f), 40, false);
+            BuildEncounter(c.Root.transform, "gaze_g09_elite", c.P(23.5f, 12f), new Vector2(11f, 6f), true,
+                new[] { new[] { judge } }, System.Array.Empty<int>(), reward, null);
 
             c.Room("GazeRoom09", 32f, 16f);
         }

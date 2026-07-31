@@ -233,26 +233,9 @@ namespace HiddenWeight.Core
 
     public enum SfxCue
     {
-        UiConfirm,
-        Checkpoint,
-        Fragment,
-        Ability,
-        Attack,
-        AttackHit,
-        Jump,
-        WallJump,
-        Dash,
-        Land,
-        FootstepWalk,
-        FootstepRun,
-        WallGrab,
-        WallSlide,
-        Hurt,
-        Death,
-        Respawn,
-        Heal,
-        ItemPickup,
-        Reward
+        UiConfirm, Checkpoint, Fragment, Ability, Attack, Jump, Dash, Hurt,
+        RewindStart, RewindComplete, ShortcutOpen, EnemyHit, EnemyDeath,
+        BossTelegraph, BossPhase, BossVictory
     }
 
     static class ProceduralSfx
@@ -264,14 +247,24 @@ namespace HiddenWeight.Core
         {
             if (Cache.TryGetValue(cue, out var clip) && clip != null) return clip;
             const int rate = 22050;
-            int count = Mathf.RoundToInt(rate * 0.09f);
+            float duration = cue == SfxCue.RewindStart ? 0.35f
+                : cue == SfxCue.RewindComplete ? 0.55f
+                : cue == SfxCue.ShortcutOpen ? 0.45f
+                : cue == SfxCue.BossPhase || cue == SfxCue.BossVictory ? 0.7f
+                : cue == SfxCue.BossTelegraph ? 0.25f : 0.09f;
+            int count = Mathf.RoundToInt(rate * duration);
             var data = new float[count];
             float frequency = 220f + (int)cue * 37f;
             for (int i = 0; i < count; i++)
             {
                 float t = (float)i / rate;
                 float envelope = 1f - (float)i / count;
-                data[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.12f;
+                float direction = cue == SfxCue.RewindStart ? -1f
+                    : cue == SfxCue.RewindComplete ? 1f : 0f;
+                float swept = frequency * (1f + direction * 0.55f * ((float)i / count));
+                float tone = Mathf.Sin(2f * Mathf.PI * swept * t);
+                float metal = Mathf.Sin(2f * Mathf.PI * swept * 2.03f * t) * 0.28f;
+                data[i] = (tone + metal) * envelope * 0.10f;
             }
             clip = AudioClip.Create("Sfx_" + cue, count, 1, rate, false);
             clip.SetData(data, 0);

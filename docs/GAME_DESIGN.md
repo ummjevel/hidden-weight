@@ -289,7 +289,7 @@
 
 모든 방에 적을 배치하지 않는다. 조용한 방과 위험한 방을 번갈아 배치해 긴장과 이완을
 만들며, 먼 길 끝에는 숏컷이나 의미 있는 보상을 제공한다. 잔재의 상세 기준은
-`RESIDUE_LEVEL_DESIGN.md`를 따른다.
+`LEVEL_20_RESIDUE_DESIGN.md`를 따른다.
 
 ### 5.6 확장 가능한 콘텐츠 원칙 (확정)
 
@@ -457,7 +457,7 @@ Hidden Weight의 차별점은 이 탐험 구조에 감정 스킬과 시간축 �
 
 1. ~~감정별 색채 세부~~ → 권장안 반영 (7.1절)
 2. ~~감정별 BGM 콘셉트~~ → 권장안 반영 (8.1절)
-3. 엔딩 시퀀스 구체적 연출 스토리보드 (컷 단위 작업은 다음 문서에서, 13장 참조)
+3. ~~엔딩 시퀀스 구체적 공간·입력 흐름~~ → `LEVEL_50_ENDING.md` 1차 완료
 4. 1분 예선 영상 실제 편집 리스트 (기본 구성 완료, 컷 단위 세부는 편집 단계에서, 11장 참조)
 
 ---
@@ -465,12 +465,17 @@ Hidden Weight의 차별점은 이 탐험 구조에 감정 스킬과 시간축 �
 ## 13. 다음 기획 작업
 
 0. `DESIGN_IMPLEMENTATION_GAP_ANALYSIS.md`: 현재 코드·씬 기준 구현 상태, 설계 공백, 우선순위별 제작 로드맵 — 기준 문서
-1. `RESIDUE_LEVEL_DESIGN.md`: 잔재 12개 메인방·3개 비밀방 상세 설계 — 1차 완료
-2. `RESIDUE_ROOM_IMPLEMENTATION.md`: 잔재 방별 지형·조우·난이도 구현 명세 — 1차 완료
+1. `LEVEL_20_RESIDUE_DESIGN.md`: 잔재 12개 메인방·3개 비밀방 상세 설계 — 1차 완료
+2. `LEVEL_21_RESIDUE_ROOMS.md`: 잔재 방별 지형·조우·난이도 구현 명세 — 1차 완료
 3. `CONTENT_SYSTEM.md`: 몬스터·아이템·보상 확장 규칙 — 1차 완료
-4. `GAZE_LEVEL_DESIGN.md`: 응시 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
-5. `FRACTURE_LEVEL_DESIGN.md`: 균열 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
-6. `ENDING_SEQUENCE.md`: 거짓 깨어남 → 진짜 각성 컷 단위 스토리보드
-7. `ART_DIRECTION.md`: 시간축 색채 톤 세부 팔레트
-8. `PITCH_VIDEO.md`: 1분 예선 영상 컷 단위 편집 리스트
-9. `UI_UX_DESIGN.md`: HUD·메뉴·지도·기억 기록·튜토리얼·접근성·Unity 구현 기준 — 1차 완료
+4. `LEVEL_30_GAZE_DESIGN.md`: 응시 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
+5. `LEVEL_31_GAZE_ROOMS.md`: 응시 12+3방 좌표·카메라·조우·복구 명세 — 1차 완료, Full 씬 통합 필요
+6. `LEVEL_40_FRACTURE_DESIGN.md`: 균열 지역 상세 설계 — 1차 완료, Full 씬 통합 필요
+7. `LEVEL_41_FRACTURE_ROOMS.md`: 균열 12+3방 좌표·카메라·조우·복구 명세 — 1차 완료, Full 씬 통합 필요
+8. `LEVEL_10_DREAM_TUTORIAL.md`: 몽환의 우주 4방 튜토리얼 명세 — 1차 완료
+9. `LEVEL_50_ENDING.md`: 경계 허브와 거짓 깨어남·진짜 각성 공간·입력 명세 — 1차 완료
+10. `LEVEL_01_STANDARD.md`: 전 지역 공통 좌표·카메라·전투·복구 기준 — 1차 완료
+11. `LEVEL_00_INDEX.md`: 전체 맵 문서와 구현 순서 — 1차 완료
+12. `ART_DIRECTION.md`: 시간축 색채 톤 세부 팔레트
+13. `PITCH_VIDEO.md`: 1분 예선 영상 컷 단위 편집 리스트
+14. `UI_UX_DESIGN.md`: HUD·메뉴·지도·기억 기록·튜토리얼·접근성·Unity 구현 기준 — 1차 완료

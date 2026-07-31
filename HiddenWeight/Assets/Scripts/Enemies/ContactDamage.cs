@@ -12,7 +12,9 @@ namespace HiddenWeight.Enemies
 
         void Awake()
         {
-            _enemy = GetComponent<Enemy>();
+            // 접촉 피해 전용 트리거 자식(Hitbox)에 붙는다 — 본체 콜라이더는 플레이어와 밀지
+            // 않도록 레이어 충돌을 꺼 뒀기 때문이다(ProjectSetup.SetupLayerCollisionMatrix).
+            _enemy = GetComponentInParent<Enemy>();
         }
 
         int Damage => damage != 0 ? damage : (_enemy != null ? _enemy.Data.contactDamage : 1);

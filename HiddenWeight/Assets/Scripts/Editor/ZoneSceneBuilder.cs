@@ -450,6 +450,9 @@ namespace HiddenWeight.EditorTools
                 artRenderer.sprite = enemyArt;
                 artRenderer.color = Color.white;
                 artRenderer.sortingOrder = 8;
+                // 잔재 적 그림이 전부 어두운 앰버 톤이라 배경과 실루엣이 잘 안 갈린다 —
+                // 외곽선 셰이더로 가장자리만 밝힌다(PrefabBuilder.ApplyEnemyOutline 참고).
+                artRenderer.material = PrefabBuilder.EnemyOutlineMaterial();
 
                 // 종류별 화면 크기. 애니메이터가 프레임마다 이 높이로 맞춘다.
                 float displayHeight = kind == ResidueEnemyKind.Hardened ? 1.7f : 1.2f;

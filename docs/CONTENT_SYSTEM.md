@@ -2,7 +2,7 @@
 
 > 상위 문서: `GAME_DESIGN.md`
 >
-> 연동 문서: `WORLD_MAP.md`, `RESIDUE_LEVEL_DESIGN.md`, `EMOTION_SYSTEM.md`
+> 연동 문서: `WORLD_MAP.md`, `LEVEL_20_RESIDUE_DESIGN.md`, `EMOTION_SYSTEM.md`
 >
 > 문서 상태: 1차 제작 기준안
 

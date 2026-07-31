@@ -9,12 +9,20 @@ namespace HiddenWeight.World
     public class ZoneTrigger : MonoBehaviour
     {
         [SerializeField] bool marksFractureCleared; // 균열 지역 출구만 true
+        [SerializeField] string requiredEncounterId;
+
+        public string RequiredEncounterId => requiredEncounterId;
+
+        public void RequireEncounter(string encounterId) => requiredEncounterId = encounterId;
 
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             var gm = GameManager.Instance;
+            if (!string.IsNullOrEmpty(requiredEncounterId)
+                && !gm.Progress.IsEncounterCleared(requiredEncounterId))
+                return;
             if (marksFractureCleared) gm.Progress.MarkFractureCleared();
 
             var next = gm.CurrentZoneData != null ? gm.CurrentZoneData.nextSceneName : SceneFlow.Title;

@@ -16,6 +16,7 @@ namespace HiddenWeight.Core
         void Start()
         {
             if (GameManager.Instance != null) GameManager.Instance.EnterZone(zone);
+            if (zone == ZoneId.Residue) HiddenWeight.World.ResidueLoopRuntime.Install(transform.parent);
         }
     }
 }

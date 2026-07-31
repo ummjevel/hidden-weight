@@ -16,6 +16,14 @@ namespace HiddenWeight.World
 
         public string FragmentId => fragmentId;
 
+        public void Configure(string id, string message, EmotionId skill = EmotionId.None, bool awareness = false)
+        {
+            fragmentId = id;
+            text = message;
+            grantsSkill = skill;
+            grantsAwareness = awareness;
+        }
+
         protected virtual bool IsCollectable => true;
 
         protected virtual void Start()

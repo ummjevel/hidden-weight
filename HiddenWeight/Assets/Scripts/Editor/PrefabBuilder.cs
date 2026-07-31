@@ -194,6 +194,71 @@ namespace HiddenWeight.EditorTools
             }
         }
 
+        // 프리팹 13종을 전부 다시 짓지 않고 Enemy 프리팹에만 접촉 피해용 트리거 자식(Hitbox)을
+        // 붙이고 groundMask를 채운다. Enemy 본체와 플레이어가 서로 밀지 않게 하려면 레이어 충돌도
+        // 꺼야 하는데, 그건 ProjectSetup.ApplyEnemyLayerSetup()에서 별도로 처리한다(같이 실행할 것).
+        [MenuItem("Hidden Weight/Fix/Apply Enemy Contact Fix")]
+        public static void ApplyEnemyContactFix()
+        {
+            string path = $"{Folder}/Enemy.prefab";
+            var root = PrefabUtility.LoadPrefabContents(path);
+
+            try
+            {
+                var enemySo = new SerializedObject(root.GetComponent<Enemy>());
+                enemySo.FindProperty("groundMask").intValue = LayerMask.GetMask("Ground");
+                // 이 필드를 베이스 프리팹에 한 번 박아 두면, 이 프리팹의 인스턴스는(과거에 지은
+                // 것이든 앞으로 어느 지역 빌더가 만들 것이든) Enemy.Awake()가 게임 시작 시 자동으로
+                // 외곽선 머티리얼을 입힌다 — 씬마다 에디터 메뉴를 따로 돌릴 필요가 없어진다.
+                enemySo.FindProperty("outlineMaterial").objectReferenceValue = EnemyOutlineMaterial();
+                enemySo.ApplyModifiedProperties();
+
+                var bodyCol = root.GetComponent<BoxCollider2D>();
+
+                // 예전에는 본체(Enemy 레이어)에 바로 붙어 있었다 — 본체가 이제 플레이어와 물리
+                // 충돌을 꺼서 통과하므로, 접촉 피해는 별도 트리거 자식으로 옮긴다.
+                var oldContact = root.GetComponent<ContactDamage>();
+                if (oldContact != null) Object.DestroyImmediate(oldContact);
+
+                var hitboxTransform = root.transform.Find("Hitbox");
+                var hitbox = hitboxTransform != null ? hitboxTransform.gameObject : new GameObject("Hitbox");
+                hitbox.transform.SetParent(root.transform, false);
+                hitbox.layer = LayerMask.NameToLayer("EnemyHitbox");
+
+                var hitboxCol = hitbox.GetComponent<BoxCollider2D>();
+                if (hitboxCol == null) hitboxCol = hitbox.AddComponent<BoxCollider2D>();
+                hitboxCol.isTrigger = true;
+                hitboxCol.size = bodyCol.size;
+
+                if (hitbox.GetComponent<ContactDamage>() == null) hitbox.AddComponent<ContactDamage>();
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Debug.Log("[PrefabBuilder] Enemy 프리팹 갱신 완료(접촉 피해 트리거 분리 + groundMask + 외곽선 머티리얼)");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // 적 스프라이트용 외곽선 머티리얼. 잔재 지역 적 그림이 전부 어두운 앰버 톤이라
+        // 배경과 실루엣 구분이 잘 안 된다 — 원본 PNG를 다시 뽑는 대신 Shaders/SpriteOutline.shader로
+        // 실루엣 가장자리만 밝혀서 무드(어둡고 무거운 톤)는 그대로 두고 가독성만 올린다.
+        public static Material EnemyOutlineMaterial()
+        {
+            const string path = "Assets/Settings/EnemyOutline.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            var shader = Shader.Find("Hidden Weight/SpriteOutline") ?? Shader.Find("Sprites/Default");
+            var mat = new Material(shader);
+
+            if (!AssetDatabase.IsValidFolder("Assets/Settings"))
+                AssetDatabase.CreateFolder("Assets", "Settings");
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
         // 착지·벽점프 더스트 파티클용 언릿 머티리얼. FrictionlessPlayerMaterial()과 같은
         // "있으면 재사용, 없으면 생성" 패턴.
         static Material DustParticleMaterial()
@@ -676,6 +741,9 @@ namespace HiddenWeight.EditorTools
             // 기본값으로 잔재(Residue) EnemyData를 연결해 둔다. 다른 지역(응시/균열)에 배치할 때는
             // Task 13이 씬에서 이 프리팹의 인스턴스 오버라이드로 Enemy_Gaze/Enemy_Fracture를 끼운다.
             enemySo.FindProperty("data").objectReferenceValue = LoadData<EnemyData>("Enemy_Residue");
+            // 순찰 외의 행동(추격·접근 등)은 지형을 보지 않고 속도만 정하므로, 낭떠러지 안전장치를
+            // Enemy 쪽에도 둔다(Enemy.cs LateUpdate 참고).
+            enemySo.FindProperty("groundMask").intValue = LayerMask.GetMask("Ground");
             enemySo.ApplyModifiedProperties();
 
             var edgeCheck = NewChild(root.transform, "EdgeCheck");
@@ -687,7 +755,15 @@ namespace HiddenWeight.EditorTools
             patrolSo.FindProperty("groundMask").intValue = LayerMask.GetMask("Ground");
             patrolSo.ApplyModifiedProperties();
 
-            root.AddComponent<ContactDamage>();
+            // 접촉 피해 전용 트리거 자식. 본체 콜라이더(Enemy 레이어)는 Player와 물리 충돌을
+            // 꺼 뒀으므로(ProjectSetup.SetupLayerCollisionMatrix — 서로 밀지 않고 통과한다),
+            // 접촉 피해는 이 트리거가 대신 받는다.
+            var hitbox = NewChild(root.transform, "Hitbox");
+            hitbox.layer = LayerMask.NameToLayer("EnemyHitbox");
+            var hitboxCol = hitbox.AddComponent<BoxCollider2D>();
+            hitboxCol.isTrigger = true;
+            hitboxCol.size = col.size;
+            hitbox.AddComponent<ContactDamage>();
 
             SavePrefab(root, "Enemy");
         }

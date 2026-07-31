@@ -23,6 +23,13 @@ namespace HiddenWeight.World
         public string Id => shortcutId;
         public bool IsOpen { get; private set; }
 
+        public void Configure(string id, GameObject closedBlocker = null, GameObject openVisual = null)
+        {
+            shortcutId = id;
+            if (closedBlocker != null) blocker = closedBlocker;
+            if (openVisual != null) openedVisual = openVisual;
+        }
+
         void Start()
         {
             // 이전 방문에서 이미 열었으면 연출 없이 열린 상태로 시작한다.
@@ -37,6 +44,7 @@ namespace HiddenWeight.World
             if (IsOpen) return;
 
             Apply(true);
+            AudioManager.Instance?.PlaySfx(SfxCue.ShortcutOpen, 0.7f);
             if (GameManager.Instance != null) GameManager.Instance.Progress.MarkShortcutOpen(shortcutId);
         }
 

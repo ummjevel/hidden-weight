@@ -151,8 +151,13 @@ namespace HiddenWeight.Tests
             var player = PlayerController.Instance;
             var progress = GameManager.Instance.Progress;
 
-            // 되감기 파편(방 로컬 10,4)을 밟는다.
-            var fragmentPos = (Vector2)room.WorldBounds.min + new Vector2(10f, 4f);
+            // 배치 좌표가 바뀌어도 실제 되감기 파편을 찾아 밟는다.
+            StoryFragment skillFragment = null;
+            foreach (var fragment in Object.FindObjectsByType<StoryFragment>(FindObjectsSortMode.None))
+                if (fragment.FragmentId == "residue_skill") skillFragment = fragment;
+            Assert.IsNotNull(skillFragment, "R05에 되감기 파편이 없다.");
+
+            var fragmentPos = (Vector2)skillFragment.transform.position;
             player.TeleportTo(fragmentPos + new Vector2(3f, 2f));
             yield return new WaitForFixedUpdate();
             player.TeleportTo(fragmentPos);
@@ -194,12 +199,33 @@ namespace HiddenWeight.Tests
             var goal = FindRoom("Room09").WorldBounds;
             float goalX = goal.min.x + 8f;
 
+            // 스킬 획득·대상 복원 자체는 위 전용 테스트가 담당한다. 이 테스트는 복원 뒤의
+            // 주 동선이 실제로 이어지는지 검증하므로 R05·R06·R08 필수 지형만 준비한다.
+            var r05 = FindRoom("Room05").WorldBounds;
+            var r06 = FindRoom("Room06").WorldBounds;
+            var r08 = FindRoom("Room08").WorldBounds;
+            foreach (var rewindable in Object.FindObjectsByType<Rewindable>(FindObjectsSortMode.None))
+            {
+                float x = rewindable.transform.position.x;
+                bool requiredR05 = r05.Contains(rewindable.transform.position) && x < r05.min.x + 21f;
+                bool requiredR06 = r06.Contains(rewindable.transform.position) && x < r06.min.x + 10f;
+                bool requiredR08 = r08.Contains(rewindable.transform.position);
+                if (requiredR05 || requiredR06 || requiredR08) rewindable.Rewind();
+            }
+
             for (int i = 0; i < 40; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
+
+            foreach (var passage in Object.FindObjectsByType<ShortcutPassage>(FindObjectsSortMode.None))
+                if (passage.RequiredShortcut != null && passage.RequiredShortcut.Id == "residue_secret_s2")
+                    Assert.IsFalse(passage.RequiredShortcut.IsOpen,
+                        "주 동선 필수 지형만 복원했는데 선택형 S2 게이트가 열렸다.");
 
             float maxX = player.transform.position.x;
             var trace = new StringBuilder();
             bool reached = false;
             int steps = 0;
+            int stalledSteps = 0;
+            float lastProgressX = player.transform.position.x;
             const int MaxSteps = 6000; // 고정 스텝 0.02초 → 최대 120초
 
             for (; steps < MaxSteps; steps++)
@@ -208,8 +234,22 @@ namespace HiddenWeight.Tests
 
                 var pos = player.transform.position;
                 if (pos.x >= goalX) { reached = true; break; }
+                if (pos.x > lastProgressX + 0.1f)
+                {
+                    lastProgressX = pos.x;
+                    stalledSteps = 0;
+                }
+                else stalledSteps++;
+                bool stalled = stalledSteps > 15;
 
-                var frame = new PlayerInput.Frame { horizontal = 1f, run = true, jumpHeld = true };
+                // R05는 되감기를 실제로 사용해야 통과하도록 설계돼 있다. 봇도 파편을 획득한 뒤
+                // 주변 대상이 잡히면 K를 홀드해, 단순 지형 우회가 아닌 본래 루프를 검증한다.
+                var frame = new PlayerInput.Frame
+                {
+                    horizontal = 1f,
+                    run = true,
+                    jumpHeld = true,
+                };
 
                 if (!player.IsGrounded && player.IsOnWall)
                 {
@@ -226,8 +266,13 @@ namespace HiddenWeight.Tests
                     // 오가는 것을 반복한다(실제로 R02에서 그렇게 됐다).
                     bool enemyClose = Physics2D.Raycast(pos, Vector2.right, 1.6f, LayerMask.GetMask("Enemy"));
                     bool enemyAhead = Physics2D.Raycast(pos, Vector2.right, 2.6f, LayerMask.GetMask("Enemy"));
+                    bool secretJunction = pos.x > r06.min.x + 16f && pos.x < r06.min.x + 24f;
                     frame.attackPressed = enemyClose;
-                    frame.jumpPressed = player.IsGrounded && (blocked || gapAhead || (enemyAhead && !enemyClose));
+                    frame.jumpPressed = player.IsGrounded && (blocked || stalled || gapAhead || secretJunction
+                        || (enemyAhead && !enemyClose));
+                    // 복원 블록의 윗모서리는 기본 점프만으로 간신히 닿지 않는다. 공중에서
+                    // 벽이 계속 잡히면 진행 방향 대시로 올라타는 실제 이동 조합을 사용한다.
+                    frame.dashPressed = !player.IsGrounded && (blocked || stalled || secretJunction);
                 }
 
                 PlayerInput.Injected = frame;

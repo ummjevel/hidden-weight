@@ -121,6 +121,7 @@ namespace HiddenWeight.Player
 
         void HandleRespawn(Vector3 position)
         {
+            HiddenWeight.Enemies.Enemy.ResetUnmanagedEnemies();
             PlayerController.Instance.TeleportTo(position);
             RestoreFull();
             AudioManager.Instance?.PlaySfx(SfxCue.Respawn, 0.6f);

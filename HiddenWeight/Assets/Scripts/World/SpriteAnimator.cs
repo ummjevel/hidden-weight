@@ -53,6 +53,7 @@ namespace HiddenWeight.World
 
         public string CurrentClip => _current != null ? _current.name : null;
         public bool IsFinished => _current != null && !_current.loop && _frame >= _current.frames.Length - 1;
+        public event System.Action<string, int> FrameDisplayed;
 
         void Awake()
         {
@@ -125,6 +126,7 @@ namespace HiddenWeight.World
 
             var sprite = _current.frames[Mathf.Clamp(_frame, 0, _current.frames.Length - 1)];
             target.sprite = sprite;
+            FrameDisplayed?.Invoke(_current.name, _frame);
 
             if (normalizedHeight <= 0f || sprite == null) return;
 

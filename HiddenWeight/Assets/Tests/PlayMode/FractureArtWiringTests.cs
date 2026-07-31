@@ -137,19 +137,20 @@ namespace HiddenWeight.Tests
             Assert.IsEmpty(missing, "단일 배경이 빠진 방이 있다: " + string.Join(", ", missing));
             Assert.IsEmpty(unwanted, "제거해야 할 레거시 전경·모션이 있다: " + string.Join(", ", unwanted));
 
+            // 4K 배경은 카메라 고정 벽지라 실제 바닥 위치를 그려 줄 수 없다 — 타일맵이
+            // 꺼져 있으면 바닥 전체가 "안 보이는데 부딪히는" 충돌이 된다.
             var tilemaps = Object.FindObjectsByType<TilemapRenderer>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             Assert.Greater(tilemaps.Length, 0, "균열 TilemapRenderer가 없다.");
             foreach (var tilemap in tilemaps)
-                Assert.IsFalse(tilemap.enabled, tilemap.name + " 플레이스홀더 렌더러가 켜져 있다.");
+                Assert.IsTrue(tilemap.enabled, tilemap.name + " 바닥 렌더러가 꺼져 있다 — 안 보이는 바닥이 된다.");
 
             var visibleCollisionPlaceholders = new List<string>();
             foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (renderer.enabled && renderer.sprite != null &&
                     renderer.sprite.name == "Tile" &&
-                    (renderer.GetComponent<Collider2D>() != null ||
-                     renderer.sortingOrder < 0))
+                    renderer.GetComponent<Collider2D>() != null)
                     visibleCollisionPlaceholders.Add(renderer.name);
             Assert.IsEmpty(
                 visibleCollisionPlaceholders,

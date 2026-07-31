@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6d8ea6ea9f9b43d1aa723c59c7eb03a, type: 3}
+  m_Name: RoomLinks_Residue
+  m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Data.RoomLinkTable
+  zone: 1
+  links:
+  - linkId: residue_R01_R02
+    fromRoom: R01
+    toRoom: R02
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 26, y: 2}
+    toAnchor: {x: 0, y: 2}
+  - linkId: residue_R02_R03
+    fromRoom: R02
+    toRoom: R03
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 28, y: 3}
+    toAnchor: {x: 0, y: 2}
+  - linkId: residue_R03_R04
+    fromRoom: R03
+    toRoom: R04
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 27, y: 1}
+    toAnchor: {x: 2, y: 20}
+  - linkId: residue_R04_R05
+    fromRoom: R04
+    toRoom: R05
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 22, y: 2}
+    toAnchor: {x: 0, y: 2}
+  - linkId: residue_R05_R06
+    fromRoom: R05
+    toRoom: R06
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 26, y: 2}
+    toAnchor: {x: 0, y: 2}
+  - linkId: residue_R06_R07
+    fromRoom: R06
+    toRoom: R07
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 32, y: 5}
+    toAnchor: {x: 0, y: 3}
+  - linkId: residue_R07_R08
+    fromRoom: R07
+    toRoom: R08
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 30, y: 8}
+    toAnchor: {x: 2, y: 2}
+  - linkId: residue_R08_R09
+    fromRoom: R08
+    toRoom: R09
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 22, y: 26}
+    toAnchor: {x: 0, y: 3}
+  - linkId: residue_R09_R10
+    fromRoom: R09
+    toRoom: R10
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 32, y: 4}
+    toAnchor: {x: 0, y: 3}
+  - linkId: residue_R10_R11
+    fromRoom: R10
+    toRoom: R11
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 24, y: 7}
+    toAnchor: {x: 0, y: 3}
+  - linkId: residue_R11_R12
+    fromRoom: R11
+    toRoom: R12
+    fromSide: 1
+    toSide: 0
+    fromAnchor: {x: 28, y: 4}
+    toAnchor: {x: 0, y: 3}
+  - linkId: residue_R04_S1
+    fromRoom: R04
+    toRoom: S1
+    fromSide: 7
+    toSide: 6
+    fromAnchor: {x: 9.5, y: 6.5}
+    toAnchor: {x: 2, y: 3.25}
+  - linkId: residue_R06_S2
+    fromRoom: R06
+    toRoom: S2
+    fromSide: 7
+    toSide: 6
+    fromAnchor: {x: 21, y: 7.2}
+    toAnchor: {x: 4, y: 4.25}
+  - linkId: residue_R11_S3
+    fromRoom: R11
+    toRoom: S3
+    fromSide: 6
+    toSide: 7
+    fromAnchor: {x: 7, y: 10.4}
+    toAnchor: {x: 14, y: 2.7}

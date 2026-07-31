@@ -14,6 +14,7 @@ namespace HiddenWeight.Player
         SpriteRenderer _sprite;
         PlayerController _controller;
         SpriteAnimator _spriteAnimator;
+        PlayerAttack _attack;
 
         // PlayerState → 클립 이름. 시트 행 이름과 1:1로 맞춰 뒀다(Gameplay/README.md).
         static string ClipFor(PlayerState state) => "Player" + state;
@@ -96,6 +97,7 @@ namespace HiddenWeight.Player
         {
             _animator = GetComponent<Animator>();
             _controller = GetComponent<PlayerController>();
+            _attack = GetComponent<PlayerAttack>();
             _spriteAnimator = GetComponentInChildren<SpriteAnimator>();
 
             // 애니메이터가 있으면 그것이 그리는 렌더러가 진짜다. GetComponentInChildren는
@@ -108,12 +110,20 @@ namespace HiddenWeight.Player
         void OnEnable()
         {
             if (_controller != null) _controller.StateChanged += HandleStateChanged;
+            if (_attack != null) _attack.Attacked += HandleAttacked;
         }
 
         void OnDisable()
         {
             if (_controller != null) _controller.StateChanged -= HandleStateChanged;
+            if (_attack != null) _attack.Attacked -= HandleAttacked;
         }
+
+        // 공격 스윙은 상태가 아니라 덮어쓰기 계층에서 끝까지 재생한다. Attack 상태는
+        // 판정 시간(attackActiveTime=0.1초)만큼만 유지돼서, 상태 클립으로 틀면 6프레임
+        // 스윙(0.375초)의 준비 동작 1~2프레임만 보이고 참격 프레임에 닿기 전에 Idle로
+        // 덮여 버린다 — "공격 모션이 안 바뀐 것 같다"의 정체가 이것이었다.
+        void HandleAttacked() => PlayOnce("PlayerAttack");
 
         void Update()
         {

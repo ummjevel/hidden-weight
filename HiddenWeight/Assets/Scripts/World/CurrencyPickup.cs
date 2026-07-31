@@ -22,6 +22,7 @@ namespace HiddenWeight.World
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;
 
             GameManager.Instance.Progress.AddCurrency(amount);
+            AudioManager.Instance?.PlaySfx(SfxCue.ItemPickup, 0.42f);
             gameObject.SetActive(false);
         }
     }

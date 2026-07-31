@@ -72,7 +72,7 @@ namespace HiddenWeight.Player
             Current = Mathf.Max(0, Current - amount);
             HealthChanged?.Invoke(Current, _maxHealth);
             Damaged?.Invoke();
-            AudioManager.Instance?.PlaySfx(SfxCue.Hurt, 0.65f);
+            AudioManager.Instance?.PlaySfx(Current <= 0 ? SfxCue.Death : SfxCue.Hurt, 0.65f);
 
             var direction = ((Vector2)transform.position - sourcePosition).normalized;
             PlayerController.Instance.ApplyKnockback(direction, _knockbackForce);
@@ -124,6 +124,7 @@ namespace HiddenWeight.Player
             HiddenWeight.Enemies.Enemy.ResetUnmanagedEnemies();
             PlayerController.Instance.TeleportTo(position);
             RestoreFull();
+            AudioManager.Instance?.PlaySfx(SfxCue.Respawn, 0.6f);
             Animator?.PlayOnce("PlayerRespawn");
         }
 

@@ -53,6 +53,7 @@ namespace HiddenWeight.World
                 if (health != null) health.RefreshMaxHealth();
             }
 
+            AudioManager.Instance?.PlaySfx(SfxCue.Reward, healthShard ? 0.7f : 0.55f);
             _given = true;
             if (visual != null) visual.SetActive(false);
         }

@@ -433,6 +433,11 @@ namespace HiddenWeight.EditorTools
 
             var sealObject = new GameObject("SealAnimation");
             sealObject.transform.SetParent(shortcut.transform, false);
+            // ResidueRoomTransitions_v1 시트는 피벗이 하단(0.5, 0)이라 렌더러 위치가 곧 "그림의
+            // 발밑"이 된다. shortcut 원점은 blocker/opened와 같은 통로 중심(수직 중앙)이므로,
+            // 그대로 두면 문 그림이 중심에서 위로만 자라 실제 통로보다 절반(size.y/2)만큼
+            // 위로 뜬 것처럼 보인다 — 아래로 그만큼 내려서 통로 중심에 수직으로 맞춘다.
+            sealObject.transform.localPosition = new Vector3(0f, -size.y * 0.5f, 0f);
 
             var renderer = sealObject.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = 6; // 숏컷 본체(5) 바로 위

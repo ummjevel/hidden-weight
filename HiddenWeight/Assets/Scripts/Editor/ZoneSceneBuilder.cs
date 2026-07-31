@@ -668,7 +668,12 @@ namespace HiddenWeight.EditorTools
             go.transform.SetParent(parent, false);
             go.transform.position = new Vector3(center.x, center.y, 0f);
 
-            var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", tint * 0.5f);
+            // Color를 스칼라로 곱하면 알파까지 반으로 줄어든다 — "닫힘"을 어둡게만 표시하려던
+            // 의도와 달리 blocker가 반투명해진다. 지금은 ApplyArtOverlay가 성공하면 이 렌더러
+            // 자체를 꺼서 안 보이니 티가 안 나지만, 그 아트가 하나라도 없으면(에셋 이름이
+            // 바뀌거나 슬라이싱이 안 된 경우) 밝기 대신 반투명한 "바닥"이 그대로 드러난다.
+            var dimTint = new Color(tint.r * 0.5f, tint.g * 0.5f, tint.b * 0.5f, tint.a);
+            var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", dimTint);
             var opened = BuildSolidBlock(go.transform, "Opened", center, size, "Ground", tint);
             opened.SetActive(false);
 

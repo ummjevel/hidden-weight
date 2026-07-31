@@ -21,6 +21,7 @@ namespace HiddenWeight.Player
         Rigidbody2D _rb;
         PlayerData _data;
         PlayerAttack _attack;
+        HiddenWeight.World.SpriteAnimator _spriteAnimator;
 
         float _coyoteTimer;
         float _wallCoyoteTimer; // 벽에서 떨어진 직후에도 잠깐 벽점프를 허용
@@ -49,6 +50,7 @@ namespace HiddenWeight.Player
             Instance = this;
             _rb = GetComponent<Rigidbody2D>();
             _attack = GetComponent<PlayerAttack>();
+            _spriteAnimator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
             _data = GameManager.Instance.Balance.player;
             _rb.gravityScale = _data.gravityScale;
         }
@@ -56,11 +58,14 @@ namespace HiddenWeight.Player
         void OnEnable()
         {
             if (_attack != null) _attack.Attacked += HandleAttacked;
+            if (_spriteAnimator != null) _spriteAnimator.FrameDisplayed += HandleFrameDisplayed;
         }
 
         void OnDisable()
         {
             if (_attack != null) _attack.Attacked -= HandleAttacked;
+            if (_spriteAnimator != null) _spriteAnimator.FrameDisplayed -= HandleFrameDisplayed;
+            AudioManager.Instance?.StopSfxLoop(SfxCue.WallSlide);
         }
 
         void HandleAttacked()
@@ -196,9 +201,10 @@ namespace HiddenWeight.Player
         {
             bool canWallJump = wallClinging || _wallCoyoteTimer > 0f;
             if (_jumpBufferTimer <= 0f || (_coyoteTimer <= 0f && !canWallJump)) return;
+            bool isWallJump = _coyoteTimer <= 0f && canWallJump;
 
             // 지상(코요테 포함) 점프가 우선. 공중에서 벽에 붙어 있거나 방금 떨어졌으면 벽점프.
-            if (_coyoteTimer <= 0f && canWallJump)
+            if (isWallJump)
             {
                 int dir = wallClinging ? _wallDir : _lastWallDir;
                 _rb.linearVelocity = new Vector2(-dir * _data.wallJumpVelocity.x, _data.wallJumpVelocity.y);
@@ -213,7 +219,7 @@ namespace HiddenWeight.Player
 
             _jumpBufferTimer = 0f;
             _coyoteTimer = 0f;
-            AudioManager.Instance?.PlaySfx(SfxCue.Jump, 0.45f);
+            AudioManager.Instance?.PlaySfx(isWallJump ? SfxCue.WallJump : SfxCue.Jump, 0.45f);
         }
 
         void ApplyVariableJumpCut()
@@ -266,16 +272,41 @@ namespace HiddenWeight.Player
         {
             if (State == next) return;
 
+            var previous = State;
+
             // 착지하는 순간 발밑에 먼지를 남긴다. 높은 곳에서 떨어졌으면 더 큰 것으로.
             if (next == PlayerState.Land)
             {
                 float fallSpeed = Mathf.Abs(_rb.linearVelocity.y);
                 HiddenWeight.World.ImpactVFX.Play(fallSpeed > 12f ? "ImpactHeavy" : "ImpactLand",
                     transform.position + new Vector3(0f, -0.7f, 0f), Facing);
+                AudioManager.Instance?.PlaySfx(SfxCue.Land, 0.55f);
             }
 
             State = next;
+
+            if (next == PlayerState.WallCling && previous != PlayerState.WallCling)
+            {
+                AudioManager.Instance?.PlaySfx(SfxCue.WallGrab, 0.45f);
+                AudioManager.Instance?.StartSfxLoop(SfxCue.WallSlide, 0.22f);
+            }
+            else if (previous == PlayerState.WallCling && next != PlayerState.WallCling)
+            {
+                AudioManager.Instance?.StopSfxLoop(SfxCue.WallSlide);
+            }
+
             StateChanged?.Invoke(next);
+        }
+
+        void HandleFrameDisplayed(string clipName, int frame)
+        {
+            // 8프레임 보행 시트에서 좌우 발이 바닥에 닿는 두 프레임.
+            if (frame != 1 && frame != 5) return;
+
+            if (State == PlayerState.Walk && clipName == "PlayerWalk")
+                AudioManager.Instance?.PlaySfx(SfxCue.FootstepWalk, 0.28f);
+            else if (State == PlayerState.Run && clipName == "PlayerRun")
+                AudioManager.Instance?.PlaySfx(SfxCue.FootstepRun, 0.34f);
         }
 
         public void ApplyKnockback(Vector2 direction, float force)

@@ -193,16 +193,25 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
-        // 생성 배경이 지형의 외형을 담당하므로 충돌 제작용 단색 Tile은 렌더링하지 않는다.
-        // Collider와 Rigidbody는 그대로 두어 플레이 동작에는 영향을 주지 않는다.
-        static void HideCollisionPlaceholderRenderers(GameObject root)
+        // 충돌 지오메트리는 반드시 눈에 보여야 한다. 처음에는 4K 배경이 지형 외형을
+        // 담당한다는 가정으로 단색 Tile을 전부 숨겼는데, 배경은 카메라에 고정된 벽지라
+        // (CameraLockedRoomBackground) 월드에 고정된 벽·천장을 그려 줄 수 없다 — 결과가
+        // "안 보이는데 부딪히는 벽"이었다. 그래서 숨기는 대신 지역 지형 아트를 입힌다.
+        // 잠금벽(비활성)·트리거·이미 아트가 붙은 블록(루트 렌더러 꺼짐)은 건너뛴다.
+        static void ClotheCollisionPlaceholderRenderers(GameObject root)
         {
             foreach (var renderer in root.GetComponentsInChildren<SpriteRenderer>(true))
-                if (renderer.sprite != null &&
-                    renderer.sprite.name == "Tile" &&
-                    (renderer.GetComponent<Collider2D>() != null ||
-                     renderer.sortingOrder < 0))
-                    renderer.enabled = false;
+            {
+                if (renderer.sprite == null || renderer.sprite.name != "Tile") continue;
+                if (!renderer.enabled) continue;                       // 이미 아트로 대체됨
+                var col = renderer.GetComponent<Collider2D>();
+                if (col == null || col.isTrigger) continue;            // 장식·트리거는 그대로
+
+                var size = Vector2.Scale(col is BoxCollider2D box ? box.size : Vector2.one,
+                                         renderer.transform.lossyScale);
+                ApplyBlockArt(renderer.gameObject, size,
+                              renderer.sortingOrder == 0 ? 1 : renderer.sortingOrder);
+            }
         }
 
         // 균열 지역의 "안전한" 발판. CrumblingPlatform과 같은 Platform 스프라이트(96x16px, 이미

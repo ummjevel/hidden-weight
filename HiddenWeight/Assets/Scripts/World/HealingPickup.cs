@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Core;
 using HiddenWeight.Data;
 using HiddenWeight.Player;
 
@@ -20,6 +21,7 @@ namespace HiddenWeight.World
             if (health == null || health.Current >= health.Max) return;
 
             health.Heal(amount);
+            AudioManager.Instance?.PlaySfx(SfxCue.Heal, 0.5f);
             gameObject.SetActive(false);
         }
     }

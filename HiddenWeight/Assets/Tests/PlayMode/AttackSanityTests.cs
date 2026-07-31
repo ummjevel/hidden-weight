@@ -67,5 +67,30 @@ namespace HiddenWeight.Tests
                 "J를 눌렀는데 적 체력이 그대로다(전=" + before + ", 후=" + after + ").");
             Assert.IsTrue(sawAttackState, "공격했는데 PlayerState가 Attack으로 바뀌지 않았다.");
         }
+
+        // 공격 스윙이 상태 길이(attackActiveTime=0.1초)에 잘려 준비 프레임만 보이던 회귀를
+        // 막는다. Attack 상태가 끝난 뒤에도 덮어쓰기 계층이 스윙 클립을 붙들고 있어야 한다.
+        [UnityTest]
+        public IEnumerator 공격_스윙_클립은_상태가_끝나도_끝까지_재생된다()
+        {
+            yield return SceneManager.LoadSceneAsync("Zone_Residue_Full", LoadSceneMode.Single);
+            yield return null;
+
+            var player = PlayerController.Instance;
+            var animator = player.GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            Assert.IsNotNull(animator);
+            if (!animator.Has("PlayerAttack"))
+                Assert.Ignore("공격 클립이 아직 없다 — 아트 미도입 단계.");
+
+            // 접지 안정화 후 J 한 번.
+            for (int i = 0; i < 20; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
+            PlayerInput.Injected = new PlayerInput.Frame { attackPressed = true };
+            yield return new WaitForFixedUpdate();
+
+            // 0.2초 뒤 — Attack 상태(0.1초)는 이미 끝났지만 스윙(0.375초)은 재생 중이어야 한다.
+            for (int i = 0; i < 10; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
+            Assert.AreEqual("PlayerAttack", animator.CurrentClip,
+                "Attack 상태가 끝나자마자 스윙이 끊겼다 — 참격 프레임이 화면에 나오지 않는다.");
+        }
     }
 }

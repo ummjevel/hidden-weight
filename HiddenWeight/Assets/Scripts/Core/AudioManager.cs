@@ -1,11 +1,13 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using HiddenWeight.UI;
 using HiddenWeight.Data;
 
 namespace HiddenWeight.Core
 {
-    // BGM/SFX 재생을 담당하는 싱글턴. MVP에서는 사운드 에셋이 없으므로 클립이 null이면 아무 것도 하지 않는다.
+    // BGM/SFX 재생을 담당하는 싱글턴. Resources의 실제 SFX를 우선하고,
+    // 아직 제작되지 않은 시그니처 음향만 짧은 절차 생성음으로 안전하게 대체한다.
     public class AudioManager : MonoBehaviour
     {
         public static AudioManager Instance { get; private set; }
@@ -15,7 +17,14 @@ namespace HiddenWeight.Core
 
         AudioSource _bgmSource;
         AudioSource _sfxSource;
+        AudioSource[] _sfxSources;
+        int _sfxSourceCursor;
+        AudioSource _loopSource;
         Coroutine _bgmFade;
+        readonly Dictionary<SfxCue, AudioClip[]> _sfxClips = new Dictionary<SfxCue, AudioClip[]>();
+        readonly Dictionary<SfxCue, int> _lastSfxIndex = new Dictionary<SfxCue, int>();
+        SfxCue? _loopCue;
+        float _loopVolume = 1f;
 
         void Awake()
         {
@@ -37,9 +46,19 @@ namespace HiddenWeight.Core
             _bgmSource.mute = true;
 #endif
 
-            _sfxSource = gameObject.AddComponent<AudioSource>();
-            _sfxSource.loop = false;
-            _sfxSource.playOnAwake = false;
+            // 짧은 효과음이 겹쳐도 개별 피치가 서로 바뀌지 않도록 작은 소스 풀을 쓴다.
+            _sfxSources = new AudioSource[4];
+            for (int i = 0; i < _sfxSources.Length; i++)
+            {
+                _sfxSources[i] = gameObject.AddComponent<AudioSource>();
+                _sfxSources[i].loop = false;
+                _sfxSources[i].playOnAwake = false;
+            }
+            _sfxSource = _sfxSources[0];
+
+            _loopSource = gameObject.AddComponent<AudioSource>();
+            _loopSource.loop = false;
+            _loopSource.playOnAwake = false;
 
             ApplySettings();
             UISettings.Changed += ApplySettings;
@@ -54,7 +73,12 @@ namespace HiddenWeight.Core
         {
             AudioListener.volume = UISettings.MasterVolume;
             if (_bgmSource != null) _bgmSource.volume = UISettings.BgmVolume;
-            if (_sfxSource != null) _sfxSource.volume = UISettings.SfxVolume;
+            if (_sfxSources != null)
+                foreach (var source in _sfxSources)
+                    if (source != null) source.volume = UISettings.SfxVolume;
+            else if (_sfxSource != null)
+                _sfxSource.volume = UISettings.SfxVolume;
+            if (_loopSource != null) _loopSource.volume = UISettings.SfxVolume * _loopVolume;
         }
 
         public void PlayBgm(AudioClip clip, float fadeSeconds = 1f)
@@ -74,7 +98,64 @@ namespace HiddenWeight.Core
 
         public void PlaySfx(SfxCue cue, float volume = 1f)
         {
-            PlaySfx(ProceduralSfx.For(cue), volume);
+            PlaySfx(ResolveSfx(cue), volume);
+        }
+
+        // Assets/Resources/Audio/SFX/<Cue 이름> 폴더의 WAV를 우선 사용한다.
+        // 전용 음원이 아직 없으면 기존 절차 생성음을 남겨, 이벤트 연결 자체는 끊기지 않게 한다.
+        public AudioClip ResolveSfx(SfxCue cue)
+        {
+            var clips = ClipsFor(cue);
+
+            // 벽점프 전용음이 완성되기 전까지 일반 점프음을 재사용한다.
+            if (clips.Length == 0 && cue == SfxCue.WallJump)
+                clips = ClipsFor(SfxCue.Jump);
+
+            if (clips.Length == 0) return ProceduralSfx.For(cue);
+            if (clips.Length == 1)
+            {
+                _lastSfxIndex[cue] = 0;
+                return clips[0];
+            }
+
+            int previous = _lastSfxIndex.TryGetValue(cue, out var value) ? value : -1;
+            int index = Random.Range(0, clips.Length - 1);
+            if (index >= previous) index++;
+            _lastSfxIndex[cue] = index;
+            return clips[index];
+        }
+
+        AudioClip[] ClipsFor(SfxCue cue)
+        {
+            if (_sfxClips.TryGetValue(cue, out var clips)) return clips;
+            clips = Resources.LoadAll<AudioClip>("Audio/SFX/" + cue);
+            _sfxClips[cue] = clips;
+            return clips;
+        }
+
+        public void StartSfxLoop(SfxCue cue, float volume = 1f)
+        {
+            if (_loopCue == cue && _loopSource.isPlaying) return;
+
+            var clip = ResolveSfx(cue);
+            if (clip == null) return;
+
+            _loopCue = cue;
+            _loopVolume = Mathf.Clamp01(volume);
+            _loopSource.Stop();
+            _loopSource.clip = clip;
+            _loopSource.loop = true;
+            _loopSource.volume = UISettings.SfxVolume * _loopVolume;
+            _loopSource.Play();
+        }
+
+        public void StopSfxLoop(SfxCue cue)
+        {
+            if (_loopCue != cue) return;
+            _loopSource.Stop();
+            _loopSource.clip = null;
+            _loopSource.loop = false;
+            _loopCue = null;
         }
 
         public void StopBgm(float fadeSeconds = 1f)
@@ -87,7 +168,26 @@ namespace HiddenWeight.Core
         public void PlaySfx(AudioClip clip, float volume = 1f)
         {
             if (clip == null) return;
-            _sfxSource.PlayOneShot(clip, volume);
+
+            var source = NextSfxSource();
+            source.pitch = Random.Range(0.97f, 1.03f);
+            source.PlayOneShot(clip, Mathf.Clamp01(volume * Random.Range(0.94f, 1.06f)));
+        }
+
+        AudioSource NextSfxSource()
+        {
+            for (int offset = 0; offset < _sfxSources.Length; offset++)
+            {
+                int index = (_sfxSourceCursor + offset) % _sfxSources.Length;
+                if (_sfxSources[index].isPlaying) continue;
+
+                _sfxSourceCursor = (index + 1) % _sfxSources.Length;
+                return _sfxSources[index];
+            }
+
+            var source = _sfxSources[_sfxSourceCursor];
+            _sfxSourceCursor = (_sfxSourceCursor + 1) % _sfxSources.Length;
+            return source;
         }
 
         IEnumerator FadeToClip(AudioClip clip, float fadeSeconds)
@@ -131,7 +231,29 @@ namespace HiddenWeight.Core
         }
     }
 
-    public enum SfxCue { UiConfirm, Checkpoint, Fragment, Ability, Attack, Jump, Dash, Hurt }
+    public enum SfxCue
+    {
+        UiConfirm,
+        Checkpoint,
+        Fragment,
+        Ability,
+        Attack,
+        AttackHit,
+        Jump,
+        WallJump,
+        Dash,
+        Land,
+        FootstepWalk,
+        FootstepRun,
+        WallGrab,
+        WallSlide,
+        Hurt,
+        Death,
+        Respawn,
+        Heal,
+        ItemPickup,
+        Reward
+    }
 
     static class ProceduralSfx
     {

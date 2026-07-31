@@ -181,7 +181,9 @@ namespace HiddenWeight.Tests
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             Assert.Greater(tilemaps.Length, 0, "잔재 TilemapRenderer가 없다.");
             foreach (var tilemap in tilemaps)
-                Assert.IsFalse(tilemap.enabled, tilemap.name + " 플레이스홀더 렌더러가 켜져 있다.");
+                // 4K 배경은 카메라 고정 벽지라 실제 바닥을 그려 줄 수 없다 — 타일맵이 꺼지면
+                // 바닥 전체가 "안 보이는데 부딪히는" 충돌이 된다.
+                Assert.IsTrue(tilemap.enabled, tilemap.name + " 바닥 렌더러가 꺼져 있다 — 안 보이는 바닥이 된다.");
 
             AssertNoVisibleCollisionPlaceholders();
         }
@@ -193,8 +195,7 @@ namespace HiddenWeight.Tests
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (renderer.enabled && renderer.sprite != null &&
                     renderer.sprite.name == "Tile" &&
-                    (renderer.GetComponent<Collider2D>() != null ||
-                     renderer.sortingOrder < 0))
+                    renderer.GetComponent<Collider2D>() != null)
                     visible.Add(renderer.name);
             Assert.IsEmpty(visible, "충돌용 단색 블록이 보인다: " + string.Join(", ", visible));
         }

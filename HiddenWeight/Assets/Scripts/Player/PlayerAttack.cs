@@ -41,6 +41,7 @@ namespace HiddenWeight.Player
             AudioManager.Instance?.PlaySfx(SfxCue.Attack, 0.55f);
             var hits = Physics2D.OverlapCircleAll(transform.position, _data.attackRadius, enemyLayer);
             var facingVec = new Vector2(_controller.Facing, 0f);
+            bool hitAny = false;
 
             foreach (var hit in hits)
             {
@@ -51,6 +52,7 @@ namespace HiddenWeight.Player
                     if (damageable != null && damageable.IsAlive)
                     {
                         damageable.TakeDamage(_data.attackDamage, transform.position);
+                        hitAny = true;
 
                         // 맞은 자리에 타격 연출을 띄운다. 헛스윙과 적중을 눈으로 구분하게 하는
                         // 것이 목적이라, 판정이 실제로 통한 대상에만 띄운다.
@@ -59,6 +61,7 @@ namespace HiddenWeight.Player
                 }
             }
 
+            if (hitAny) AudioManager.Instance?.PlaySfx(SfxCue.AttackHit, 0.58f);
             Attacked?.Invoke();
         }
     }

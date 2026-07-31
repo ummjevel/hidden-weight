@@ -801,7 +801,8 @@ namespace HiddenWeight.EditorTools
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Residue", out var root);
-            tilemap.GetComponent<TilemapRenderer>().enabled = false;
+            // 타일맵(바닥)은 반드시 그린다. 4K 배경은 카메라 고정 벽지라 실제 바닥
+            // 위치를 표현하지 못한다 — 꺼 두면 바닥 전체가 보이지 않는 충돌이 된다.
             var rooms = new GameObject("Rooms");
             rooms.transform.SetParent(root.transform, true);
 
@@ -855,7 +856,7 @@ namespace HiddenWeight.EditorTools
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
                 SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Residue");
 
-            HideCollisionPlaceholderRenderers(root);
+            ClotheCollisionPlaceholderRenderers(root);
             SaveScene(scene, "Zone_Residue_Full");
             RegisterBuildSettings();
             AssetDatabase.SaveAssets();

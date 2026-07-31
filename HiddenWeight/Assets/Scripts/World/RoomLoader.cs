@@ -63,38 +63,68 @@ namespace HiddenWeight.World
             IsTransitioning = true;
             bool inputWasEnabled = PlayerInput.Enabled;
             PlayerInput.Enabled = false;
-
             var fader = ScreenFader.Instance;
-            if (fader != null) yield return fader.FadeTo(1f, fadeSeconds);
 
-            string sceneName = SceneNameFor(roomName);
-            if (!Application.CanStreamedLevelBeLoaded(sceneName))
+            // try 안의 정상 경로들은 애니메이션 있는 Restore()로 이미 입력·암전을 되돌린다.
+            // 하지만 RoomLoaded 구독자나 씬 로드 자체가 예외를 던지면 그 경로를 못 타므로,
+            // finally가 최소한 즉시(애니메이션 없이)라도 반드시 복구되게 하는 안전망이다.
+            // 검은 화면 + 입력 잠금인 채로 영원히 멈추는 것보다는, 예외 시 화면이 툭 하고
+            // 돌아오는 편이 훨씬 낫다.
+            try
             {
-                Debug.LogError($"[RoomLoader] 씬 {sceneName} 을 빌드 세팅에서 찾을 수 없다. 전환을 취소한다.");
+                if (fader != null) yield return fader.FadeTo(1f, fadeSeconds);
+
+                // 링크 데이터 오타로 targetRoom이 현재 방과 같으면 같은 이름의 씬이 중복
+                // 로드되어 이후 언로드·배치 로직이 잘못된 씬 핸들을 잡는다 — 여기서 바로 걸러낸다.
+                if (roomName == CurrentRoom)
+                {
+                    Debug.LogError($"[RoomLoader] 이미 {roomName}에 있다. 전환을 취소한다 (링크 데이터 확인 필요).");
+                    yield return Restore(fader, inputWasEnabled);
+                    yield break;
+                }
+
+                string sceneName = SceneNameFor(roomName);
+                if (!Application.CanStreamedLevelBeLoaded(sceneName))
+                {
+                    Debug.LogError($"[RoomLoader] 씬 {sceneName} 을 빌드 세팅에서 찾을 수 없다. 전환을 취소한다.");
+                    yield return Restore(fader, inputWasEnabled);
+                    yield break;
+                }
+
+                string previous = CurrentRoom;
+                yield return SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+
+                var loaded = SceneManager.GetSceneByName(sceneName);
+                if (!loaded.IsValid())
+                {
+                    Debug.LogError($"[RoomLoader] 씬 {sceneName} 을 로드했지만 유효한 Scene을 찾지 못했다. 전환을 취소한다.");
+                    yield return Restore(fader, inputWasEnabled);
+                    yield break;
+                }
+
+                SceneManager.SetActiveScene(loaded);
+
+                if (!string.IsNullOrEmpty(previous))
+                {
+                    var old = SceneManager.GetSceneByName(SceneNameFor(previous));
+                    if (old.IsValid() && old.isLoaded) yield return SceneManager.UnloadSceneAsync(old);
+                }
+
+                CurrentRoom = roomName;
+                PlacePlayer(loaded, roomName, arriveAtDoorId);
+                SyncCamera(loaded);
+
+                EntryProtectedUntil = Time.time + entryProtectionSeconds;
+                RoomLoaded?.Invoke(roomName);
+
                 yield return Restore(fader, inputWasEnabled);
-                yield break;
             }
-
-            string previous = CurrentRoom;
-            yield return SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-
-            var loaded = SceneManager.GetSceneByName(sceneName);
-            if (loaded.IsValid()) SceneManager.SetActiveScene(loaded);
-
-            if (!string.IsNullOrEmpty(previous))
+            finally
             {
-                var old = SceneManager.GetSceneByName(SceneNameFor(previous));
-                if (old.IsValid() && old.isLoaded) yield return SceneManager.UnloadSceneAsync(old);
+                PlayerInput.Enabled = inputWasEnabled;
+                IsTransitioning = false;
+                if (fader != null) fader.SetAlpha(0f);
             }
-
-            CurrentRoom = roomName;
-            PlacePlayer(loaded, roomName, arriveAtDoorId);
-            SyncCamera(loaded);
-
-            EntryProtectedUntil = Time.time + entryProtectionSeconds;
-            RoomLoaded?.Invoke(roomName);
-
-            yield return Restore(fader, inputWasEnabled);
         }
 
         IEnumerator Restore(ScreenFader fader, bool inputWasEnabled)
@@ -107,7 +137,11 @@ namespace HiddenWeight.World
         void PlacePlayer(Scene scene, string roomName, string arriveAtDoorId)
         {
             var player = PlayerController.Instance;
-            if (player == null) return;
+            if (player == null)
+            {
+                Debug.LogError("[RoomLoader] PlayerController.Instance가 없어 플레이어를 배치하지 못했다.");
+                return;
+            }
 
             Vector2 target;
 
@@ -143,7 +177,11 @@ namespace HiddenWeight.World
         void SyncCamera(Scene scene)
         {
             var camera = RoomCamera.Instance;
-            if (camera == null) return;
+            if (camera == null)
+            {
+                Debug.LogError("[RoomLoader] RoomCamera.Instance가 없어 카메라를 동기화하지 못했다.");
+                return;
+            }
 
             var room = FindInScene<Room>(scene);
             if (room != null) camera.SetRoom(room);
@@ -153,7 +191,7 @@ namespace HiddenWeight.World
         static bool TryFindDoor(Scene scene, string doorId, out RoomDoor found)
         {
             found = null;
-            if (!scene.IsValid()) return false;
+            if (!scene.IsValid() || !scene.isLoaded) return false;
 
             foreach (var root in scene.GetRootGameObjects())
             {
@@ -170,7 +208,7 @@ namespace HiddenWeight.World
 
         static T FindInScene<T>(Scene scene) where T : Component
         {
-            if (!scene.IsValid()) return null;
+            if (!scene.IsValid() || !scene.isLoaded) return null;
 
             foreach (var root in scene.GetRootGameObjects())
             {

@@ -49,6 +49,8 @@ namespace HiddenWeight.Enemies
         public string DisplayName => string.IsNullOrEmpty(displayName) ? "보스" : displayName;
         public Enemy BossEnemy { get; private set; }
 
+        // 보스뿐 아니라 모든 조우가 알린다. HUD는 BossEnemy가 있는 조우만 골라 체력 바를
+        // 띄우고, 카메라는 일반 전투에서도 전장 중심으로 구도를 잡아야 하기 때문이다.
         public static event System.Action<Encounter, bool> EncounterStateChanged;
 
         public void RegisterVictoryObject(GameObject target)
@@ -138,7 +140,7 @@ namespace HiddenWeight.Enemies
 
             SetLocks(true);
             ActivateWave(0);
-            if (BossEnemy != null) EncounterStateChanged?.Invoke(this, true);
+            EncounterStateChanged?.Invoke(this, true);
         }
 
         void Update()
@@ -176,7 +178,7 @@ namespace HiddenWeight.Enemies
         {
             _finished = true;
             _running = false;
-            if (BossEnemy != null) EncounterStateChanged?.Invoke(this, false);
+            EncounterStateChanged?.Invoke(this, false);
             if (BossEnemy != null) AudioManager.Instance?.PlaySfx(SfxCue.BossVictory, 0.8f);
             SetLocks(false);
 
@@ -200,7 +202,7 @@ namespace HiddenWeight.Enemies
             _activeWave = -1;
             SetLocks(false);
             DeactivateAll();
-            if (wasRunning && BossEnemy != null) EncounterStateChanged?.Invoke(this, false);
+            if (wasRunning) EncounterStateChanged?.Invoke(this, false);
         }
 
         // 조우를 처음 상태로 되돌린다. 쓰러진 적도 체력을 채워 다시 세운다 — Enemy가

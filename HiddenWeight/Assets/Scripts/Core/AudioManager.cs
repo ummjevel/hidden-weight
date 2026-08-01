@@ -254,9 +254,23 @@ namespace HiddenWeight.Core
         ShortcutOpen,
         EnemyHit,
         EnemyDeath,
+        EnemyTelegraph,
+        EnemyBlock,
         BossTelegraph,
         BossPhase,
-        BossVictory
+        BossVictory,
+        PlatformCrack,
+        PlatformCollapse,
+        GateOpen,
+        GateClose,
+        LiftStart,
+        LiftStop,
+        SecretReveal,
+        UiCancel,
+        UiPause,
+        UiUnpause,
+        UiMapOpen,
+        UiMapClose
     }
 
     static class ProceduralSfx

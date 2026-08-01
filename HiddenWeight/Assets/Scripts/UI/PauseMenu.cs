@@ -43,18 +43,21 @@ namespace HiddenWeight.UI
         {
             if (PlayerInput.MapPressed && GameManager.Instance != null)
             {
+                // 지도 키로 들어오고 나갈 때는 일시정지음 대신 지도음을 낸다. 같은 키가
+                // 여는 문이 다르면 소리도 달라야 어디로 들어왔는지 헷갈리지 않는다.
                 if (GameManager.Instance.State == GameState.Playing)
                 {
-                    Open();
+                    Open(openCue: SfxCue.UiMapOpen);
                     _sections.Show(PauseSection.Map);
                 }
                 else if (GameManager.Instance.State == GameState.Paused && _sections.IsVisible
                     && _sections.CurrentSection == PauseSection.Map)
                 {
-                    Close();
+                    Close(SfxCue.UiMapClose);
                 }
                 else if (GameManager.Instance.State == GameState.Paused)
                 {
+                    AudioManager.Instance?.PlaySfx(SfxCue.UiMapOpen, 0.4f);
                     _sections.Show(PauseSection.Map);
                 }
                 return;
@@ -64,12 +67,14 @@ namespace HiddenWeight.UI
 
             if (_dialog != null && _dialog.IsVisible)
             {
+                AudioManager.Instance?.PlaySfx(SfxCue.UiCancel, 0.4f);
                 _dialog.Cancel();
                 return;
             }
 
             if (_sections != null && _sections.IsVisible)
             {
+                AudioManager.Instance?.PlaySfx(SfxCue.UiCancel, 0.4f);
                 _sections.Hide();
                 UIBuilder.Select(_resumeButton);
                 return;
@@ -82,8 +87,11 @@ namespace HiddenWeight.UI
             else if (gm.State == GameState.Paused) Close();
         }
 
-        public void Open(bool selectResume = true)
+        public void Open(bool selectResume = true, SfxCue openCue = SfxCue.UiPause)
         {
+            // 일시정지는 timeScale을 0으로 만들어 화면이 얼어붙는다. 페이드가 끝나기 전까지
+            // 입력이 먹혔는지 알 수 없으므로 여는 순간 바로 소리로 답한다.
+            AudioManager.Instance?.PlaySfx(openCue, 0.4f);
             PlayerInput.Enabled = false;
             GameManager.Instance.SetState(GameState.Paused);
 
@@ -107,8 +115,9 @@ namespace HiddenWeight.UI
             UIBuilder.Select(_resumeButton);
         }
 
-        public void Close()
+        public void Close(SfxCue closeCue = SfxCue.UiUnpause)
         {
+            AudioManager.Instance?.PlaySfx(closeCue, 0.4f);
             if (_dialog != null) _dialog.Hide(false);
             if (_sections != null) _sections.Hide();
             PlayerInput.Enabled = true;
@@ -220,7 +229,8 @@ namespace HiddenWeight.UI
             titleRt.sizeDelta = new Vector2(400f, 60f);
             titleRt.anchoredPosition = Vector2.zero;
 
-            _resumeButton = UIBuilder.CreateButton(_root.transform, "계속하기", 10f, Close);
+            // Close에 기본 인자가 생겨 메서드 그룹으로는 UnityAction에 안 맞는다.
+            _resumeButton = UIBuilder.CreateButton(_root.transform, "계속하기", 10f, () => Close());
             _checkpointButton = UIBuilder.CreateButton(
                 _root.transform, "체크포인트로 돌아가기", -60f, RequestReturnToCheckpoint);
             _titleButton = UIBuilder.CreateButton(_root.transform, "타이틀로", -130f, RequestGoToTitle);

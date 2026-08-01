@@ -194,9 +194,9 @@ namespace HiddenWeight.EditorTools
         }
 
         // 충돌 지오메트리는 반드시 눈에 보여야 한다. 처음에는 4K 배경이 지형 외형을
-        // 담당한다는 가정으로 단색 Tile을 전부 숨겼는데, 배경은 카메라에 고정된 벽지라
-        // (CameraLockedRoomBackground) 월드에 고정된 벽·천장을 그려 줄 수 없다 — 결과가
-        // "안 보이는데 부딪히는 벽"이었다. 그래서 숨기는 대신 지역 지형 아트를 입힌다.
+        // 담당한다는 가정으로 단색 Tile을 전부 숨겼는데, 결과가 "안 보이는데 부딪히는 벽"이었다.
+        // 배경이 월드에 고정된 지금(RoomFittedBackground)도 그림과 콜라이더가 픽셀 단위로
+        // 맞아떨어지지는 않으므로, 숨기는 대신 지역 지형 아트를 입힌다.
         // 잠금벽(비활성)·트리거·이미 아트가 붙은 블록(루트 렌더러 꺼짐)은 건너뛴다.
         static void ClotheCollisionPlaceholderRenderers(GameObject root)
         {

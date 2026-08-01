@@ -23,11 +23,21 @@ namespace HiddenWeight.World
             }
         }
 
+        // 첫 Update 전에는 열림 여부를 모르므로 null로 둔다. 그래야 이미 열린 채로 시작한
+        // 문이 씬 진입 순간에 열리는 소리를 내지 않는다.
+        bool? _wasOpen;
+
         void Update()
         {
             bool open = IsOpen;
             if (blocker != null) blocker.SetActive(!open);
             if (hintIcon != null) hintIcon.enabled = !open; // 닫혀 있을 때만 필요 스킬 아이콘을 보여준다
+
+            // 문은 스킬을 얻은 순간 조용히 상태만 바뀐다. 소리가 없으면 지나온 길이 열린 걸
+            // 모르고 되돌아가지 않는다.
+            if (_wasOpen.HasValue && _wasOpen.Value != open)
+                AudioManager.Instance?.PlaySfx(open ? SfxCue.GateOpen : SfxCue.GateClose, 0.6f);
+            _wasOpen = open;
         }
     }
 }

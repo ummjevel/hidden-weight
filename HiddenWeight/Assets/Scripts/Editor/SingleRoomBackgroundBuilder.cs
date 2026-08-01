@@ -37,7 +37,8 @@ namespace HiddenWeight.EditorTools
             var renderer = background.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
-            background.AddComponent<CameraLockedRoomBackground>();
+            // 굽는 시점에 한 번 맞춰 둬야 에디터에서도 방 경계와 배경이 같은 자리에 보인다.
+            background.AddComponent<RoomFittedBackground>().Fit();
 
             if (art.GetComponent<RoomVisualCuller>() == null)
                 art.gameObject.AddComponent<RoomVisualCuller>();

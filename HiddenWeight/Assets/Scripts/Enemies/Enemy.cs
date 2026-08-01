@@ -161,6 +161,9 @@ namespace HiddenWeight.Enemies
             var guard = GetComponent<IGuard>();
             if (guard != null && guard.BlocksFrom(sourcePosition))
             {
+                // 막힌 타격은 들어간 타격과 소리부터 달라야 한다. 같은 EnemyHit을 쓰면
+                // 딜이 들어가는 줄 알고 계속 정면에서 때리게 된다.
+                AudioManager.Instance?.PlaySfx(SfxCue.EnemyBlock, 0.45f);
                 if (_flashRoutine != null) StopCoroutine(_flashRoutine);
                 _flashRoutine = StartCoroutine(FlashRoutine());
                 return;

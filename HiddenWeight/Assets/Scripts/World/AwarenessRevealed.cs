@@ -33,10 +33,18 @@ namespace HiddenWeight.World
 
         public void OnAwarenessChanged(bool active) => Apply(active);
 
+        // 자각을 켠 순간 화면 곳곳이 동시에 바뀌면 어느 쪽이 새로 드러났는지 놓친다.
+        // 나타나는 쪽만 소리를 내서 시선을 그쪽으로 넘긴다.
+        bool _wasPresent;
+
         void Apply(bool active)
         {
             IsRevealed = active;
             bool present = invert ? !active : active;
+
+            if (present && !_wasPresent && Application.isPlaying)
+                Core.AudioManager.Instance?.PlaySfx(Core.SfxCue.SecretReveal, 0.5f);
+            _wasPresent = present;
 
             if (visual != null)
             {

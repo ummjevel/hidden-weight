@@ -213,22 +213,50 @@ namespace HiddenWeight.World
                 fill.color = palette.SurfaceTintFor(sceneName);
                 fill.sortingOrder = 4;
 
-                // 윗면 선은 타일맵 바닥과 같은 색을 써서 "밟을 수 있는 면"이 한 가지로 읽히게 한다.
-                float edgeHeight = 0.14f / scaleY;
+                // 네 면을 모두 두른다. 윗면만 그리면 서서 밟는 발판은 보이지만, 세로 벽이나
+                // 천장은 플레이어가 부딪히는 면(옆·아래)에 아무것도 없어 "안 보이는데 막히는
+                // 벽"이 그대로 남는다 — 응시의 G08_RightEdge·G05_LowCeiling이 그랬다.
+                // 타일맵 쪽이 BuildTilemapWallEdges로 세로면을 따로 그리는 것과 같은 이유다.
+                float scaleX = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.x));
+                float thickY = 0.14f / scaleY;
+                float thickX = 0.14f / scaleX;
+                Color edgeColor = TraversalEdgeColor(sceneName);
+                float left = platform.offset.x - platform.size.x * 0.5f;
+                float right = platform.offset.x + platform.size.x * 0.5f;
+                float bottom = platform.offset.y - platform.size.y * 0.5f;
 
-                var edge = new GameObject("PlatformEdge");
-                edge.transform.SetParent(root.transform, false);
-                edge.transform.localPosition = new Vector3(platform.offset.x, topY - edgeHeight * 0.5f, 0f);
-                edge.transform.localScale = new Vector3(
-                    platform.size.x / sprite.bounds.size.x,
-                    edgeHeight / sprite.bounds.size.y,
-                    1f);
-
-                var edgeRenderer = edge.AddComponent<SpriteRenderer>();
-                edgeRenderer.sprite = VisibilityPixel();
-                edgeRenderer.color = TraversalEdgeColor(sceneName);
-                edgeRenderer.sortingOrder = 6;
+                AddPlatformEdge(root.transform, "PlatformEdgeTop", edgeColor,
+                    new Vector2(platform.offset.x, topY - thickY * 0.5f),
+                    new Vector2(platform.size.x, thickY));
+                AddPlatformEdge(root.transform, "PlatformEdgeBottom", edgeColor,
+                    new Vector2(platform.offset.x, bottom + thickY * 0.5f),
+                    new Vector2(platform.size.x, thickY));
+                AddPlatformEdge(root.transform, "PlatformEdgeLeft", edgeColor,
+                    new Vector2(left + thickX * 0.5f, platform.offset.y),
+                    new Vector2(thickX, platform.size.y));
+                AddPlatformEdge(root.transform, "PlatformEdgeRight", edgeColor,
+                    new Vector2(right - thickX * 0.5f, platform.offset.y),
+                    new Vector2(thickX, platform.size.y));
             }
+        }
+
+        static void AddPlatformEdge(Transform parent, string name, Color color,
+                                    Vector2 localCenter, Vector2 localSize)
+        {
+            Sprite pixel = VisibilityPixel();
+            Vector2 spriteSize = pixel.bounds.size;
+            if (spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+
+            var edge = new GameObject(name);
+            edge.transform.SetParent(parent, false);
+            edge.transform.localPosition = new Vector3(localCenter.x, localCenter.y, 0f);
+            edge.transform.localScale = new Vector3(
+                localSize.x / spriteSize.x, localSize.y / spriteSize.y, 1f);
+
+            var renderer = edge.AddComponent<SpriteRenderer>();
+            renderer.sprite = pixel;
+            renderer.color = color;
+            renderer.sortingOrder = 6;
         }
 
         // 높이가 달라지는 바닥 턱과 구덩이 옆면도 실제로는 벽잡기가 가능한 TilemapCollider다.

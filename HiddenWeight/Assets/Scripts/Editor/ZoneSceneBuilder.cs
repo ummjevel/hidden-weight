@@ -1230,7 +1230,13 @@ namespace HiddenWeight.EditorTools
             // false를 돌려주고 RoomLoader가 전환을 취소한다 — 등록이 곧 통행 허가다.
             foreach (var room in ResidueRoomLinks.RoomNames)
                 scenes.Add(new EditorBuildSettingsScene($"{ScenesFolder}/Room_Residue_{room}.unity", true));
+            foreach (var room in GazeRoomLinks.RoomNames)
+                scenes.Add(new EditorBuildSettingsScene($"{ScenesFolder}/Room_Gaze_{room}.unity", true));
+            foreach (var room in FractureRoomLinks.RoomNames)
+                scenes.Add(new EditorBuildSettingsScene($"{ScenesFolder}/Room_Fracture_{room}.unity", true));
 
+            // 아직 굽지 않은 지역의 방 씬은 파일이 없다. 등록만 해 두면 Unity가 빌드 때
+            // 조용히 건너뛰므로, 지역을 하나씩 옮기는 동안에도 이 목록은 그대로 둘 수 있다.
             EditorBuildSettings.scenes = scenes.ToArray();
         }
     }

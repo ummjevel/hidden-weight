@@ -48,7 +48,43 @@ namespace HiddenWeight.EditorTools
                 return;
             }
             Debug.Log($"[BuildScript] 빌드 성공: {report.summary.outputPath}");
+            CopyToDesktop(report.summary.outputPath);
             EditorApplication.Exit(0);
+        }
+
+        // 빌드 결과를 바탕화면에도 복사한다. 실제 빌드는 워크트리 안(.claude/worktrees/…)에
+        // 떨어지는데 그 경로는 점으로 시작해 Finder에서 보이지 않아, 손으로 실행하려면 매번
+        // 경로를 찾아야 했다. 복사가 실패해도 빌드 자체는 성공이므로 경고만 남기고 넘어간다.
+        static void CopyToDesktop(string builtAppPath)
+        {
+            try
+            {
+                string desktop = System.IO.Path.Combine(
+                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile),
+                    "Desktop");
+                if (!System.IO.Directory.Exists(desktop)) return;
+
+                string source = System.IO.Path.GetFullPath(builtAppPath);
+                string target = System.IO.Path.Combine(desktop, System.IO.Path.GetFileName(source));
+                if (System.IO.Path.GetFullPath(target) == source) return; // 이미 바탕화면에 빌드한 경우
+
+                if (System.IO.Directory.Exists(target)) System.IO.Directory.Delete(target, true);
+                CopyDirectory(source, target);
+                Debug.Log($"[BuildScript] 바탕화면에 복사: {target}");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[BuildScript] 바탕화면 복사 실패(빌드는 성공): {e.Message}");
+            }
+        }
+
+        static void CopyDirectory(string source, string target)
+        {
+            System.IO.Directory.CreateDirectory(target);
+            foreach (string file in System.IO.Directory.GetFiles(source))
+                System.IO.File.Copy(file, System.IO.Path.Combine(target, System.IO.Path.GetFileName(file)), true);
+            foreach (string dir in System.IO.Directory.GetDirectories(source))
+                CopyDirectory(dir, System.IO.Path.Combine(target, System.IO.Path.GetFileName(dir)));
         }
     }
 }

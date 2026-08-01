@@ -13,6 +13,13 @@ namespace HiddenWeight.World
 
         public string RequiredEncounterId => requiredEncounterId;
 
+        // 조건이 없으면 항상 열려 있다. 안내 문구(BlockedHint)가 "왜 못 나가는지"를
+        // 판단할 때 쓰므로, 막는 쪽 로직과 같은 기준을 한곳에서 읽게 둔다.
+        public bool IsOpen =>
+            string.IsNullOrEmpty(requiredEncounterId)
+            || (GameManager.Instance != null
+                && GameManager.Instance.Progress.IsEncounterCleared(requiredEncounterId));
+
         SpriteRenderer[] _exitBars;
         TextMesh _exitLabel;
         static Sprite _barSprite;

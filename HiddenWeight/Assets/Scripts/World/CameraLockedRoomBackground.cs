@@ -145,6 +145,24 @@ namespace HiddenWeight.World
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (shortcut.GetComponent<BlockedHint>() == null)
                     BlockedHint.AttachTo(shortcut.gameObject, shortcut: shortcut);
+
+            foreach (var zone in FindObjectsByType<ZoneTrigger>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (!string.IsNullOrEmpty(zone.RequiredEncounterId)
+                    && zone.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(zone.gameObject, zoneTrigger: zone);
+
+            // 방 문은 막지 않지만 안내가 더 필요하다 — 문 너머는 아직 로드되지 않은 다른
+            // 씬이라, 눈으로는 길인지 막다른 벽인지 구분할 방법이 없다.
+            foreach (var door in FindObjectsByType<RoomDoor>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (door.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(door.gameObject, door: door);
+
+            foreach (var rewindable in FindObjectsByType<Rewindable>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (rewindable.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(rewindable.gameObject, rewindable: rewindable);
         }
 
         // 타일맵 밖에 따로 서 있는 발판(안전 발판·이동 발판·붕괴 발판 등)에도 같은 표시를 그린다.

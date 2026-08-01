@@ -24,17 +24,25 @@ namespace HiddenWeight.World
         Encounter _encounter;
         Gate _gate;
         Shortcut _shortcut;
+        ZoneTrigger _zoneTrigger;
+        RoomDoor _door;
+        Rewindable _rewindable;
 
         TextMesh _text;
         float _alpha;
 
         public static BlockedHint AttachTo(GameObject target, Encounter encounter = null,
-                                           Gate gate = null, Shortcut shortcut = null)
+                                           Gate gate = null, Shortcut shortcut = null,
+                                           ZoneTrigger zoneTrigger = null, RoomDoor door = null,
+                                           Rewindable rewindable = null)
         {
             var hint = target.AddComponent<BlockedHint>();
             hint._encounter = encounter;
             hint._gate = gate;
             hint._shortcut = shortcut;
+            hint._zoneTrigger = zoneTrigger;
+            hint._door = door;
+            hint._rewindable = rewindable;
             return hint;
         }
 
@@ -91,6 +99,20 @@ namespace HiddenWeight.World
 
             if (_shortcut != null)
                 return _shortcut.IsOpen ? null : "반대편에서만 열 수 있다";
+
+            // 지역 출구는 조건을 못 채웠을 때만 이유를 말한다. 열려 있으면 굳이 안내하지
+            // 않는다 — 지나가면 되는 곳에 문구가 남아 있으면 읽을 것이 늘기만 한다.
+            if (_zoneTrigger != null)
+                return _zoneTrigger.IsOpen ? null : "이 지역을 끝내야 나갈 수 있다";
+
+            // 방 문은 반대다. 막지 않지만 "여기가 다음 방으로 가는 길"이라는 안내가 필요하다.
+            // 문 너머는 아직 로드되지 않은 다른 씬이라 눈으로는 길인지 벽인지 알 수 없다.
+            if (_door != null)
+                return "다음 방으로";
+
+            // 되감기로 되돌릴 수 있는 것은, 되돌릴 수 있는 상태일 때만 알려 준다.
+            if (_rewindable != null)
+                return _rewindable.CanRewind ? "되감기로 되돌릴 수 있다" : null;
 
             return null;
         }

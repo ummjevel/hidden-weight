@@ -24,17 +24,6 @@ namespace HiddenWeight.EditorTools
             public string[] RowClips;      // 행 = 클립. 프레임 이름은 "클립_00" 형식이 된다
         }
 
-        // 동작별 시트는 전부 같은 모양(1256x314 = 4열 1행, 셀 314px)이라 경로와 클립
-        // 이름만 다르다. 22줄에 같은 숫자를 스물두 번 적는 대신 한곳에서 만든다.
-        static Sheet ActionSheet(string fileName, string clip) => new Sheet
-        {
-            Path = "Gameplay/Enemies/Animation/" + fileName + "_4x314.png",
-            Columns = 4,
-            Rows = 1,
-            Pivot = new Vector2(0.5f, 0.5f),
-            RowClips = new[] { clip },
-        };
-
         // 문서의 "시트 분할" 표 그대로.
         static readonly Sheet[] Sheets =
         {
@@ -98,89 +87,34 @@ namespace HiddenWeight.EditorTools
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "SwingSpark", "SwingSlash", "SwingBurst", "SwingRing" } },
 
-            // _v1은 _v2로 교체됐다. 그림 자체는 남겨 두되 클립 이름에서 비켜 세운다 —
-            // PrefabBuilder.FindFrames가 스프라이트 "이름"으로 찾기 때문에, 두 세대가 같은
-            // 이름을 내면 어느 쪽이 걸릴지 알 수 없게 된다.
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "WalkerV1Idle", "WalkerV1Walk", "WalkerV1Attack", "WalkerV1Hit" } },
+                        RowClips = new[] { "WalkerIdle", "WalkerWalk", "WalkerAttack", "WalkerHit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "FingerV1Idle", "FingerV1Walk", "FingerV1Attack", "FingerV1Hit" } },
+                        RowClips = new[] { "FingerIdle", "FingerWalk", "FingerAttack", "FingerHit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "CarrierV1Idle", "CarrierV1Walk", "CarrierV1Attack", "CarrierV1Hit" } },
+                        RowClips = new[] { "CarrierIdle", "CarrierWalk", "CarrierAttack", "CarrierHit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "HardenedV1Idle", "HardenedV1Walk", "HardenedV1Attack", "HardenedV1Hit" } },
+                        RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedAttack", "HardenedHit" } },
 
-            // _v2 새 원화(부드러운 렌더링). 8×6이고 셀은 캐릭터마다 181px 또는(캐리어)
-            // 202×161px로 제각각이라 파일별 실제 격자를 넣는다.
-            //
-            // 행 순서는 문서에 없어 시트를 직접 열어 읽었다. 여섯 행이
-            // Idle / Walk / Run / Attack / Hit / Death 순이며, 워커와 캐리어 두 시트가
-            // 서로 독립적으로 같은 배열을 보인다(3행에만 공격 궤적이 그려져 있고, 마지막
-            // 행만 바닥으로 무너진다). _v1의 Idle/Walk/Attack/Hit 순서와도 어긋나지 않는다.
-            //
-            // 런타임이 쓰는 클립은 네 개뿐이라 Run·Death 행은 이름만 붙여 두고 아직
-            // 소비하지 않는다. 사망 연출을 넣을 때 그대로 가져다 쓰면 된다.
+            // _v2는 b33de01에서 추가된 새 원화(부드러운 렌더링)로, 아직 어느 빌더에서도 쓰지
+            // 않는다. 격자가 _v1(4×4, 셀 314px)과 다르다 — 실측하면 8×6, 셀은 캐릭터마다
+            // 181px 또는(캐리어) 202×161px로 제각각이다. 312×312 같은 고정 셀 크기를
+            // 억지로 맞추는 대신 각 파일의 실제 격자에 맞게 Columns/Rows를 넣는다.
+            // 행별 동작(Idle/Walk/Attack/...)은 Gameplay/README.md에 아직 정리돼 있지 않아
+            // 추측하지 않고 Prefix_r{행}_c{열} 형식으로만 이름 붙인다 — 실제로 교체해
+            // 쓰려면 행 순서를 먼저 확인하고 RowClips로 바꿔야 한다.
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "WalkerIdle", "WalkerWalk", "WalkerRun",
-                                           "WalkerAttack", "WalkerHit", "WalkerDeath" } },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "WalkerV2" },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "FingerV2Idle", "FingerV2Walk", "FingerV2Run",
-                                           "FingerV2Attack", "FingerV2Hit", "FingerV2Death" } },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "FingerV2" },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "CarrierV2Idle", "CarrierV2Walk", "CarrierV2Run",
-                                           "CarrierV2Attack", "CarrierV2Hit", "CarrierV2Death" } },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "CarrierV2" },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "HardenedV2Idle", "HardenedV2Walk", "HardenedV2Run",
-                                           "HardenedV2Attack", "HardenedV2Hit", "HardenedV2Death" } },
-
-            // 동작별 시트(1256x314 = 4열 1행, 셀 314px). 위 _v2 통합 시트와 같은 커밋으로
-            // 들어왔고 동작이 파일명에 박혀 있어 추측할 것이 없다. 방향(Left/Right)까지
-            // 따로 그려진 것이 있어 이름 끝에 L/R을 남긴다.
-            //
-            // 런타임 클립 이름(FingerIdle 등)은 _v2 시트가 갖는다 — 워커는 동작별 시트가
-            // 없어 _v2에만 있으므로, 네 몬스터의 기본을 한 세대로 맞추려면 그쪽이어야 한다.
-            // 여기서는 겹치지 않는 이름으로 잘라 두어, 방향별 연출이나 개별 동작이 필요할 때
-            // 바로 가져다 쓸 수 있게만 해 둔다.
-            ActionSheet("HangingFinger_Idle_Right", "FingerIdle"),
-            ActionSheet("HangingFinger_GroundCrawl_Right", "FingerWalk"),
-            ActionSheet("HangingFinger_GroundCrawl_Left", "FingerCrawlL"),
-            ActionSheet("HangingFinger_DropAttack_Left", "FingerDropAttackL"),
-            ActionSheet("HangingFinger_HitDeath_Left", "FingerHitDeathL"),
-            // 이 한 장만 _v2가 _4x314 뒤에 붙어 있어 ActionSheet의 경로 규칙에서 벗어난다.
-            new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_GroundCrawl_Left_4x314_v2.png",
-                        Columns = 4, Rows = 1, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "FingerCrawlLV2" } },
-            ActionSheet("HangingFinger_DropAttack_Right", "FingerAttack"),
-            ActionSheet("HangingFinger_HitDeath_Right", "FingerHit"),
-
-            ActionSheet("HardenedResidue_Idle_Left", "HardenedIdleL"),
-            ActionSheet("HardenedResidue_Idle_Right", "HardenedIdle"),
-            ActionSheet("HardenedResidue_Walk_Left", "HardenedWalkL"),
-            ActionSheet("HardenedResidue_Walk_Right", "HardenedWalk"),
-            ActionSheet("HardenedResidue_FistSlam_Left", "HardenedFistSlamL"),
-            ActionSheet("HardenedResidue_FistSlam_Right", "HardenedAttack"),
-            ActionSheet("HardenedResidue_ShieldCrumble_Left", "HardenedShieldCrumbleL"),
-            ActionSheet("HardenedResidue_ShieldCrumble_Right", "HardenedHit"),
-
-            ActionSheet("MourningCarrier_Idle_Right", "CarrierIdle"),
-            ActionSheet("MourningCarrier_Walk_Right", "CarrierWalk"),
-            ActionSheet("MourningCarrier_Charge_Right", "CarrierAttack"),
-            ActionSheet("MourningCarrier_HitCollapse_Right", "CarrierHit"),
-
-            // 흑요석 등불 짐승. 아직 적 정의가 없어 소비하는 곳이 없지만, 잘라 두면
-            // 새 적을 만들 때 프레임을 그대로 집어 올 수 있다.
-            ActionSheet("ObsidianLanternBeast_Idle_Right", "BeastIdleR"),
-            ActionSheet("ObsidianLanternBeast_Walk_Right", "BeastWalkR"),
-            ActionSheet("ObsidianLanternBeast_Slash_Right", "BeastSlashR"),
-            ActionSheet("ObsidianLanternBeast_Collapse_Right", "BeastCollapseR"),
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "HardenedV2" },
 
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Combat_v1.png",
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),

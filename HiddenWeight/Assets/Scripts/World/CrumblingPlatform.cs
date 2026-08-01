@@ -72,6 +72,8 @@ namespace HiddenWeight.World
             var originalLocalPos = transform.localPosition;
 
             // 1행: 밟은 직후의 금과 미세한 흔들림. 아직 밟고 서 있을 수 있는 단계다.
+            // 금 가는 소리가 곧 남은 시간이다 — 발밑을 볼 수 없는 점프 중에도 들려야 한다.
+            Core.AudioManager.Instance?.PlaySfx(Core.SfxCue.PlatformCrack, 0.5f);
             bool animated = PlayState("PlatformCrack");
 
             while (_crumbleTimer > 0f)
@@ -90,6 +92,7 @@ namespace HiddenWeight.World
             transform.localPosition = originalLocalPos;
             _collider.enabled = false;
             HasCrumbled = true;
+            Core.AudioManager.Instance?.PlaySfx(Core.SfxCue.PlatformCollapse, 0.55f);
 
             // 2행 붕괴 → 3행 파손 정착. 파손 상태를 그림으로 보여줄 수 있으면 스프라이트를
             // 끄지 않는다. 발판이 있던 자리가 눈에 남아야 되감기로 되돌릴 대상이 읽힌다.

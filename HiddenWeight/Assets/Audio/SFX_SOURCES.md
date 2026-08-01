@@ -28,30 +28,76 @@ trimmed, faded, DC-corrected, level-matched, and exported as gameplay masters.
 
 ## Refined signature sources
 
-Selected and refined masters live outside the Unity project in
-`/Users/ksh/Desktop/sound/Selected_Refined`. Each source folder holds one
-`*_Selected.wav`, exported as 48 kHz, 16-bit mono.
+Generated with ElevenLabs Sound Effects at prompt influence 55% with prompt
+auto-improvement off. The full library — 133 items, four raw MP3 variations
+each — is preserved outside the Unity project in `/Users/ksh/Desktop/sound/out`,
+alongside `MANIFEST.md` listing every item, its loop flag, and its length.
 
-| SfxCue | Refined source |
+Runtime clips were derived from that library: leading silence trimmed with a
+3 ms margin, tail capped per cue so a clip never outlives the action that
+triggered it, 3 ms fade-in and 25 ms fade-out, peak-normalized to -3 dBFS, and
+exported as 48 kHz, 16-bit mono WAV. Where a cue draws several variations, the
+takes with the tightest attack were selected.
+
+| SfxCue | Source item | Runtime variations |
+|---|---|---:|
+| `AttackHit` | `SFX_PLAYER_ATTACK_HIT` | 4 |
+| `Hurt` | `SFX_PLAYER_HURT` | 4 |
+| `Death` | `SFX_PLAYER_DEATH` | 3 |
+| `Respawn` | `SFX_PLAYER_RESPAWN` | 3 |
+| `Heal` | `SFX_PLAYER_HEAL` | 3 |
+| `WallJump` | `SFX_PLAYER_WALL_JUMP` | 3 |
+| `WallGrab` | `SFX_PLAYER_WALL_CLING` (alternates with `Player_Wall_Grab_01`) | 3 |
+| `Land` | `SFX_PLAYER_LAND_HEAVY` (alternates with `Player_Land_Normal_01`) | 2 |
+| `Checkpoint` | `SFX_CHECKPOINT_ACTIVATE` | 3 |
+| `Fragment` | `SFX_MEMORY_FRAGMENT_PICKUP` | 3 |
+| `ItemPickup` | `SFX_CURRENCY_PICKUP` | 3 |
+| `Reward` | `SFX_HEALTH_SHARD_PICKUP` | 3 |
+| `ShortcutOpen` | `SFX_GATE_UNLOCK` | 3 |
+| `RewindStart` | `SFX_REWIND_CHANNEL_START` | 3 |
+| `RewindComplete` | `SFX_REWIND_COMPLETE` | 3 |
+| `EnemyHit` | `SFX_WALKER_HIT`, `SFX_FINGER_IMPACT`, `SFX_HARDENED_BLOCK` | 4 |
+| `EnemyDeath` | `SFX_WALKER_DEATH`, `SFX_FINGER_DEATH`, `SFX_CARRIER_DEATH` | 4 |
+| `BossTelegraph` | `SFX_WRIST_SWEEP_TELEGRAPH`, `SFX_WRIST_CHARGE_TELEGRAPH`, `SFX_WRIST_DROP_WARNING`, `SFX_INSTRUCTOR_CHAIN_WARNING` | 4 |
+| `BossPhase` | `SFX_INSTRUCTOR_PHASE_WARNING`, `SFX_INSTRUCTOR_PHASE_RUPTURE` | 2 |
+| `BossVictory` | `SFX_INSTRUCTOR_DEATH`, `SFX_WRIST_DEATH` | 2 |
+| `EnemyTelegraph` | `SFX_WALKER_TELEGRAPH`, `SFX_HARDENED_TELEGRAPH`, `SFX_CARRIER_CHARGE_TELEGRAPH` | 4 |
+| `EnemyBlock` | `SFX_HARDENED_BLOCK` | 3 |
+| `PlatformCrack` | `SFX_FLOOR_CRACK` | 3 |
+| `PlatformCollapse` | `SFX_FLOOR_COLLAPSE` | 3 |
+| `GateOpen` | `SFX_GATE_OPEN` | 2 |
+| `GateClose` | `SFX_GATE_CLOSE` | 2 |
+| `LiftStart` | `SFX_LIFT_START` | 2 |
+| `LiftStop` | `SFX_LIFT_STOP` | 2 |
+| `SecretReveal` | `SFX_SECRET_EYE_REVEAL`, `SFX_SECRET_EYE_OPEN` | 3 |
+| `UiCancel` | `SFX_UI_CANCEL` | 2 |
+| `UiPause` | `SFX_UI_PAUSE` | 2 |
+| `UiUnpause` | `SFX_UI_UNPAUSE` | 2 |
+| `UiMapOpen` | `SFX_UI_MAP_OPEN` | 2 |
+| `UiMapClose` | `SFX_UI_MAP_CLOSE` | 2 |
+
+## Room ambience
+
+`Assets/Resources/Audio/Ambience` holds seven seamless 30-second loops from the
+same library, converted to 48 kHz, 16-bit mono and scaled to -6 dBFS peak. They
+are deliberately left untrimmed and unfaded so the loop points stay clean.
+
+`ResidueAmbientAudio` picks one per room and crossfades over 1.4 seconds when the
+room changes, on its own `AudioSource` pair so the BGM mute policy still holds.
+Rooms are mapped from the space descriptions in `LEVEL_21_RESIDUE_ROOMS.md`:
+
+| Ambience | Rooms |
 |---|---|
-| `AttackHit` | `Player/SFX_PLAYER_ATTACK_HIT` |
-| `WallJump` | `Player/SFX_PLAYER_WALL_JUMP` |
-| `WallGrab` | `Player/SFX_PLAYER_WALL_CLING` (alternates with `Player_Wall_Grab_01`) |
-| `Hurt` | `Player/SFX_PLAYER_HURT` |
-| `Death` | `Player/SFX_PLAYER_DEATH` |
-| `Respawn` | `Player/SFX_PLAYER_RESPAWN` |
-| `Heal` | `Player/SFX_PLAYER_HEAL` |
-| `Checkpoint` | `World/SFX_CHECKPOINT_ACTIVATE` |
-| `Fragment` | `World/SFX_MEMORY_FRAGMENT_PICKUP` |
-| `ShortcutOpen` | `World/SFX_GATE_UNLOCK` |
-| `EnemyHit` | `Enemies/SFX_WALKER_HIT` |
-| `EnemyDeath` | `Enemies/SFX_WALKER_DEATH` |
-| `BossTelegraph` | `Bosses/SFX_WRIST_CHARGE_TELEGRAPH`, `SFX_WRIST_SWEEP_TELEGRAPH`, `SFX_WRIST_DROP_WARNING`, `SFX_INSTRUCTOR_CHAIN_WARNING` |
-| `BossPhase` | `Bosses/SFX_INSTRUCTOR_PHASE_RUPTURE` |
-| `BossVictory` | `Bosses/SFX_INSTRUCTOR_DEATH` |
+| `EntryBridge` | R01 입구 경계, R02 애도교, R03 손바닥 광장, R07 갈비 곡선교 |
+| `LowerRuins` | R04 매몰된 하층 폐허, R11 후회의 회랑 |
+| `SecretRoom` | R05 되감기 성소 |
+| `InsideFingers` | R06 손가락 내부 |
+| `LiftShaft` | R08 상층 승강축 |
+| `UpperTower` | R09 끊어진 상층 고가교, R10 손목 감시탑 |
+| `Gallows` | R12 기억의 교수대 |
 
-`BossTelegraph` intentionally holds four takes so `ResolveSfx` alternates
-between them; every other cue holds a single take.
+Rooms outside that table keep the procedural low bed, so other zones reusing the
+component still get something rather than silence.
 
 ## Freesound CC0 assets
 
@@ -65,11 +111,10 @@ faded, and peak-normalized for in-game use:
 | Unity use | Freesound source |
 |---|---|
 | UI confirm | [542044](https://freesound.org/s/542044/) |
-| Item pickup variations | [542030](https://freesound.org/s/542030/), [542029](https://freesound.org/s/542029/), [542028](https://freesound.org/s/542028/) |
-| Reward variations | [541982](https://freesound.org/s/541982/), [541981](https://freesound.org/s/541981/) |
 
-The heal, respawn, melee hit, and player hurt placeholders drawn from this pack
-were removed once the refined signature sources above replaced them.
+`UiConfirm` is the only cue still using this pack. The heal, respawn, melee hit,
+player hurt, item pickup, and reward placeholders drawn from it were removed once
+the generated signature sources above replaced them.
 
 Attribution is not required by CC0, but the source information is retained for
 asset provenance.
@@ -79,5 +124,10 @@ asset provenance.
 These intentionally keep the procedural placeholder until a sound matching the
 game's identity is supplied:
 
-- `Ability` — emotion skill activation
-- `RewindStart` and `RewindComplete`
+- `Ability` — emotion skill activation. The Residue-specific rewind cues exist,
+  but a shared activation sound covering hush, foresight, and awareness does not.
+
+Cues still served by earlier one-off masters rather than the generated library:
+`Jump`, `Dash`, `FootstepWalk`, `FootstepRun`, `WallSlide`, `UiConfirm`. The
+footstep cues stay single-material because there is no ground-material lookup
+yet — importing the metal and fibrous variants would mix surfaces at random.

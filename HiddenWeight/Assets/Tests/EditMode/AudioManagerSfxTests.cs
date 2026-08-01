@@ -74,7 +74,13 @@ namespace HiddenWeight.Tests
             SfxCue.WallGrab, SfxCue.WallSlide, SfxCue.Hurt, SfxCue.Death,
             SfxCue.Respawn, SfxCue.Heal, SfxCue.ItemPickup, SfxCue.Reward,
             SfxCue.ShortcutOpen, SfxCue.EnemyHit, SfxCue.EnemyDeath,
-            SfxCue.BossTelegraph, SfxCue.BossPhase, SfxCue.BossVictory
+            SfxCue.BossTelegraph, SfxCue.BossPhase, SfxCue.BossVictory,
+            SfxCue.RewindStart, SfxCue.RewindComplete,
+            SfxCue.EnemyTelegraph, SfxCue.EnemyBlock,
+            SfxCue.PlatformCrack, SfxCue.PlatformCollapse,
+            SfxCue.GateOpen, SfxCue.GateClose, SfxCue.LiftStart, SfxCue.LiftStop,
+            SfxCue.SecretReveal, SfxCue.UiCancel, SfxCue.UiPause, SfxCue.UiUnpause,
+            SfxCue.UiMapOpen, SfxCue.UiMapClose
         };
 
         [Test]

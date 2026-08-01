@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using HiddenWeight.Enemies;
 
 namespace HiddenWeight.World
 {
@@ -118,6 +119,144 @@ namespace HiddenWeight.World
             }
 
             BuildWallClimbSurfaces(palette);
+            BuildPlatformSurfaces(palette);
+            BuildBlockedHints();
+        }
+
+        // 길을 막는 것들에 "왜 막혔는지" 문구를 붙인다. 전투 잠금벽·능력 게이트·아직 열지 않은
+        // 숏컷은 생김새가 서로 비슷해서, 문구가 없으면 넘어갈 수 있는 벽인 줄 알고 시도하게 된다.
+        // 위의 표시들과 같은 이유로 런타임에 붙이므로 씬을 다시 굽지 않아도 된다.
+        static void BuildBlockedHints()
+        {
+            foreach (var encounter in FindObjectsByType<Encounter>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var wall in encounter.GetComponentsInChildren<BoxCollider2D>(true))
+                {
+                    if (wall.isTrigger || wall.GetComponent<BlockedHint>() != null) continue;
+                    BlockedHint.AttachTo(wall.gameObject, encounter: encounter);
+                }
+
+            foreach (var gate in FindObjectsByType<Gate>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (gate.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(gate.gameObject, gate: gate);
+
+            foreach (var shortcut in FindObjectsByType<Shortcut>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (shortcut.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(shortcut.gameObject, shortcut: shortcut);
+
+            foreach (var zone in FindObjectsByType<ZoneTrigger>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (!string.IsNullOrEmpty(zone.RequiredEncounterId)
+                    && zone.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(zone.gameObject, zoneTrigger: zone);
+
+            // 방 문은 막지 않지만 안내가 더 필요하다 — 문 너머는 아직 로드되지 않은 다른
+            // 씬이라, 눈으로는 길인지 막다른 벽인지 구분할 방법이 없다.
+            foreach (var door in FindObjectsByType<RoomDoor>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (door.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(door.gameObject, door: door);
+
+            foreach (var rewindable in FindObjectsByType<Rewindable>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (rewindable.GetComponent<BlockedHint>() == null)
+                    BlockedHint.AttachTo(rewindable.gameObject, rewindable: rewindable);
+        }
+
+        // 타일맵 밖에 따로 서 있는 발판(안전 발판·이동 발판·붕괴 발판 등)에도 같은 표시를 그린다.
+        //
+        // 위의 타일맵 훑기는 셀 격자만 보고, BuildWallClimbSurfaces는 Wall 레이어만 본다. 그
+        // 사이에 Ground 레이어의 독립 BoxCollider가 통째로 빠져 있었다 — 밟히는데 아무 표시도
+        // 없어서, 어두운 배경 앞에서는 허공에 서 있는 것처럼 보였다. 잔재 기준 방마다 3~13개다.
+        static void BuildPlatformSurfaces(TraversalArtPalette palette)
+        {
+            int ground = LayerMask.NameToLayer("Ground");
+
+            foreach (var platform in FindObjectsByType<BoxCollider2D>(
+                         FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (platform.isTrigger || platform.gameObject.layer != ground) continue;
+                if (platform.GetComponentInParent<Tilemap>() != null) continue;  // 타일맵은 위에서 처리했다
+                if (platform.transform.Find("PlatformSurface_Runtime") != null) continue;
+
+                string sceneName = platform.gameObject.scene.name;
+                Sprite sprite = palette == null ? null : palette.SurfaceFor(sceneName);
+                if (sprite == null || sprite.bounds.size.x <= 0f || sprite.bounds.size.y <= 0f) continue;
+
+                var root = new GameObject("PlatformSurface_Runtime");
+                root.transform.SetParent(platform.transform, false);
+
+                // BuildSolidBlock이 크기를 localScale에 싣기 때문에 콜라이더 자체는 1x1이다.
+                // 자식은 그 스케일을 그대로 물려받으므로 로컬 단위로만 계산한다.
+                float topY = platform.offset.y + platform.size.y * 0.5f;
+
+                // 윗면을 덮는 얇은 띠로만 그린다. 타일맵 쪽(AddTraversalSurface)이 1.65유닛
+                // 띠를 쓰는 것과 같은 규칙이다. 예전에는 콜라이더 전체 높이로 그렸는데,
+                // 지형 스프라이트 피벗이 하단이라 그 그림이 발판 위로 솟아 두꺼운 블록에서는
+                // 공중에 뜬 상자처럼 보였다.
+                float scaleY = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.y));
+                float bandHeight = Mathf.Min(platform.size.y, 1.65f / scaleY);
+
+                var surface = new GameObject("PlatformSurface");
+                surface.transform.SetParent(root.transform, false);
+                surface.transform.localPosition = new Vector3(
+                    platform.offset.x, topY - bandHeight, 0f);
+                surface.transform.localScale = new Vector3(
+                    platform.size.x / sprite.bounds.size.x,
+                    bandHeight / sprite.bounds.size.y,
+                    1f);
+
+                var fill = surface.AddComponent<SpriteRenderer>();
+                fill.sprite = sprite;
+                fill.color = palette.SurfaceTintFor(sceneName);
+                fill.sortingOrder = 4;
+
+                // 네 면을 모두 두른다. 윗면만 그리면 서서 밟는 발판은 보이지만, 세로 벽이나
+                // 천장은 플레이어가 부딪히는 면(옆·아래)에 아무것도 없어 "안 보이는데 막히는
+                // 벽"이 그대로 남는다 — 응시의 G08_RightEdge·G05_LowCeiling이 그랬다.
+                // 타일맵 쪽이 BuildTilemapWallEdges로 세로면을 따로 그리는 것과 같은 이유다.
+                float scaleX = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.x));
+                float thickY = 0.14f / scaleY;
+                float thickX = 0.14f / scaleX;
+                Color edgeColor = TraversalEdgeColor(sceneName);
+                float left = platform.offset.x - platform.size.x * 0.5f;
+                float right = platform.offset.x + platform.size.x * 0.5f;
+                float bottom = platform.offset.y - platform.size.y * 0.5f;
+
+                AddPlatformEdge(root.transform, "PlatformEdgeTop", edgeColor,
+                    new Vector2(platform.offset.x, topY - thickY * 0.5f),
+                    new Vector2(platform.size.x, thickY));
+                AddPlatformEdge(root.transform, "PlatformEdgeBottom", edgeColor,
+                    new Vector2(platform.offset.x, bottom + thickY * 0.5f),
+                    new Vector2(platform.size.x, thickY));
+                AddPlatformEdge(root.transform, "PlatformEdgeLeft", edgeColor,
+                    new Vector2(left + thickX * 0.5f, platform.offset.y),
+                    new Vector2(thickX, platform.size.y));
+                AddPlatformEdge(root.transform, "PlatformEdgeRight", edgeColor,
+                    new Vector2(right - thickX * 0.5f, platform.offset.y),
+                    new Vector2(thickX, platform.size.y));
+            }
+        }
+
+        static void AddPlatformEdge(Transform parent, string name, Color color,
+                                    Vector2 localCenter, Vector2 localSize)
+        {
+            Sprite pixel = VisibilityPixel();
+            Vector2 spriteSize = pixel.bounds.size;
+            if (spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+
+            var edge = new GameObject(name);
+            edge.transform.SetParent(parent, false);
+            edge.transform.localPosition = new Vector3(localCenter.x, localCenter.y, 0f);
+            edge.transform.localScale = new Vector3(
+                localSize.x / spriteSize.x, localSize.y / spriteSize.y, 1f);
+
+            var renderer = edge.AddComponent<SpriteRenderer>();
+            renderer.sprite = pixel;
+            renderer.color = color;
+            renderer.sortingOrder = 6;
         }
 
         // 높이가 달라지는 바닥 턱과 구덩이 옆면도 실제로는 벽잡기가 가능한 TilemapCollider다.
@@ -219,6 +358,11 @@ namespace HiddenWeight.World
             {
                 if (wall.isTrigger || wall.gameObject.layer != LayerMask.NameToLayer("Wall")) continue;
                 if (wall.transform.Find("WallClimbSurfaces_Runtime") != null) continue;
+
+                // 전투 잠금벽도 Wall 레이어라 여기까지 온다. 하지만 그건 올라가라고 세운 벽이
+                // 아니라 "지금은 못 지나간다"는 벽이다. 등반 표시를 붙이면 오를 수 있다고
+                // 잘못 안내하게 되므로 건너뛰고, 대신 막힌 이유를 문구로 알려 준다.
+                if (wall.GetComponentInParent<Encounter>() != null) continue;
 
                 string sceneName = wall.gameObject.scene.name;
                 Sprite sprite = palette == null ? null : palette.SurfaceFor(sceneName);

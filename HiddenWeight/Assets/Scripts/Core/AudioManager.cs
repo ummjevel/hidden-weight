@@ -40,9 +40,9 @@ namespace HiddenWeight.Core
             _bgmSource = gameObject.AddComponent<AudioSource>();
             _bgmSource.loop = true;
             _bgmSource.playOnAwake = false;
-            // 현재 플레이 검수에서는 배경음악을 사용하지 않는다. 효과음 소스는 별도라 유지된다.
-            // 클립과 재생 상태도 유지해 두어, 음원 연결 검증과 추후 재활성화에는 영향이 없다.
-            _bgmSource.mute = true;
+            // 배경음을 끄고 싶으면 일시정지 메뉴의 "배경음"을 0%로 내린다. 예전에는 검수
+            // 편의로 여기서 mute를 켜 두었는데, 그러면 설정을 아무리 올려도 소리가 나지
+            // 않아 "설정이 고장 났다"로 읽힌다. 끄고 켜는 판단은 설정 한곳에만 둔다.
 
             // 짧은 효과음이 겹쳐도 개별 피치가 서로 바뀌지 않도록 작은 소스 풀을 쓴다.
             _sfxSources = new AudioSource[4];
@@ -252,9 +252,23 @@ namespace HiddenWeight.Core
         ShortcutOpen,
         EnemyHit,
         EnemyDeath,
+        EnemyTelegraph,
+        EnemyBlock,
         BossTelegraph,
         BossPhase,
-        BossVictory
+        BossVictory,
+        PlatformCrack,
+        PlatformCollapse,
+        GateOpen,
+        GateClose,
+        LiftStart,
+        LiftStop,
+        SecretReveal,
+        UiCancel,
+        UiPause,
+        UiUnpause,
+        UiMapOpen,
+        UiMapClose
     }
 
     static class ProceduralSfx

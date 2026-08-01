@@ -44,6 +44,13 @@ namespace HiddenWeight.World
 
         public string SceneNameFor(string roomName) => scenePrefix + roomName;
 
+        // 지역마다 방 씬 이름 접두사가 다르다(Room_Residue_ / Room_Gaze_ / Room_Fracture_).
+        // 셸의 진입점이 첫 방을 로드하기 전에 한 번 지정한다.
+        public void ConfigureZone(string prefix)
+        {
+            if (!string.IsNullOrEmpty(prefix)) scenePrefix = prefix;
+        }
+
         public void RequestTransition(RoomDoor from)
         {
             if (IsTransitioning || from == null) return;

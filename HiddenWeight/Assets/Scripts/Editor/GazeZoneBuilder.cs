@@ -591,6 +591,146 @@ namespace HiddenWeight.EditorTools
             BuildShaft(parent, map, "Shaft_GS3", G11.x + 9, G11.y + 1, GS3.y + 2);
         }
 
+        // 응시 방 15개를 각자 씬으로 굽고, 지형 없는 셸 하나를 만든다. 잔재
+        // (BuildResidueRooms)와 같은 구조다 — 방이 씬으로 갈라지면 복도가 사라지고
+        // 링크 테이블이 만든 포탈 문이 그 자리를 대신한다.
+        [MenuItem("Hidden Weight/Build Gaze Zone (Rooms)")]
+        public static void BuildGazeRooms()
+        {
+            EnsureScenesFolder();
+            GazeEnvironmentArtSlicer.SliceAll();
+            GazeAnimationArtSlicer.SliceAll();
+
+            UseArtRoot("Assets/Art/Gaze", "Gaze",
+                "GazeDoor_r1_c1", "GazeDoor_r1_c2",
+                "GazeDoor_r2_c1", "GazeDoor_r2_c2");
+
+            var builders = new (string room, System.Action<RoomCtx> build)[]
+            {
+                ("G01", BuildG01), ("G02", BuildG02), ("G03", BuildG03), ("G04", BuildG04),
+                ("GS1", BuildGS1), ("G05", BuildG05), ("G06", BuildG06), ("GS2", BuildGS2),
+                ("G07", BuildG07), ("G08", BuildG08), ("G09", BuildG09), ("G10", BuildG10),
+                ("G11", BuildG11), ("GS3", BuildGS3), ("G12", BuildG12),
+            };
+
+            foreach (var (room, build) in builders)
+            {
+                var scene = NewScene();
+                var ctx = NewGazeRoomCtx();
+                build(ctx);
+
+                BuildGazeRoomStart(ctx);
+                BuildGazeDoorsFor(ctx, room);
+                FinishGazeRoomScene(ctx);
+                SaveScene(scene, "Room_Gaze_" + room);
+            }
+
+            BuildGazeShell();
+            RegisterBuildSettings();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[GazeZoneBuilder] 응시 방 씬 {builders.Length}개와 셸 생성 완료");
+        }
+
+        static RoomCtx NewGazeRoomCtx()
+        {
+            var tilemap = BuildZoneRoot("Gaze", out var root);
+            TintTerrain(tilemap, GazeTerrain);
+
+            // 방 씬은 셸 위에 additive로 얹힌다. 전역 싱글턴은 셸이 하나만 들고 있어야 하므로
+            // 공용 킷이 넣어 준 사본을 걷어낸다(잔재 NewRoomCtx와 같은 이유).
+            var duplicate = Object.FindFirstObjectByType<HiddenWeight.Core.GameManager>();
+            if (duplicate != null) Object.DestroyImmediate(duplicate.gameObject);
+
+            var rooms = new GameObject("Rooms");
+            rooms.transform.SetParent(root.transform, true);
+
+            return new RoomCtx
+            {
+                Map = tilemap,
+                Root = root,
+                Rooms = rooms.transform,
+                O = Vector2Int.zero,
+                FloorArt = false,
+            };
+        }
+
+        static void FinishGazeRoomScene(RoomCtx c)
+        {
+            BuildImpactVFX(c.Root.transform, GazeImpacts);
+            BuildProjectileSpawner(c.Root.transform, GazeProjectiles);
+
+            if (_gazeShortcutA != null) AttachGazeSealAnimator(_gazeShortcutA, new Vector2(4f, 2f));
+            if (_gazeShortcutB != null) AttachGazeSealAnimator(_gazeShortcutB, new Vector2(3.5f, 2.5f));
+            if (_gazeShortcutC != null) AttachGazeSealAnimator(_gazeShortcutC, new Vector2(4f, 2f));
+            _gazeShortcutA = _gazeShortcutB = _gazeShortcutC = null;
+
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Gaze");
+
+            ClotheCollisionPlaceholderRenderers(c.Root);
+        }
+
+        static void BuildGazeDoorsFor(RoomCtx c, string room)
+        {
+            foreach (var link in GazeRoomLinks.Links)
+            {
+                if (link.fromRoom == room)
+                    SpawnGazeDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId);
+
+                if (link.toRoom == room)
+                    SpawnGazeDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId);
+            }
+        }
+
+        static void SpawnGazeDoor(RoomCtx c, string doorId, Side side, Vector2 anchor,
+            string targetRoom, string targetDoorId)
+        {
+            var go = new GameObject("Door_" + doorId.Replace(':', '_'));
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(anchor.x, anchor.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = side == Side.U || side == Side.D
+                ? new Vector2(3f, 1.2f)
+                : new Vector2(1.2f, 3.5f);
+
+            var door = go.AddComponent<RoomDoor>();
+            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+        }
+
+        static void BuildGazeRoomStart(RoomCtx c)
+        {
+            var go = new GameObject("RoomStart");
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(3f, 4f, 0f);
+            go.AddComponent<RoomStart>();
+        }
+
+        static void BuildGazeShell()
+        {
+            var scene = NewScene();
+            var root = new GameObject("Zone_Gaze");
+
+            Spawn("GameManager", Vector3.zero);
+
+            var marker = new GameObject("ZoneMarker");
+            marker.transform.SetParent(root.transform, false);
+            var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
+            SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Gaze);
+
+            PlacePlayerAndCamera(root, new Vector3(3f, 4f, 0f));
+
+            var loaderGo = new GameObject("RoomLoader");
+            loaderGo.AddComponent<RoomLoader>();
+            var entry = loaderGo.AddComponent<ZoneEntryPoint>();
+            SetField(entry, "scenePrefix", p => p.stringValue = "Room_Gaze_");
+            SetField(entry, "firstRoom", p => p.stringValue = "G01");
+
+            SaveScene(scene, "Zone_Gaze");
+        }
+
         [MenuItem("Hidden Weight/Build Gaze Zone (Full)")]
         public static void RunGazeZone()
         {
@@ -678,7 +818,6 @@ namespace HiddenWeight.EditorTools
         // 공격도 낙사도 없다. "누군가 보고 있다"를 전투 없이 먼저 겪게 하는 방(1.2절).
         static void BuildG01(RoomCtx c)
         {
-            c.O = G01;
             c.Floor(0, 26, 2);
 
             BuildCheckpoint(c.Root.transform, c.P(5f, 3f));
@@ -709,7 +848,6 @@ namespace HiddenWeight.EditorTools
         // 첫 시선 학습. 기둥 뒤에 서면 완전히 차단되고, 실패해도 하부 우회로로 떨어질 뿐이다.
         static void BuildG02(RoomCtx c)
         {
-            c.O = G02;
             c.Floor(0, 8, 2);
             c.Floor(8, 17, 1);   // 하부 안전 우회로
             c.Floor(17, 20, 3);
@@ -744,7 +882,6 @@ namespace HiddenWeight.EditorTools
         // 중앙 허브. 첫 방문에는 G04로 내려가는 길만 열려 있고, 숏컷 A·B는 만져지지만 못 지나간다.
         static void BuildG03(RoomCtx c)
         {
-            c.O = G03;
             c.Floor(0, 20, 3);
             c.Floor(20, 30, 2);  // 남동쪽 하층으로 가는 낮은 길
 
@@ -773,7 +910,6 @@ namespace HiddenWeight.EditorTools
         // 수직 하강과 환경 서사. 철창 안의 존재들은 플레이어가 다가가면 등을 돌린다.
         static void BuildG04(RoomCtx c)
         {
-            c.O = G04;
             c.Floor(0, 8, 18);        // 상층 관찰대 (입구 2,18)
             // 하층 안전 바닥. 로컬 8~9를 비워 GS1으로 내려가는 구멍을 만든다.
             // 깊이를 2로 줄인다 — 8칸짜리 깊은 구멍이면 다시 기어 올라올 수 없다.
@@ -815,7 +951,6 @@ namespace HiddenWeight.EditorTools
         // 스킬 없이 관찰만으로 찾는 비밀방. 지역 탐색의 기본 규칙을 가르친다(5절).
         static void BuildGS1(RoomCtx c)
         {
-            c.O = GS1;
             c.Floor(0, 18, 2);
 
             BuildSafePlatform(c.Root.transform, c.P(5f, 5f));
@@ -839,7 +974,6 @@ namespace HiddenWeight.EditorTools
         // 핵심 능력 획득. 적도 낙사도 시간제한도 없고, 세 번의 사용을 순서대로 겪는다(4.5절).
         static void BuildG05(RoomCtx c)
         {
-            c.O = G05;
             c.Floor(0, 26, 2);
 
             BuildCheckpoint(c.Root.transform, c.P(3f, 3f)); // 체크포인트 2 — 능력 획득 직전
@@ -869,7 +1003,6 @@ namespace HiddenWeight.EditorTools
         // 능력 연속 응용. 계속 숨어 있는 것이 항상 빠른 선택은 아니게 만든다(4.6절).
         static void BuildG06(RoomCtx c)
         {
-            c.O = G06;
             // 로컬 20~21을 비워 GS2로 내려가는 구멍을 만든다. 깊이 2로 얕게 판다.
             c.Floor(0, 20, 2, 2);
             c.Floor(21, 24, 2, 2);
@@ -939,7 +1072,6 @@ namespace HiddenWeight.EditorTools
         // 공격하지 않고 적 사이를 지나가는 선택 은신. 보상은 최대 체력 조각이다(5절).
         static void BuildGS2(RoomCtx c)
         {
-            c.O = GS2;
             c.Floor(0, 24, 2);
 
             // 통로를 좁히는 우리들. 사이를 지나가되 싸울 필요는 없다.
@@ -960,7 +1092,6 @@ namespace HiddenWeight.EditorTools
         // 이동과 은신의 결합. 주 동선 2개 뒤 상단 선택 분기에서 세 번째 시선을 시험한다.
         static void BuildG07(RoomCtx c)
         {
-            c.O = G07;
             c.Floor(0, 34, 4);
 
             // 같은 속도, 다른 시작 각도. 주 동선은 두 번만 읽으면 통과한다.
@@ -994,7 +1125,6 @@ namespace HiddenWeight.EditorTools
         // 수직 전환과 휴지. 승강기 몸체가 회전 시선의 엄폐물이 된다(4.8절).
         static void BuildG08(RoomCtx c)
         {
-            c.O = G08;
             c.Floor(0, 24, 2);
 
             // 승강기가 지나갈 기둥(x 4.5~7.5)에는 아무 지형도 두지 않는다. 예전에는 안전
@@ -1036,7 +1166,6 @@ namespace HiddenWeight.EditorTools
         // 일반 전투는 주 동선, 숨죽이기만으로는 이길 수 없는 재판관은 상단 선택 분기다.
         static void BuildG09(RoomCtx c)
         {
-            c.O = G09;
             c.Floor(0, 28, 3);
             c.Floor(28, 32, 4);   // 출구 (32,4)
 
@@ -1072,7 +1201,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- G10 홍채 감시탑 (D4, 중간 보스) ----------------
         static void BuildG10(RoomCtx c)
         {
-            c.O = G10;
             // 출구 선반(y=7)까지 한 칸씩 오르는 계단으로 만든다. 예전에는 +4를 한 번에
             // 올라야 해서 실측 점프 높이(2.72)로는 아무도 나갈 수 없었고, 떠 있는 발판
             // 두 장으로 고쳤더니 이번에는 선반 옆면에 걸렸다. 지형 계단이 가장 확실하다.
@@ -1134,7 +1262,6 @@ namespace HiddenWeight.EditorTools
         // 전투도 낙사도 없다. 자각 해금과 그 직후의 한 화면 퍼즐(4.11절).
         static void BuildG11(RoomCtx c)
         {
-            c.O = G11;
             // 로컬 8~10을 비워 GS3로 내려가는 자리를 만든다. 그 위를 거울문이 막는다.
             c.Floor(0, 8, 3, 2);
             c.Floor(10, 24, 3, 2);
@@ -1172,7 +1299,6 @@ namespace HiddenWeight.EditorTools
         // 자각으로만 들어온다. 전투도 낙하도 시간제한도 없는 서사 공간이다(5절).
         static void BuildGS3(RoomCtx c)
         {
-            c.O = GS3;
             c.Floor(0, 20, 2);
 
             BuildDecor(c.Root.transform, "GS3_InnerEye", c.P(10f, 7f), new Vector2(7f, 6f),
@@ -1187,7 +1313,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- G12 만인의 극장 (D5, 지역 보스) ----------------
         static void BuildG12(RoomCtx c)
         {
-            c.O = G12;
             c.Floor(0, 30, 4);
 
             // 전장을 가두는 벽은 조우(Encounter)가 전투 중에만 세운다. 상시 벽을 방 양끝에

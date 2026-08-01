@@ -113,6 +113,7 @@ namespace HiddenWeight.World
             // "승강기를 상층까지 작동시키면"이라는 조건이 성립한다.
             _finished = true;
             _leg = waypoints.Length - 1;
+            AudioManager.Instance?.PlaySfx(SfxCue.LiftStop, 0.55f);
             if (linkedShortcut != null) linkedShortcut.Open();
         }
 
@@ -148,6 +149,9 @@ namespace HiddenWeight.World
 
             _leg = 0;
             _delayTimer = startDelay;
+
+            // 출발까지 startDelay만큼 뜸이 있어서, 소리가 없으면 밟은 게 먹혔는지 알 수 없다.
+            AudioManager.Instance?.PlaySfx(SfxCue.LiftStart, 0.6f);
         }
     }
 }

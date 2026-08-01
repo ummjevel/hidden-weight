@@ -489,6 +489,144 @@ namespace HiddenWeight.EditorTools
             BuildShaft(parent, map, "Shaft_FS3", F11.x + 8, F11.y + 1, FS3.y + 2);
         }
 
+        // 균열 방 15개를 각자 씬으로 굽고 지형 없는 셸을 만든다. 잔재·응시와 같은 구조다.
+        [MenuItem("Hidden Weight/Build Fracture Zone (Rooms)")]
+        public static void BuildFractureRooms()
+        {
+            EnsureScenesFolder();
+            FractureEnvironmentArtSlicer.SliceAll();
+            FractureAnimationArtSlicer.SliceAll();
+
+            UseArtRoot("Assets/Art/Fracture", "Fracture",
+                "FractureDoor_r1_c1", "FractureDoor_r1_c2",
+                "FractureDoor_r2_c1", "FractureDoor_r2_c2");
+
+            var builders = new (string room, System.Action<RoomCtx> build)[]
+            {
+                ("F01", BuildF01), ("F02", BuildF02), ("F03", BuildF03), ("F04", BuildF04),
+                ("FS1", BuildFS1), ("F05", BuildF05), ("F06", BuildF06), ("FS2", BuildFS2),
+                ("F07", BuildF07), ("F08", BuildF08), ("F09", BuildF09), ("F10", BuildF10),
+                ("F11", BuildF11), ("FS3", BuildFS3), ("F12", BuildF12),
+            };
+
+            foreach (var (room, build) in builders)
+            {
+                var scene = NewScene();
+                var ctx = NewFractureRoomCtx();
+                build(ctx);
+
+                BuildFractureRoomStart(ctx);
+                BuildFractureDoorsFor(ctx, room);
+                FinishFractureRoomScene(ctx);
+                SaveScene(scene, "Room_Fracture_" + room);
+            }
+
+            BuildFractureShell();
+            RegisterBuildSettings();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[FractureZoneBuilder] 균열 방 씬 {builders.Length}개와 셸 생성 완료");
+        }
+
+        static RoomCtx NewFractureRoomCtx()
+        {
+            var tilemap = BuildZoneRoot("Fracture", out var root);
+            TintTerrain(tilemap, FractureTerrain);
+
+            var duplicate = Object.FindFirstObjectByType<HiddenWeight.Core.GameManager>();
+            if (duplicate != null) Object.DestroyImmediate(duplicate.gameObject);
+
+            var rooms = new GameObject("Rooms");
+            rooms.transform.SetParent(root.transform, true);
+
+            return new RoomCtx
+            {
+                Map = tilemap,
+                Root = root,
+                Rooms = rooms.transform,
+                O = Vector2Int.zero,
+                FloorArt = false,
+            };
+        }
+
+        static void FinishFractureRoomScene(RoomCtx c)
+        {
+            BuildImpactVFX(c.Root.transform, FractureImpacts);
+            BuildProjectileSpawner(c.Root.transform, FractureProjectiles);
+
+            if (_fractureShortcutA != null) AttachFractureSealAnimator(_fractureShortcutA, new Vector2(4f, 2f));
+            if (_fractureShortcutB != null) AttachFractureSealAnimator(_fractureShortcutB, new Vector2(3f, 2.5f));
+            if (_fractureShortcutC != null) AttachFractureSealAnimator(_fractureShortcutC, new Vector2(4f, 2f));
+            if (_fractureSecretDoor != null) AttachFractureSealAnimator(_fractureSecretDoor, new Vector2(3f, 2.5f));
+            _fractureShortcutA = _fractureShortcutB = _fractureShortcutC = null;
+            _fractureSecretDoor = null;
+
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture");
+
+            ClotheCollisionPlaceholderRenderers(c.Root);
+        }
+
+        static void BuildFractureDoorsFor(RoomCtx c, string room)
+        {
+            foreach (var link in FractureRoomLinks.Links)
+            {
+                if (link.fromRoom == room)
+                    SpawnFractureDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId);
+
+                if (link.toRoom == room)
+                    SpawnFractureDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId);
+            }
+        }
+
+        static void SpawnFractureDoor(RoomCtx c, string doorId, Side side, Vector2 anchor,
+            string targetRoom, string targetDoorId)
+        {
+            var go = new GameObject("Door_" + doorId.Replace(':', '_'));
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(anchor.x, anchor.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = side == Side.U || side == Side.D
+                ? new Vector2(3f, 1.2f)
+                : new Vector2(1.2f, 3.5f);
+
+            var door = go.AddComponent<RoomDoor>();
+            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+        }
+
+        static void BuildFractureRoomStart(RoomCtx c)
+        {
+            var go = new GameObject("RoomStart");
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(3f, 4f, 0f);
+            go.AddComponent<RoomStart>();
+        }
+
+        static void BuildFractureShell()
+        {
+            var scene = NewScene();
+            var root = new GameObject("Zone_Fracture");
+
+            Spawn("GameManager", Vector3.zero);
+
+            var marker = new GameObject("ZoneMarker");
+            marker.transform.SetParent(root.transform, false);
+            var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
+            SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Fracture);
+
+            PlacePlayerAndCamera(root, new Vector3(3f, 4f, 0f));
+
+            var loaderGo = new GameObject("RoomLoader");
+            loaderGo.AddComponent<RoomLoader>();
+            var entry = loaderGo.AddComponent<ZoneEntryPoint>();
+            SetField(entry, "scenePrefix", p => p.stringValue = "Room_Fracture_");
+            SetField(entry, "firstRoom", p => p.stringValue = "F01");
+
+            SaveScene(scene, "Zone_Fracture");
+        }
+
         [MenuItem("Hidden Weight/Build Fracture Zone (Full)")]
         public static void RunFractureZone()
         {
@@ -642,7 +780,6 @@ namespace HiddenWeight.EditorTools
         // 밝기 전환과 불신의 씨앗. 필수 진행에 붕괴도 낙사도 없다(4.1절).
         static void BuildF01(RoomCtx c)
         {
-            c.O = F01;
             c.Floor(0, 26, 2);
 
             BuildCheckpoint(c.Root.transform, c.P(5f, 3f));
@@ -679,7 +816,6 @@ namespace HiddenWeight.EditorTools
         // 첫 거짓 안전. 상부 길은 완전히 안전해 보이지만 차례로 무너진다(4.2절).
         static void BuildF02(RoomCtx c)
         {
-            c.O = F02;
             c.Floor(0, 8, 2);
             c.Floor(8, 17, 1);   // 하부 안전 우회로 — 15초 안에 주 동선으로 돌아온다
             c.Floor(17, 20, 3);
@@ -705,7 +841,6 @@ namespace HiddenWeight.EditorTools
         // 중앙 허브. 숏컷 A는 문틀만 있고 문짝이 미래에 있으며, 숏컷 B의 승강기는 거꾸로 움직인다.
         static void BuildF03(RoomCtx c)
         {
-            c.O = F03;
             c.Floor(0, 20, 3);
             c.Floor(20, 30, 2);
 
@@ -738,7 +873,6 @@ namespace HiddenWeight.EditorTools
         // 예지가 아직 없다. 필수 점프는 두 주기만 관찰하면 통과할 수 있게 단순화한다(4.4절).
         static void BuildF04(RoomCtx c)
         {
-            c.O = F04;
             c.Floor(0, 8, 18);        // 상층 관찰대 (입구 2,18)
             c.Floor(0, 8, 2, 2);      // 하층 안전 바닥 — 로컬 8~9를 비워 FS1 통로를 만든다
             c.Floor(9, 24, 2, 2);
@@ -769,7 +903,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- FS1 버려진 가능성 (D2 선택) ----------------
         static void BuildFS1(RoomCtx c)
         {
-            c.O = FS1;
             c.Floor(0, 18, 2);
 
             BuildFractureSafePlatform(c.Root.transform, c.P(5f, 5f));
@@ -792,7 +925,6 @@ namespace HiddenWeight.EditorTools
         // 핵심 능력 획득. 세 대상을 순서대로 확인하고, 마지막에 숏컷 A가 현재에 고정된다(4.5절).
         static void BuildF05(RoomCtx c)
         {
-            c.O = F05;
             c.Floor(0, 26, 2);
 
             BuildCheckpoint(c.Root.transform, c.P(3f, 3f)); // 체크포인트 2
@@ -824,7 +956,6 @@ namespace HiddenWeight.EditorTools
         // 서로 다른 주기의 이동 발판과 미래 타격. 필수 예측 대상은 화면에 최대 3개(4.6절).
         static void BuildF06(RoomCtx c)
         {
-            c.O = F06;
             // 로컬 4~5를 비워 FS2로 내려가는 자리를 만든다. 얕게(깊이 2) 판다.
             c.Floor(0, 4, 2, 2);
             c.Floor(5, 24, 2, 2);
@@ -865,7 +996,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- FS2 멈춘 오후 (D3 선택) ----------------
         static void BuildFS2(RoomCtx c)
         {
-            c.O = FS2;
             c.Floor(0, 24, 2);
 
             // 멈춰 있는 오후 — 아무것도 움직이지 않는 유일한 방.
@@ -885,7 +1015,6 @@ namespace HiddenWeight.EditorTools
         // 이동과 전투의 결합. 실패하면 시작점이 아니라 가장 최근의 넓은 건축물로 복귀한다(4.7절).
         static void BuildF07(RoomCtx c)
         {
-            c.O = F07;
             // 건축물 사이 간격을 전부 3유닛 이하로 둔다. 예전에는 6유닛·8유닛 구덩이를
             // 세로로 움직이는 발판 하나로만 건너게 해서, 타이밍을 놓치면 그대로 추락했다
             // (봇이 x=12에서 떨어졌다). 예지는 "언제 뛸지"를 고르게 하는 능력이지
@@ -923,7 +1052,6 @@ namespace HiddenWeight.EditorTools
         // 승강기가 먼저 아래로 내려갔다가 상층으로 오른다. 층마다 안전 포켓을 둔다(4.8절).
         static void BuildF08(RoomCtx c)
         {
-            c.O = F08;
             c.Floor(0, 24, 2);
 
             // 응시 G08과 같은 이유로 승강 기둥(x 4.5~7.5) 위는 비워 둔다.
@@ -956,7 +1084,6 @@ namespace HiddenWeight.EditorTools
         // 일반 전투는 주 동선, 좌우 대칭을 읽는 분열체 정예전은 상단 선택 분기다.
         static void BuildF09(RoomCtx c)
         {
-            c.O = F09;
             c.Floor(0, 28, 3);
             c.Floor(28, 32, 4);   // 출구 (32,4)
 
@@ -994,7 +1121,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- F10 초침 감시탑 (D4, 중간 보스) ----------------
         static void BuildF10(RoomCtx c)
         {
-            c.O = F10;
             // 응시 G10과 같은 이유로 출구까지 한 칸씩 오르는 계단을 둔다(+4를 한 번에
             // 오르는 구조는 실측 점프 높이 2.72로 통과 불가).
             c.Floor(0, 16, 3);
@@ -1043,7 +1169,6 @@ namespace HiddenWeight.EditorTools
         // 전투 없는 미래 서사. 고스트는 절대 충돌 지형이 되지 않는다(4.11절).
         static void BuildF11(RoomCtx c)
         {
-            c.O = F11;
             // 로컬 8~9를 비워 FS3로 내려가는 자리를 만든다. 그 위를 "아직 없는 문"이 막는다.
             // 폭을 1로 좁혀 둔 이유: 문이 한 번 열리면 이 구멍은 계속 열린 채로 남는데,
             // 주 동선이 바로 위를 지나가므로 넓으면 지날 때마다 빠진다.
@@ -1080,7 +1205,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- FS3 선택되지 않은 문 (D0 선택) ----------------
         static void BuildFS3(RoomCtx c)
         {
-            c.O = FS3;
             c.Floor(0, 20, 2);
 
             // 선택되지 않은 미래들이 흔적으로만 남아 있다.
@@ -1097,7 +1221,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- F12 내일의 균열 (D5, 지역 보스) ----------------
         static void BuildF12(RoomCtx c)
         {
-            c.O = F12;
             // 전장을 좌측 안정 지대 / 중앙 변화 지대 / 우측 공격 지대로 나눈다(4.12절).
             c.Floor(0, 10, 4);     // 좌측 안정 지대 — 항상 남는다
             c.Floor(10, 20, 4);    // 중앙 변화 지대

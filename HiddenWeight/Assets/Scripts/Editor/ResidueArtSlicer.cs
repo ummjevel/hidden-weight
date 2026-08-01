@@ -24,6 +24,17 @@ namespace HiddenWeight.EditorTools
             public string[] RowClips;      // 행 = 클립. 프레임 이름은 "클립_00" 형식이 된다
         }
 
+        // 동작별 시트는 전부 같은 모양(1256x314 = 4열 1행, 셀 314px)이라 경로와 클립
+        // 이름만 다르다. 22줄에 같은 숫자를 스물두 번 적는 대신 한곳에서 만든다.
+        static Sheet ActionSheet(string fileName, string clip) => new Sheet
+        {
+            Path = "Gameplay/Enemies/Animation/" + fileName + "_4x314.png",
+            Columns = 4,
+            Rows = 1,
+            Pivot = new Vector2(0.5f, 0.5f),
+            RowClips = new[] { clip },
+        };
+
         // 문서의 "시트 분할" 표 그대로.
         static readonly Sheet[] Sheets =
         {
@@ -129,6 +140,44 @@ namespace HiddenWeight.EditorTools
                         Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedRun",
                                            "HardenedAttack", "HardenedHit", "HardenedDeath" } },
+
+            // 동작별 시트(1256x314 = 4열 1행, 셀 314px). 위 _v2 통합 시트와 같은 커밋으로
+            // 들어왔고 동작이 파일명에 박혀 있어 추측할 것이 없다. 방향(Left/Right)까지
+            // 따로 그려진 것이 있어 이름 끝에 L/R을 남긴다.
+            //
+            // 런타임 클립 이름(FingerIdle 등)은 _v2 시트가 갖는다 — 워커는 동작별 시트가
+            // 없어 _v2에만 있으므로, 네 몬스터의 기본을 한 세대로 맞추려면 그쪽이어야 한다.
+            // 여기서는 겹치지 않는 이름으로 잘라 두어, 방향별 연출이나 개별 동작이 필요할 때
+            // 바로 가져다 쓸 수 있게만 해 둔다.
+            ActionSheet("HangingFinger_Idle_Right", "FingerIdleR"),
+            ActionSheet("HangingFinger_GroundCrawl_Left", "FingerCrawlL"),
+            // 이 한 장만 _v2가 _4x314 뒤에 붙어 있어 ActionSheet의 경로 규칙에서 벗어난다.
+            new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_GroundCrawl_Left_4x314_v2.png",
+                        Columns = 4, Rows = 1, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "FingerCrawlLV2" } },
+            ActionSheet("HangingFinger_DropAttack_Left", "FingerDropAttackL"),
+            ActionSheet("HangingFinger_HitDeath_Left", "FingerHitDeathL"),
+
+            ActionSheet("HardenedResidue_Idle_Left", "HardenedIdleL"),
+            ActionSheet("HardenedResidue_Idle_Right", "HardenedIdleR"),
+            ActionSheet("HardenedResidue_Walk_Left", "HardenedWalkL"),
+            ActionSheet("HardenedResidue_Walk_Right", "HardenedWalkR"),
+            ActionSheet("HardenedResidue_FistSlam_Left", "HardenedFistSlamL"),
+            ActionSheet("HardenedResidue_FistSlam_Right", "HardenedFistSlamR"),
+            ActionSheet("HardenedResidue_ShieldCrumble_Left", "HardenedShieldCrumbleL"),
+            ActionSheet("HardenedResidue_ShieldCrumble_Right", "HardenedShieldCrumbleR"),
+
+            ActionSheet("MourningCarrier_Idle_Right", "CarrierIdleR"),
+            ActionSheet("MourningCarrier_Walk_Right", "CarrierWalkR"),
+            ActionSheet("MourningCarrier_Charge_Right", "CarrierChargeR"),
+            ActionSheet("MourningCarrier_HitCollapse_Right", "CarrierHitCollapseR"),
+
+            // 흑요석 등불 짐승. 아직 적 정의가 없어 소비하는 곳이 없지만, 잘라 두면
+            // 새 적을 만들 때 프레임을 그대로 집어 올 수 있다.
+            ActionSheet("ObsidianLanternBeast_Idle_Right", "BeastIdleR"),
+            ActionSheet("ObsidianLanternBeast_Walk_Right", "BeastWalkR"),
+            ActionSheet("ObsidianLanternBeast_Slash_Right", "BeastSlashR"),
+            ActionSheet("ObsidianLanternBeast_Collapse_Right", "BeastCollapseR"),
 
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Combat_v1.png",
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),

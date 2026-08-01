@@ -192,12 +192,20 @@ namespace HiddenWeight.World
                 // 자식은 그 스케일을 그대로 물려받으므로 로컬 단위로만 계산한다.
                 float topY = platform.offset.y + platform.size.y * 0.5f;
 
+                // 윗면을 덮는 얇은 띠로만 그린다. 타일맵 쪽(AddTraversalSurface)이 1.65유닛
+                // 띠를 쓰는 것과 같은 규칙이다. 예전에는 콜라이더 전체 높이로 그렸는데,
+                // 지형 스프라이트 피벗이 하단이라 그 그림이 발판 위로 솟아 두꺼운 블록에서는
+                // 공중에 뜬 상자처럼 보였다.
+                float scaleY = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.y));
+                float bandHeight = Mathf.Min(platform.size.y, 1.65f / scaleY);
+
                 var surface = new GameObject("PlatformSurface");
                 surface.transform.SetParent(root.transform, false);
-                surface.transform.localPosition = new Vector3(platform.offset.x, topY, 0f);
+                surface.transform.localPosition = new Vector3(
+                    platform.offset.x, topY - bandHeight, 0f);
                 surface.transform.localScale = new Vector3(
                     platform.size.x / sprite.bounds.size.x,
-                    platform.size.y / sprite.bounds.size.y,
+                    bandHeight / sprite.bounds.size.y,
                     1f);
 
                 var fill = surface.AddComponent<SpriteRenderer>();
@@ -206,7 +214,6 @@ namespace HiddenWeight.World
                 fill.sortingOrder = 4;
 
                 // 윗면 선은 타일맵 바닥과 같은 색을 써서 "밟을 수 있는 면"이 한 가지로 읽히게 한다.
-                float scaleY = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.y));
                 float edgeHeight = 0.14f / scaleY;
 
                 var edge = new GameObject("PlatformEdge");

@@ -87,34 +87,48 @@ namespace HiddenWeight.EditorTools
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "SwingSpark", "SwingSlash", "SwingBurst", "SwingRing" } },
 
+            // _v1은 _v2로 교체됐다. 그림 자체는 남겨 두되 클립 이름에서 비켜 세운다 —
+            // PrefabBuilder.FindFrames가 스프라이트 "이름"으로 찾기 때문에, 두 세대가 같은
+            // 이름을 내면 어느 쪽이 걸릴지 알 수 없게 된다.
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "WalkerIdle", "WalkerWalk", "WalkerAttack", "WalkerHit" } },
+                        RowClips = new[] { "WalkerV1Idle", "WalkerV1Walk", "WalkerV1Attack", "WalkerV1Hit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "FingerIdle", "FingerWalk", "FingerAttack", "FingerHit" } },
+                        RowClips = new[] { "FingerV1Idle", "FingerV1Walk", "FingerV1Attack", "FingerV1Hit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "CarrierIdle", "CarrierWalk", "CarrierAttack", "CarrierHit" } },
+                        RowClips = new[] { "CarrierV1Idle", "CarrierV1Walk", "CarrierV1Attack", "CarrierV1Hit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedAttack", "HardenedHit" } },
+                        RowClips = new[] { "HardenedV1Idle", "HardenedV1Walk", "HardenedV1Attack", "HardenedV1Hit" } },
 
-            // _v2는 b33de01에서 추가된 새 원화(부드러운 렌더링)로, 아직 어느 빌더에서도 쓰지
-            // 않는다. 격자가 _v1(4×4, 셀 314px)과 다르다 — 실측하면 8×6, 셀은 캐릭터마다
-            // 181px 또는(캐리어) 202×161px로 제각각이다. 312×312 같은 고정 셀 크기를
-            // 억지로 맞추는 대신 각 파일의 실제 격자에 맞게 Columns/Rows를 넣는다.
-            // 행별 동작(Idle/Walk/Attack/...)은 Gameplay/README.md에 아직 정리돼 있지 않아
-            // 추측하지 않고 Prefix_r{행}_c{열} 형식으로만 이름 붙인다 — 실제로 교체해
-            // 쓰려면 행 순서를 먼저 확인하고 RowClips로 바꿔야 한다.
+            // _v2 새 원화(부드러운 렌더링). 8×6이고 셀은 캐릭터마다 181px 또는(캐리어)
+            // 202×161px로 제각각이라 파일별 실제 격자를 넣는다.
+            //
+            // 행 순서는 문서에 없어 시트를 직접 열어 읽었다. 여섯 행이
+            // Idle / Walk / Run / Attack / Hit / Death 순이며, 워커와 캐리어 두 시트가
+            // 서로 독립적으로 같은 배열을 보인다(3행에만 공격 궤적이 그려져 있고, 마지막
+            // 행만 바닥으로 무너진다). _v1의 Idle/Walk/Attack/Hit 순서와도 어긋나지 않는다.
+            //
+            // 런타임이 쓰는 클립은 네 개뿐이라 Run·Death 행은 이름만 붙여 두고 아직
+            // 소비하지 않는다. 사망 연출을 넣을 때 그대로 가져다 쓰면 된다.
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "WalkerV2" },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "WalkerIdle", "WalkerWalk", "WalkerRun",
+                                           "WalkerAttack", "WalkerHit", "WalkerDeath" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "FingerV2" },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "FingerIdle", "FingerWalk", "FingerRun",
+                                           "FingerAttack", "FingerHit", "FingerDeath" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "CarrierV2" },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "CarrierIdle", "CarrierWalk", "CarrierRun",
+                                           "CarrierAttack", "CarrierHit", "CarrierDeath" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v2.png",
-                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f), Prefix = "HardenedV2" },
+                        Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
+                        RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedRun",
+                                           "HardenedAttack", "HardenedHit", "HardenedDeath" } },
 
             new Sheet { Path = "Gameplay/Bosses/Animation/WristWatcher_Combat_v1.png",
                         Columns = 6, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),

@@ -132,7 +132,7 @@ namespace HiddenWeight.World
             float smoothX, smoothY;
             ResolveTarget(player, dt, out target, out smoothX, out smoothY);
 
-            target = ClampToRoom(target, CurrentRoom, HalfScreen);
+            target = ClampToRoom(target, CurrentRoom);
 
             _base.x = Mathf.SmoothDamp(_base.x, target.x, ref _velocityX, smoothX, Mathf.Infinity, dt);
             _base.y = Mathf.SmoothDamp(_base.y, target.y, ref _velocityY, smoothY, Mathf.Infinity, dt);
@@ -316,18 +316,20 @@ namespace HiddenWeight.World
                 focus.y - Mathf.Clamp(delta.y, -down, up));
         }
 
-        // 방 경계 안으로 목표를 가둔다. 방이 화면보다 작은 축은 방 중심에 고정한다.
-        public static Vector2 ClampToRoom(Vector2 target, Room room, Vector2 halfScreen)
+        // 카메라의 '중심'만 방 안에 가둔다. 화면 전체를 방 안에 가두면 방 사이 짧은 통로에서
+        // 카메라만 멈춰, 플레이어는 화면 끝으로 사라지고 다음 방에 닿은 뒤에야 카메라가 크게
+        // 튄다. 중심만 묶으면 가장자리에서 이웃 공간을 미리 보여 주면서도 현재 방에서 완전히
+        // 벗어나지는 않아 전환이 연속적으로 읽힌다.
+        //
+        // 방이 씬으로 갈라진 뒤로는 이 동작이 필수다 — 문 너머는 아직 로드되지 않은 다른
+        // 씬이라, 경계에서 미리 보여 주지 않으면 플레이어만 빈 화면으로 걸어 나간다.
+        public static Vector2 ClampToRoom(Vector2 target, Room room)
         {
             if (room == null) return target;
 
             var b = room.WorldBounds;
-            float x = b.size.x <= halfScreen.x * 2f
-                ? b.center.x
-                : Mathf.Clamp(target.x, b.min.x + halfScreen.x, b.max.x - halfScreen.x);
-            float y = b.size.y <= halfScreen.y * 2f
-                ? b.center.y
-                : Mathf.Clamp(target.y, b.min.y + halfScreen.y, b.max.y - halfScreen.y);
+            float x = Mathf.Clamp(target.x, b.min.x, b.max.x);
+            float y = Mathf.Clamp(target.y, b.min.y, b.max.y);
             return new Vector2(x, y);
         }
 
@@ -367,7 +369,7 @@ namespace HiddenWeight.World
             _sizeVelocity = 0f;
 
             Vector2 focus = (Vector2)player.transform.position + new Vector2(_lookAhead, 0f);
-            _base = ClampToRoom(focus, CurrentRoom, HalfScreen);
+            _base = ClampToRoom(focus, CurrentRoom);
             transform.position = new Vector3(_base.x, _base.y, transform.position.z);
         }
     }

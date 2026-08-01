@@ -329,7 +329,7 @@ namespace HiddenWeight.Tests
                 Assert.IsNotNull(renderer);
                 Assert.IsNotNull(renderer.sprite, roomSpec.name + " 원본 배경이 연결되지 않았다.");
                 Assert.That(renderer.sprite.name, Is.EqualTo(roomSpec.name));
-                Assert.IsNotNull(background.GetComponent<RoomFittedBackground>());
+                Assert.IsNotNull(background.GetComponent<CameraLockedRoomBackground>());
 
                 foreach (var legacy in new[] { "BG_Far", "BG_Mid", "FG_Overlay" })
                     Assert.IsNull(art.Find(legacy), roomSpec.name + "/" + legacy + "는 빠져야 한다.");

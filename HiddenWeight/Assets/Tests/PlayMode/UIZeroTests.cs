@@ -45,12 +45,69 @@ namespace HiddenWeight.Tests
             var newGame = GameObject.Find("Button_새 게임");
             Assert.IsNotNull(newGame, "새 게임 버튼이 없다.");
             Assert.IsNotNull(GameObject.Find("Button_제작진"), "제작진 버튼이 없다.");
+            Assert.IsNotNull(GameObject.Find("Button_1단계 · 잔재"), "1단계 테스트 버튼이 없다.");
+            Assert.IsNotNull(GameObject.Find("Button_2단계 · 응시"), "2단계 테스트 버튼이 없다.");
+            Assert.IsNotNull(GameObject.Find("Button_3단계 · 균열"), "3단계 테스트 버튼이 없다.");
             Assert.IsNull(GameObject.Find("Button_잔재 지역 (작업 중)"),
                 "정식 타이틀에 예전 개발 버튼 문구가 남아 있다.");
 
             Assert.IsNotNull(EventSystem.current, "타이틀에 EventSystem이 없다.");
             Assert.AreEqual(newGame, EventSystem.current.currentSelectedGameObject,
                 "타이틀 진입 시 새 게임 버튼에 기본 포커스가 가야 한다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 지도는_현재_지역의_열다섯_방_전체를_표시한다()
+        {
+            yield return SceneManager.LoadSceneAsync("Zone_Gaze_Full", LoadSceneMode.Single);
+            yield return null;
+
+            var gm = GameManager.Instance;
+            gm.Progress.ResetAll();
+            gm.EnterZone(HiddenWeight.Data.ZoneId.Gaze);
+            gm.Progress.VisitRoom("Gaze/GazeRoom01");
+            gm.SetState(GameState.Playing);
+
+            var pause = Object.FindFirstObjectByType<PauseMenu>();
+            Assert.IsNotNull(pause);
+            pause.OpenSection(PauseSection.Map);
+            yield return null;
+
+            int nodes = 0;
+            foreach (var transform in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                if (transform.name.StartsWith("MapNode_Gaze/")) nodes++;
+
+            Assert.AreEqual(15, nodes, "전체 지도에는 메인 12룸과 비밀 3룸이 모두 보여야 한다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 타이틀에서_세_단계의_전체_연결_맵으로_직접_진입할_수_있다()
+        {
+            yield return AssertStageButtonLoads("Button_1단계 · 잔재", "Zone_Residue_Full");
+            yield return AssertStageButtonLoads("Button_2단계 · 응시", "Zone_Gaze_Full");
+            yield return AssertStageButtonLoads("Button_3단계 · 균열", "Zone_Fracture_Full");
+        }
+
+        static IEnumerator AssertStageButtonLoads(string buttonName, string sceneName)
+        {
+            yield return SceneManager.LoadSceneAsync("Title", LoadSceneMode.Single);
+            yield return null;
+
+            var buttonObject = GameObject.Find(buttonName);
+            Assert.IsNotNull(buttonObject, buttonName + " 버튼이 없다.");
+            buttonObject.GetComponent<Button>().onClick.Invoke();
+
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (SceneManager.GetActiveScene().name != sceneName
+                   && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.AreEqual(sceneName, SceneManager.GetActiveScene().name,
+                buttonName + "을 눌러도 해당 단계로 이동하지 않았다.");
+            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Rewind));
+            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Hush));
+            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Foresight));
+            Assert.IsTrue(GameManager.Instance.Progress.HasAwareness);
         }
 
         [UnityTest]

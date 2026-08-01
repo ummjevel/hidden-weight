@@ -40,11 +40,9 @@ namespace HiddenWeight.Core
             _bgmSource = gameObject.AddComponent<AudioSource>();
             _bgmSource.loop = true;
             _bgmSource.playOnAwake = false;
-#if UNITY_EDITOR
-            // 개발 중 씬 재생과 자동 테스트에서 음악이 반복 출력되지 않게 한다.
-            // 클립과 재생 상태는 유지하므로 BGM 와이어링 테스트는 그대로 유효하다.
+            // 현재 플레이 검수에서는 배경음악을 사용하지 않는다. 효과음 소스는 별도라 유지된다.
+            // 클립과 재생 상태도 유지해 두어, 음원 연결 검증과 추후 재활성화에는 영향이 없다.
             _bgmSource.mute = true;
-#endif
 
             // 짧은 효과음이 겹쳐도 개별 피치가 서로 바뀌지 않도록 작은 소스 풀을 쓴다.
             _sfxSources = new AudioSource[4];

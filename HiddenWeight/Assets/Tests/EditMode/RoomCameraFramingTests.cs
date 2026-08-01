@@ -82,36 +82,38 @@ namespace HiddenWeight.Tests
                         Is.EqualTo(new Vector2(99f, 99f)).Using(Vector2Within(0.0001f)));
         }
 
+        // 화면 전체가 아니라 카메라 '중심'만 방 안에 갇힌다. 방이 씬으로 갈라진 뒤로는 이
+        // 동작이 필수다 — 문 너머는 아직 로드되지 않은 다른 씬이라, 경계에서 이웃 공간을
+        // 미리 보여 주지 않으면 플레이어만 빈 화면으로 걸어 나간다.
         [Test]
-        public void 방_경계_밖으로는_나가지_않는다()
+        public void 카메라_중심은_방_경계_밖으로_나가지_않는다()
+        {
+            var room = NewRoom(new Vector2(30f, 18f), Vector2.zero);
+
+            var clamped = RoomCamera.ClampToRoom(new Vector2(100f, 100f), room);
+
+            Assert.That(clamped.x, Is.EqualTo(15f).Within(0.0001f));
+            Assert.That(clamped.y, Is.EqualTo(9f).Within(0.0001f));
+        }
+
+        [Test]
+        public void 방_가장자리에서는_이웃_공간이_화면에_들어온다()
         {
             var room = NewRoom(new Vector2(30f, 18f), Vector2.zero);
             var halfScreen = new Vector2(10.67f, 6f);
 
-            var clamped = RoomCamera.ClampToRoom(new Vector2(100f, 100f), room, halfScreen);
+            var clamped = RoomCamera.ClampToRoom(new Vector2(100f, 0f), room);
 
-            Assert.That(clamped.x, Is.EqualTo(15f - halfScreen.x).Within(0.0001f));
-            Assert.That(clamped.y, Is.EqualTo(9f - halfScreen.y).Within(0.0001f));
-        }
-
-        [Test]
-        public void 화면보다_작은_방은_중심에_고정된다()
-        {
-            // 잔재 Secret01(18x14)처럼 화면(21.3x12)보다 좁은 방은 가로만 고정되고 세로는 움직인다.
-            var room = NewRoom(new Vector2(18f, 14f), new Vector2(4f, 3f));
-            var halfScreen = new Vector2(10.67f, 6f);
-
-            var clamped = RoomCamera.ClampToRoom(new Vector2(999f, 999f), room, halfScreen);
-
-            Assert.That(clamped.x, Is.EqualTo(4f).Within(0.0001f), "가로가 화면보다 좁으면 방 중심에 고정된다");
-            Assert.That(clamped.y, Is.EqualTo(3f + 7f - 6f).Within(0.0001f), "세로는 아직 여유가 있어 클램프만 된다");
+            // 중심이 방 오른쪽 끝(15)에 서므로 화면 오른쪽 절반은 방 밖을 비춘다.
+            Assert.That(clamped.x + halfScreen.x, Is.GreaterThan(15f),
+                        "방 끝에서 다음 통로를 미리 보여 주지 않으면 전환이 끊겨 보인다.");
         }
 
         [Test]
         public void 방이_없으면_목표를_그대로_돌려준다()
         {
             var target = new Vector2(3f, 4f);
-            Assert.That(RoomCamera.ClampToRoom(target, null, new Vector2(10.67f, 6f)),
+            Assert.That(RoomCamera.ClampToRoom(target, null),
                         Is.EqualTo(target).Using(Vector2Within(0.0001f)));
         }
 

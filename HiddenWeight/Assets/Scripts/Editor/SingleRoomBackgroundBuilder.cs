@@ -7,6 +7,45 @@ namespace HiddenWeight.EditorTools
 {
     public static class SingleRoomBackgroundBuilder
     {
+        const string TraversalPalettePath = "Assets/Resources/TraversalArtPalette.asset";
+
+        [MenuItem("Hidden Weight/Art/Build Traversal Art Palette")]
+        public static void BuildTraversalArtPalette()
+        {
+            var palette = AssetDatabase.LoadAssetAtPath<TraversalArtPalette>(TraversalPalettePath);
+            if (palette == null)
+            {
+                palette = ScriptableObject.CreateInstance<TraversalArtPalette>();
+                AssetDatabase.CreateAsset(palette, TraversalPalettePath);
+            }
+
+            palette.residueSurface = FindSprite(
+                "Assets/Art/Residue/Environment/Terrain/Residue_TerrainTiles_v2.png",
+                "Terrain_r1_c3");
+            palette.gazeSurface = FindSprite(
+                "Assets/Art/Gaze/Environment/Terrain/Gaze_TerrainTiles_v1.png",
+                "GazeTerrain_r1_c3");
+            palette.fractureSurface = FindSprite(
+                "Assets/Art/Fracture/Environment/Terrain/Fracture_TerrainTiles_v1.png",
+                "FractureTerrain_r1_c3");
+
+            if (palette.residueSurface == null || palette.gazeSurface == null
+                || palette.fractureSurface == null)
+                throw new InvalidOperationException("지역별 보행 바닥 스프라이트를 찾지 못했다.");
+
+            EditorUtility.SetDirty(palette);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[SingleRoomBackgroundBuilder] 보행 바닥 팔레트 생성 완료");
+        }
+
+        static Sprite FindSprite(string path, string spriteName)
+        {
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+                if (asset is Sprite sprite && sprite.name == spriteName)
+                    return sprite;
+            return null;
+        }
+
         public static void Build(Room room, string artRoot)
         {
             if (room == null)
@@ -37,8 +76,7 @@ namespace HiddenWeight.EditorTools
             var renderer = background.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
-            // 굽는 시점에 한 번 맞춰 둬야 에디터에서도 방 경계와 배경이 같은 자리에 보인다.
-            background.AddComponent<RoomFittedBackground>().Fit();
+            background.AddComponent<CameraLockedRoomBackground>();
 
             if (art.GetComponent<RoomVisualCuller>() == null)
                 art.gameObject.AddComponent<RoomVisualCuller>();

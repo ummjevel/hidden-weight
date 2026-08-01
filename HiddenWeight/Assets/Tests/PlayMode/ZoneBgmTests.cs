@@ -54,10 +54,8 @@ namespace HiddenWeight.Tests
             Assert.IsNotNull(audio);
             Assert.IsNotNull(audio.CurrentBgm);
             Assert.That(audio.CurrentBgm.name, Does.StartWith("GeneratedAmbient_Gaze"));
-#if UNITY_EDITOR
             foreach (var source in audio.GetComponents<AudioSource>())
-                if (source.loop) Assert.IsTrue(source.mute, "개발 중에는 BGM 소스가 음소거돼야 한다.");
-#endif
+                if (source.loop) Assert.IsTrue(source.mute, "현재 검수 빌드에서는 BGM 소스가 음소거돼야 한다.");
         }
     }
 }

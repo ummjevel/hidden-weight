@@ -14,20 +14,51 @@ namespace HiddenWeight.World
         IRewindable _target;
         SpriteRenderer _source;
         SpriteRenderer _outline;
+        TextMesh _marker;
 
         void Start()
         {
             _target = GetComponent<IRewindable>();
             _source = GetComponent<SpriteRenderer>();
+            // 지역 아트를 씌운 오브젝트는 루트의 플레이스홀더 렌더러를 끄고 Art 자식만
+            // 사용한다. 꺼진 루트를 복제하면 실제 기물과 다른 작은 네모만 빛나므로, 현재
+            // 화면에 쓰이는 자식 렌더러를 강조 기준으로 삼는다.
+            if (_source == null || !_source.enabled || _source.sprite == null)
+            {
+                foreach (var candidate in GetComponentsInChildren<SpriteRenderer>(true))
+                {
+                    if (!candidate.enabled || candidate.sprite == null) continue;
+                    _source = candidate;
+                    break;
+                }
+            }
             if (_target == null || _source == null) { enabled = false; return; }
 
             var go = new GameObject("RewindOutline");
-            go.transform.SetParent(transform, false);
+            // 실제 아트의 스케일·회전을 그대로 물려받아 외곽선이 본체와 정확히 겹치게 한다.
+            go.transform.SetParent(_source.transform, false);
             go.transform.localScale = Vector3.one * outlineScale;
             _outline = go.AddComponent<SpriteRenderer>();
             _outline.sortingLayerID = _source.sortingLayerID;
             _outline.sortingOrder = _source.sortingOrder - 1; // 본체 바로 뒤
             _outline.enabled = false;
+
+            var markerObject = new GameObject("RewindTargetMarker");
+            markerObject.transform.SetParent(transform, false);
+            markerObject.transform.localPosition = new Vector3(0f, 1.15f, 0f);
+            _marker = markerObject.AddComponent<TextMesh>();
+            // LegacyRuntime 폰트에는 ◇ 글리프가 없어 흰 네모로 보인다. ASCII 키 문자는
+            // 모든 기본 폰트에서 보장되므로 대상 표식과 실제 입력을 동시에 보여 준다.
+            _marker.text = "K";
+            _marker.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _marker.fontSize = 48;
+            _marker.characterSize = 0.08f;
+            _marker.anchor = TextAnchor.MiddleCenter;
+            _marker.alignment = TextAlignment.Center;
+            var markerRenderer = markerObject.GetComponent<MeshRenderer>();
+            markerRenderer.material = _marker.font.material;
+            markerRenderer.sortingOrder = 39;
+            markerRenderer.enabled = false;
         }
 
         void Update()
@@ -36,6 +67,7 @@ namespace HiddenWeight.World
 
             bool show = _target.CanRewind;
             _outline.enabled = show;
+            if (_marker != null) _marker.GetComponent<MeshRenderer>().enabled = show;
             if (!show) return;
 
             // 본체 스프라이트가 꺼진 상태(무너진 발판)에서도 아웃라인은 자리를 표시해야 하므로
@@ -44,6 +76,12 @@ namespace HiddenWeight.World
 
             float alpha = Mathf.Lerp(0.35f, 0.8f, Mathf.PingPong(Time.time * pulseSpeed, 1f));
             _outline.color = new Color(outlineColor.r, outlineColor.g, outlineColor.b, alpha);
+            if (_marker != null)
+            {
+                _marker.color = new Color(outlineColor.r, outlineColor.g, outlineColor.b, alpha);
+                _marker.transform.localPosition = new Vector3(
+                    0f, 1.15f + Mathf.Sin(Time.time * pulseSpeed) * 0.08f, 0f);
+            }
         }
     }
 }

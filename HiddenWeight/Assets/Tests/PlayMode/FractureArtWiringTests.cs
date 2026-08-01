@@ -116,8 +116,8 @@ namespace HiddenWeight.Tests
 
                 var background = art.Find("RoomBackground");
                 if (background == null) missing.Add(room.name + "/RoomBackground");
-                else if (background.GetComponent<RoomFittedBackground>() == null)
-                    missing.Add(room.name + "/RoomFittedBackground");
+                else if (background.GetComponent<CameraLockedRoomBackground>() == null)
+                    missing.Add(room.name + "/CameraLockedRoomBackground");
 
                 if (art.GetComponent<RoomVisualCuller>() == null)
                     missing.Add(room.name + "/RoomVisualCuller");

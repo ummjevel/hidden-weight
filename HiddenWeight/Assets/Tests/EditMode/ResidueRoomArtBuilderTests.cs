@@ -18,7 +18,7 @@ namespace HiddenWeight.Tests
         }
 
         [Test]
-        public void BuildRoomArtCreatesOneRoomFittedBackgroundOnly()
+        public void BuildRoomArtCreatesOneCameraLockedBackgroundOnly()
         {
             _roomObject = new GameObject("Room01");
             _roomObject.AddComponent<BoxCollider2D>();
@@ -36,18 +36,7 @@ namespace HiddenWeight.Tests
                 AssetDatabase.GetAssetPath(renderer.sprite),
                 Does.Contain("/Rooms4K/"));
             Assert.That(renderer.sortingOrder, Is.EqualTo(-30));
-            Assert.That(background.GetComponent<RoomFittedBackground>(), Is.Not.Null);
-
-            // 배경은 카메라가 아니라 방에 붙어 있어야 한다. 굽는 시점에 이미 방 경계를
-            // 덮도록 맞춰져 있는지 본다 — 그래야 에디터에서도 실제 구도가 보인다.
-            Bounds bounds = room.WorldBounds;
-            Assert.That(background.position.x, Is.EqualTo(bounds.center.x).Within(0.001f));
-            Assert.That(background.position.y, Is.EqualTo(bounds.center.y).Within(0.001f));
-
-            Vector2 covered = renderer.sprite.bounds.size * background.localScale.x;
-            Assert.That(background.localScale.x, Is.EqualTo(background.localScale.y).Within(0.0001f));
-            Assert.That(covered.x, Is.GreaterThanOrEqualTo(bounds.size.x - 0.001f));
-            Assert.That(covered.y, Is.GreaterThanOrEqualTo(bounds.size.y - 0.001f));
+            Assert.That(background.GetComponent("CameraLockedRoomBackground"), Is.Not.Null);
 
             foreach (string forbidden in new[]
                      {

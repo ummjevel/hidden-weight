@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -32,7 +33,9 @@ namespace HiddenWeight.EditorTools
             BuildBootstrap();
             BuildTitle();
             BuildZonePrologue();
-            BuildZoneResidue();
+            // 잔재는 방마다 씬을 굽고 Zone_Residue를 그 셸로 만든다. 옛 4룸 MVP 빌더가 같은
+            // 이름에 덮어쓰던 것을 대체한 것이라, 여기서 부르지 않으면 셸이 조용히 지워진다.
+            BuildResidueRooms();
             BuildZoneGaze();
             BuildZoneFracture();
             BuildEnding();
@@ -194,9 +197,9 @@ namespace HiddenWeight.EditorTools
         }
 
         // 충돌 지오메트리는 반드시 눈에 보여야 한다. 처음에는 4K 배경이 지형 외형을
-        // 담당한다는 가정으로 단색 Tile을 전부 숨겼는데, 결과가 "안 보이는데 부딪히는 벽"이었다.
-        // 배경이 월드에 고정된 지금(RoomFittedBackground)도 그림과 콜라이더가 픽셀 단위로
-        // 맞아떨어지지는 않으므로, 숨기는 대신 지역 지형 아트를 입힌다.
+        // 담당한다는 가정으로 단색 Tile을 전부 숨겼는데, 배경은 카메라에 고정된 벽지라
+        // (CameraLockedRoomBackground) 월드에 고정된 벽·천장을 그려 줄 수 없다 — 결과가
+        // "안 보이는데 부딪히는 벽"이었다. 그래서 숨기는 대신 지역 지형 아트를 입힌다.
         // 잠금벽(비활성)·트리거·이미 아트가 붙은 블록(루트 렌더러 꺼짐)은 건너뛴다.
         static void ClotheCollisionPlaceholderRenderers(GameObject root)
         {
@@ -665,7 +668,12 @@ namespace HiddenWeight.EditorTools
             go.transform.SetParent(parent, false);
             go.transform.position = new Vector3(center.x, center.y, 0f);
 
-            var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", tint * 0.5f);
+            // Color를 스칼라로 곱하면 알파까지 반으로 줄어든다 — "닫힘"을 어둡게만 표시하려던
+            // 의도와 달리 blocker가 반투명해진다. 지금은 ApplyArtOverlay가 성공하면 이 렌더러
+            // 자체를 꺼서 안 보이니 티가 안 나지만, 그 아트가 하나라도 없으면(에셋 이름이
+            // 바뀌거나 슬라이싱이 안 된 경우) 밝기 대신 반투명한 "바닥"이 그대로 드러난다.
+            var dimTint = new Color(tint.r * 0.5f, tint.g * 0.5f, tint.b * 0.5f, tint.a);
+            var blocker = BuildSolidBlock(go.transform, "Blocker", center, size, "Ground", dimTint);
             var opened = BuildSolidBlock(go.transform, "Opened", center, size, "Ground", tint);
             opened.SetActive(false);
 
@@ -947,77 +955,6 @@ namespace HiddenWeight.EditorTools
         }
 
         // ============================================================
-        // Step 4: Zone_Residue — 잔재(과거·죄책감). 4룸.
-        // ============================================================
-
-        static void BuildZoneResidue()
-        {
-            var scene = NewScene();
-            var tilemap = BuildZoneRoot("Residue", out var root);
-            var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
-
-            // Room1 [0,24]: 입구. Checkpoint. StoryFragment(grantsSkill=Rewind).
-            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
-            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
-            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
-            BuildCheckpoint(root.transform, new Vector2(4, 1));
-            BuildStoryFragment(root.transform, new Vector2(12, 1), "residue_skill",
-                "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
-            BuildTutorialHint(root.transform, new Vector2(16, 3), "K 홀드  —  되감기");
-            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
-
-            // Room2 [24,48]: 무너진 다리. RewindableBlock 3개가 떨어져 있다(중력으로 낙하 후
-            // 되감기로 원위치 복원). 실패 시 낮은 안전 바닥으로 떨어진다.
-            Floor(tilemap, 24, 35, 0);
-            Floor(tilemap, 38, 48, 0);
-            PlaceTiles(tilemap, GroundTile(), 35, 38, -8, -6); // 다리 아래 안전 바닥
-            BuildHazardFloor(root.transform, 35, 38, -6);
-            BuildRewindableBlock(root.transform, new Vector2(35.5f, -0.5f));
-            BuildRewindableBlock(root.transform, new Vector2(36.5f, -0.5f));
-            BuildRewindableBlock(root.transform, new Vector2(37.5f, -0.5f));
-            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
-
-            // Room3 [48,72]: CrumblingPlatform 4개 연속. 밟으면 무너지고 되감기로 되살린다.
-            Floor(tilemap, 48, 58, 0);
-            Floor(tilemap, 70, 72, 0);
-            PlaceTiles(tilemap, GroundTile(), 58, 70, -8, -6); // 추락 시 안전 바닥
-            BuildHazardFloor(root.transform, 58, 70, -6);
-            BuildCrumblingPlatform(root.transform, new Vector2(59.5f, 0f));
-            BuildCrumblingPlatform(root.transform, new Vector2(62.5f, 0f));
-            BuildCrumblingPlatform(root.transform, new Vector2(65.5f, 0f));
-            BuildCrumblingPlatform(root.transform, new Vector2(68.5f, 0f));
-            BuildRoom(rooms.transform, "Room3", new Vector2(60, 4), new Vector2(24, 14));
-
-            // Room4 [72,96]: Enemy(Residue) 2, Gate(Rewind), 출구. 곁가지: 되돌아왔을 때만
-            // 열리는 Gate(requiresFinalCondition) 뒤에 HiddenFragment.
-            // 클라이맥스 연출(WORLD_MAP 2.3절): 출구 뒤로 무너진 거대 탑의 실루엣을 배경에 세운다.
-            Floor(tilemap, 72, 96, 0);
-            BuildDecor(root.transform, "RuinTower_Left", new Vector2(88, 4.5f), new Vector2(1.6f, 9f),
-                "Tile", new Color(0.16f, 0.17f, 0.24f), 6f);
-            BuildDecor(root.transform, "RuinTower_Mid", new Vector2(91.5f, 5.5f), new Vector2(2f, 12f),
-                "Tile", new Color(0.13f, 0.14f, 0.2f), -3f);
-            BuildDecor(root.transform, "RuinTower_Right", new Vector2(94.5f, 4f), new Vector2(1.4f, 8f),
-                "Tile", new Color(0.18f, 0.19f, 0.26f), 10f);
-            BuildDecor(root.transform, "RuinBell", new Vector2(91.5f, 10f), new Vector2(2.4f, 2.4f),
-                "Eye", new Color(0.35f, 0.28f, 0.18f), 0f, -4);
-            BuildEnemy(root.transform, new Vector2(78, 1), null); // 프리팹 기본값이 이미 Enemy_Residue
-            BuildEnemy(root.transform, new Vector2(86, 1), null);
-            BuildGate(root.transform, new Vector2(90, 1.5f), EmotionId.Rewind, false);
-            BuildZoneTrigger(root.transform, new Vector2(94, 1), new Vector2(2, 3), false);
-
-            // 백트래킹 전용 곁가지: 점프로만 닿는 얇은 선반 위 최종 Gate + HiddenFragment.
-            PlaceTiles(tilemap, GroundTile(), 76, 86, 4, 5);
-            BuildGate(root.transform, new Vector2(80, 6.5f), EmotionId.None, true);
-            BuildHiddenFragment(root.transform, new Vector2(83, 5.5f), "residue_hidden_final",
-                "결국 남은 건, 스스로에게조차 하지 못한 용서.");
-            BuildRoom(rooms.transform, "Room4", new Vector2(84, 5), new Vector2(24, 16));
-
-            BuildBoundary(root.transform, "RightBoundary", 97f);
-
-            SaveScene(scene, "Zone_Residue");
-        }
-
-        // ============================================================
         // Step 5: Zone_Gaze — 응시(현재·수치심). 4룸.
         // ============================================================
 
@@ -1273,7 +1210,7 @@ namespace HiddenWeight.EditorTools
 
         static void RegisterBuildSettings()
         {
-            EditorBuildSettings.scenes = new[]
+            var scenes = new List<EditorBuildSettingsScene>
             {
                 new EditorBuildSettingsScene($"{ScenesFolder}/Bootstrap.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Title.unity", true),
@@ -1287,9 +1224,14 @@ namespace HiddenWeight.EditorTools
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Residue_Full.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Gaze_Full.unity", true),
                 new EditorBuildSettingsScene($"{ScenesFolder}/Zone_Fracture_Full.unity", true),
-                // 잔재 재설계 작업용 단독 방 씬. 아직 어디에서도 연결하지 않지만, 등록해 두어야
-                // Play Mode 테스트가 이름으로 로드할 수 있다. 파일이 없으면 조용히 건너뛴다.
             };
+
+            // 방 씬은 additive로만 로드되지만 빌드 세팅에 없으면 CanStreamedLevelBeLoaded가
+            // false를 돌려주고 RoomLoader가 전환을 취소한다 — 등록이 곧 통행 허가다.
+            foreach (var room in ResidueRoomLinks.RoomNames)
+                scenes.Add(new EditorBuildSettingsScene($"{ScenesFolder}/Room_Residue_{room}.unity", true));
+
+            EditorBuildSettings.scenes = scenes.ToArray();
         }
     }
 }

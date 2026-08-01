@@ -78,6 +78,20 @@ namespace HiddenWeight.Tests
             Assert.AreEqual(1, counts.GetValueOrDefault("Judge"), "얼굴 없는 재판관 1체");
             Assert.AreEqual(1, counts.GetValueOrDefault("Gatekeeper"), "홍채의 문지기 1체");
             Assert.AreEqual(1, counts.GetValueOrDefault("AllEyes"), "만인의 시선 1체");
+
+            Sprite mouthIdle = null;
+            Sprite mouthWalk = null;
+            foreach (var sprite in Resources.FindObjectsOfTypeAll<Sprite>())
+            {
+                if (sprite.name == "MouthIdle_00") mouthIdle = sprite;
+                if (sprite.name == "MouthWalk_00") mouthWalk = sprite;
+            }
+            Assert.IsNotNull(mouthIdle);
+            Assert.IsNotNull(mouthWalk);
+            Assert.AreEqual(190f, mouthIdle.rect.height, 0.01f,
+                "밀고하는 입 대기 프레임 하단이 잘리지 않도록 bleed 영역을 포함해야 한다.");
+            Assert.AreEqual(170f, mouthWalk.rect.height, 0.01f,
+                "밀고하는 입 이동 프레임은 이전 행 조각을 제외한 보정 창이어야 한다.");
         }
 
         [UnityTest]
@@ -97,8 +111,8 @@ namespace HiddenWeight.Tests
 
                 var background = art.Find("RoomBackground");
                 if (background == null) missing.Add(room.name + "/RoomBackground");
-                else if (background.GetComponent<RoomFittedBackground>() == null)
-                    missing.Add(room.name + "/RoomFittedBackground");
+                else if (background.GetComponent<CameraLockedRoomBackground>() == null)
+                    missing.Add(room.name + "/CameraLockedRoomBackground");
 
                 foreach (var path in new[]
                          {
@@ -119,9 +133,30 @@ namespace HiddenWeight.Tests
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
             Assert.Greater(tilemaps.Length, 0, "응시 TilemapRenderer가 없다.");
             foreach (var tilemap in tilemaps)
+            {
                 // 4K 배경은 카메라 고정 벽지라 실제 바닥을 그려 줄 수 없다 — 타일맵이 꺼지면
                 // 바닥 전체가 "안 보이는데 부딪히는" 충돌이 된다.
                 Assert.IsTrue(tilemap.enabled, tilemap.name + " 바닥 렌더러가 꺼져 있다 — 안 보이는 바닥이 된다.");
+
+                var edges = tilemap.transform.Find("TraversalEdges_Runtime");
+                Assert.IsNotNull(edges, tilemap.name + "에 실제 충돌면 경계가 만들어지지 않았다.");
+                Assert.Greater(edges.childCount, 0, tilemap.name + "의 충돌면 경계가 비어 있다.");
+
+                bool hasGazeSurface = false;
+                foreach (var renderer in edges.GetComponentsInChildren<SpriteRenderer>())
+                    if (renderer.name == "TraversalSurface" && renderer.sprite != null
+                        && renderer.sprite.name.StartsWith("GazeTerrain"))
+                        hasGazeSurface = true;
+                Assert.IsTrue(hasGazeSurface, tilemap.name + "에 응시 전용 바닥 아트가 적용되지 않았다.");
+            }
+
+            foreach (var background in Object.FindObjectsByType<CameraLockedRoomBackground>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var renderer = background.GetComponent<SpriteRenderer>();
+                Assert.LessOrEqual(renderer.color.a, 0.6f,
+                    background.name + " 배경이 너무 선명해 실제 길보다 앞에 읽힌다.");
+            }
 
             var visibleCollisionPlaceholders = new List<string>();
             foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(

@@ -8,39 +8,17 @@ using HiddenWeight.World;
 
 namespace HiddenWeight.EditorTools
 {
-    // 잔재 지역 전체(주 동선 12룸 + 비밀 3룸)를 한 씬에 짓는다.
+    // 잔재 지역(주 동선 12룸 + 비밀 3룸)을 방마다 자기 씬으로 짓는다.
     // 명세: docs/RESIDUE_ROOM_IMPLEMENTATION.md, docs/RESIDUE_LEVEL_DESIGN.md, docs/WORLD_MAP.md
     //
-    // 방마다 좌표계를 왼쪽 아래 (0,0)으로 두고 쓰는 것은 명세 0절의 규칙 그대로다. 여기서는
-    // 방마다 오프셋을 하나 정해 두고 Room 헬퍼가 전역 좌표로 옮긴다 — 그래야 방 코드가
-    // 문서에 적힌 숫자와 1:1로 읽힌다.
+    // 방은 저마다 왼쪽 아래 (0,0)을 쓴다(LEVEL_01_STANDARD 1.1). 한 씬에 한 방만 로드되므로
+    // 방끼리 원점을 공유해도 겹치지 않고, 전역 오프셋을 계산할 이유가 사라졌다 — 방 코드의
+    // 숫자가 문서에 적힌 숫자와 그대로 1:1이다.
     //
-    // 기존 Zone_Residue.unity(옛 MVP 4룸)는 건드리지 않는다. 이 씬이 검증을 통과하면 그때 교체한다.
+    // 방과 방은 복도가 아니라 포탈 문(RoomDoor)이 잇는다. 어떤 방이 어떤 방과 어디서 붙는지는
+    // ResidueRoomLinks.Links 한 곳에만 있다.
     public static partial class ZoneSceneBuilder
     {
-        // 방 배치 오프셋. 주 동선은 왼쪽에서 오른쪽으로, 하강 구간은 아래로 내린다.
-        // 방끼리 겹치지 않게만 두면 되고, 실제 연결감은 각 방의 출입구 높이가 맞물려 만든다.
-        // 방 배치 오프셋. 각 방의 "출구 높이"와 다음 방의 "입구 높이"가 세계 좌표에서 정확히
-        // 맞도록 y를 계산했다. 예: R03 출구 (27,1) → 세계 y=2, R04 입구 (2,20) → R04.y = 2-20 = -18.
-        // x는 이전 방 오른쪽 끝에서 CorridorGap만큼 띄우고, 그 사이를 평평한 연결 통로가 잇는다.
-        const int CorridorGap = 4;
-
-        static readonly Vector2Int R01 = new Vector2Int(0, 0);
-        static readonly Vector2Int R02 = new Vector2Int(30, 0);
-        static readonly Vector2Int R03 = new Vector2Int(62, 1);
-        static readonly Vector2Int R04 = new Vector2Int(96, -18);
-        static readonly Vector2Int S1 = new Vector2Int(96, -44);
-        static readonly Vector2Int R05 = new Vector2Int(124, -18);
-        static readonly Vector2Int R06 = new Vector2Int(154, -18);
-        static readonly Vector2Int S2 = new Vector2Int(154, -40);
-        static readonly Vector2Int R07 = new Vector2Int(190, -16);
-        static readonly Vector2Int R08 = new Vector2Int(224, -10);
-        static readonly Vector2Int R09 = new Vector2Int(252, 13);
-        static readonly Vector2Int R10 = new Vector2Int(288, 14);
-        static readonly Vector2Int R11 = new Vector2Int(316, 18);
-        static readonly Vector2Int S3 = new Vector2Int(316, 38);
-        static readonly Vector2Int R12 = new Vector2Int(348, 19);
-
         // 잘라 둔 잔재 스프라이트를 이름으로 찾는다(ResidueArtSlicer가 붙인 이름).
         // 없으면 null을 돌려주고, 호출부는 기존 플레이스홀더로 넘어간다 — 아트가 아직 없는
         // 항목 때문에 씬 생성이 실패하면 안 된다.
@@ -177,13 +155,14 @@ namespace HiddenWeight.EditorTools
         static Shortcut _shortcutA;
         static Shortcut _shortcutB;
 
-        // 되감기 대상에 "복원되면 이 숏컷을 연다"를 연결한다.
-        static void LinkRewindToShortcut(GameObject rewindable, Shortcut shortcut, params GameObject[] siblings)
+        // 되감기 대상에 "복원되면 이 숏컷을 연다"를 연결한다. 오브젝트가 아니라 숏컷 id를 굽는다 —
+        // 대상과 숏컷이 서로 다른 방 씬에 있어 씬을 넘는 참조는 저장되지 않기 때문이다.
+        static void LinkRewindToShortcut(GameObject rewindable, string shortcutId, params GameObject[] siblings)
         {
             var component = rewindable.GetComponent<Rewindable>();
-            if (component == null || shortcut == null) return;
+            if (component == null || string.IsNullOrEmpty(shortcutId)) return;
 
-            SetField(component, "linkedShortcut", p => p.objectReferenceValue = shortcut);
+            SetField(component, "linkedShortcutId", p => p.stringValue = shortcutId);
             if (siblings == null || siblings.Length == 0) return;
 
             SetField(component, "requiredSiblings", p =>
@@ -262,7 +241,7 @@ namespace HiddenWeight.EditorTools
         // advanceWhenRemaining[k]는 waves[k+1]이 열리는 "이전 단계 잔존 수" 조건이다(-1이면 시간만).
         static Encounter BuildEncounter(Transform parent, string id, Vector2 center, Vector2 size, bool oneTime,
                                         GameObject[][] waves, int[] advanceWhenRemaining,
-                                        RewardChest reward, Shortcut shortcut)
+                                        RewardChest reward, Shortcut shortcut, string shortcutId = null)
         {
             var go = new GameObject($"Encounter_{id}");
             go.transform.SetParent(parent, false);
@@ -312,6 +291,8 @@ namespace HiddenWeight.EditorTools
             });
             if (reward != null) SetField(encounter, "victoryReward", p => p.objectReferenceValue = reward);
             if (shortcut != null) SetField(encounter, "victoryShortcut", p => p.objectReferenceValue = shortcut);
+            if (!string.IsNullOrEmpty(shortcutId))
+                SetField(encounter, "victoryShortcutId", p => p.stringValue = shortcutId);
 
             return encounter;
         }
@@ -452,6 +433,11 @@ namespace HiddenWeight.EditorTools
 
             var sealObject = new GameObject("SealAnimation");
             sealObject.transform.SetParent(shortcut.transform, false);
+            // ResidueRoomTransitions_v1 시트는 피벗이 하단(0.5, 0)이라 렌더러 위치가 곧 "그림의
+            // 발밑"이 된다. shortcut 원점은 blocker/opened와 같은 통로 중심(수직 중앙)이므로,
+            // 그대로 두면 문 그림이 중심에서 위로만 자라 실제 통로보다 절반(size.y/2)만큼
+            // 위로 뜬 것처럼 보인다 — 아래로 그만큼 내려서 통로 중심에 수직으로 맞춘다.
+            sealObject.transform.localPosition = new Vector3(0f, -size.y * 0.5f, 0f);
 
             var renderer = sealObject.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = 6; // 숏컷 본체(5) 바로 위
@@ -592,6 +578,9 @@ namespace HiddenWeight.EditorTools
 
         // 방과 방 사이의 평평한 연결 통로. 양쪽 높이를 맞춰 뒀으므로 바닥 한 줄이면 이어진다.
         // 천장을 두어 통로가 "길"로 읽히게 하고, 위로 빠져나가 엉뚱한 방 지붕에 올라서는 것도 막는다.
+        //
+        // 잔재는 이제 복도 대신 포탈 문을 쓴다. 응시·균열이 아직 한 씬 구조라 남겨 둔 것이고,
+        // 두 지역도 방 씬으로 옮기면 이 함수와 BuildShaft는 함께 사라진다.
         static void BuildCorridor(Transform parent, Tilemap map, string name,
                                   float fromX, float toX, int surfaceY)
         {
@@ -604,7 +593,7 @@ namespace HiddenWeight.EditorTools
         }
 
         // 비밀방으로 내려가는 수직 통로. 양쪽에 벽점프용 벽을 세워 다시 올라올 수 있게 한다
-        // (명세: 비밀방은 "동일 경로 복귀").
+        // (명세: 비밀방은 "동일 경로 복귀"). 잔재에서는 쓰지 않는다 — BuildCorridor 주석 참고.
         static void BuildShaft(Transform parent, Tilemap map, string name,
                                int centerX, int topY, int bottomY, int width = 4)
         {
@@ -738,59 +727,11 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
-        // 주 동선 12룸을 순서대로 잇고, 비밀방 3곳으로 내려가는(올라가는) 수직 통로를 놓는다.
-        static void BuildConnections(RoomCtx c)
-        {
-            var map = c.Map;
-            var parent = c.Root.transform;
-
-            // (이전 방 오프셋, 이전 방 출구 로컬, 다음 방 오프셋, 다음 방 입구 로컬)
-            var links = new (Vector2Int from, Vector2 exit, Vector2Int to, Vector2 entry, string name)[]
-            {
-                (R01, new Vector2(26, 2), R02, new Vector2(0, 2), "C_R01_R02"),
-                (R02, new Vector2(28, 3), R03, new Vector2(0, 2), "C_R02_R03"),
-                (R03, new Vector2(27, 1), R04, new Vector2(2, 20), "C_R03_R04"),
-                (R04, new Vector2(22, 2), R05, new Vector2(0, 2), "C_R04_R05"),
-                (R05, new Vector2(26, 2), R06, new Vector2(0, 2), "C_R05_R06"),
-                (R06, new Vector2(32, 5), R07, new Vector2(0, 3), "C_R06_R07"),
-                (R07, new Vector2(30, 8), R08, new Vector2(2, 2), "C_R07_R08"),
-                (R08, new Vector2(22, 26), R09, new Vector2(0, 3), "C_R08_R09"),
-                (R09, new Vector2(32, 4), R10, new Vector2(0, 3), "C_R09_R10"),
-                (R10, new Vector2(24, 7), R11, new Vector2(0, 3), "C_R10_R11"),
-                (R11, new Vector2(28, 4), R12, new Vector2(0, 3), "C_R11_R12"),
-            };
-
-            foreach (var link in links)
-            {
-                float exitX = link.from.x + link.exit.x;
-                float exitY = link.from.y + link.exit.y;
-                float entryX = link.to.x + link.entry.x;
-                float entryY = link.to.y + link.entry.y;
-
-                // 오프셋을 그렇게 잡았으므로 두 높이는 같아야 한다. 어긋나면 즉시 알 수 있게 남긴다.
-                if (!Mathf.Approximately(exitY, entryY))
-                    Debug.LogWarning($"[ResidueZoneBuilder] {link.name} 높이 불일치: 출구 y={exitY}, 입구 y={entryY}");
-
-                BuildCorridor(parent, map, link.name, exitX, entryX, Mathf.RoundToInt(exitY));
-            }
-
-            // S1 — R04의 부서진 바닥(로컬 7.5, 6) 아래로 내려간다.
-            BuildShaft(parent, map, "Shaft_S1", R04.x + 8, R04.y + 6, S1.y + 14);
-            Floor(map, R04.x + 6, R04.x + 11, S1.y + 14);
-
-            // S2 — R06의 선택 대상 아래(로컬 20, 1).
-            BuildShaft(parent, map, "Shaft_S2", R06.x + 20, R06.y + 1, S2.y + 18);
-            Floor(map, R06.x + 18, R06.x + 23, S2.y + 18);
-
-            // S3 — R11의 상부 벽 뒤(로컬 14, 10). 샤프트 입구 자체를 조건 게이트로 막는다.
-            // 게이트가 열리기 전에는 올라갈 수 없어야 "균열 클리어 후 재방문"이 성립한다.
-            BuildShaft(parent, map, "Shaft_S3", R11.x + 14, S3.y, R11.y + 10);
-            Floor(map, R11.x + 12, R11.x + 17, S3.y);
-            BuildGate(parent, new Vector2(R11.x + 14, R11.y + 11), EmotionId.Rewind, true);
-        }
-
-        [MenuItem("Hidden Weight/Build Residue Zone (Full)")]
-        public static void RunResidueZone()
+        // 방 15개를 각자 씬으로 굽고, 마지막에 플레이어·카메라만 든 셸 씬을 만든다.
+        // 방 순서는 예전 한 씬 빌더와 같다 — 숏컷 A/B(R03) · C(R07)를 만든 방이 그것을 쓰는
+        // 방(R05·R08·R10)보다 먼저 돌아야 하기 때문이다.
+        [MenuItem("Hidden Weight/Build Residue Zone (Rooms)")]
+        public static void BuildResidueRooms()
         {
             EnsureScenesFolder();
             // 시트 분할을 씬 생성에 묶는다(RunGazeZone과 같은 이유). 기억의 교관 시트처럼
@@ -799,76 +740,160 @@ namespace HiddenWeight.EditorTools
 
             UseArtRoot("Assets/Art/Residue");
 
-            var scene = NewScene();
+            var builders = new (string room, System.Action<RoomCtx> build)[]
+            {
+                ("R01", BuildR01), ("R02", BuildR02), ("R03", BuildR03), ("R04", BuildR04),
+                ("S1",  BuildS1),  ("R05", BuildR05), ("R06", BuildR06), ("S2",  BuildS2),
+                ("R07", BuildR07), ("R08", BuildR08), ("R09", BuildR09), ("R10", BuildR10),
+                ("R11", BuildR11), ("S3",  BuildS3),  ("R12", BuildR12),
+            };
+
+            foreach (var (room, build) in builders)
+            {
+                var scene = NewScene();
+                var ctx = NewRoomCtx();
+                build(ctx);
+
+                BuildRoomStart(ctx);
+                BuildDoorsFor(ctx, room);
+                FinishRoomScene(ctx);
+                SaveScene(scene, "Room_Residue_" + room);
+            }
+
+            BuildResidueShell();
+            RegisterBuildSettings();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[ResidueZoneBuilder] 잔재 방 씬 {builders.Length}개와 셸 생성 완료");
+        }
+
+        // 방 씬 하나의 빈 골격. 타일맵(바닥)은 반드시 그린다 — 4K 배경은 카메라 고정 벽지라
+        // 실제 바닥 위치를 표현하지 못하고, 꺼 두면 바닥 전체가 보이지 않는 충돌이 된다.
+        static RoomCtx NewRoomCtx()
+        {
             var tilemap = BuildZoneRoot("Residue", out var root);
-            // 타일맵(바닥)은 반드시 그린다. 4K 배경은 카메라 고정 벽지라 실제 바닥
-            // 위치를 표현하지 못한다 — 꺼 두면 바닥 전체가 보이지 않는 충돌이 된다.
+
+            // 방 씬은 셸 위에 additive로 얹힌다. GameManager(ScreenFader·AudioManager 동거)는
+            // 셸이 하나만 들고 있어야 하므로 공용 킷이 넣어 준 사본을 걷어낸다. 그냥 두면 방을
+            // 옮길 때마다 Awake에서 자기 자신을 파괴하는 중복 인스턴스가 하나씩 생긴다.
+            var duplicate = Object.FindFirstObjectByType<HiddenWeight.Core.GameManager>();
+            if (duplicate != null) Object.DestroyImmediate(duplicate.gameObject);
+
             var rooms = new GameObject("Rooms");
             rooms.transform.SetParent(root.transform, true);
 
-            // 씬 이름이 ZoneData.sceneName과 다르므로 지역을 씬이 직접 선언한다.
-            var marker = new GameObject("ZoneMarker");
-            marker.transform.SetParent(root.transform, false);
-            var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
-            SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Residue);
-
-            var ctx = new RoomCtx
+            return new RoomCtx
             {
                 Map = tilemap,
                 Root = root,
                 Rooms = rooms.transform,
-                FloorArt = false
+                O = Vector2Int.zero,
+                FloorArt = false,
             };
+        }
 
-            BuildR01(ctx);
-            BuildR02(ctx);
-            BuildR03(ctx);
-            BuildR04(ctx);
-            BuildS1(ctx);
-            BuildR05(ctx);
-            BuildR06(ctx);
-            BuildS2(ctx);
-            BuildR07(ctx);
-            BuildR08(ctx);
-            BuildR09(ctx);
-            BuildR10(ctx);
-            BuildR11(ctx);
-            BuildS3(ctx);
-            BuildR12(ctx);
+        // 방 씬 하나를 마무리한다. 예전에는 지역 씬 끝에서 한 번만 하던 일들인데,
+        // 방이 씬으로 갈라졌으므로 방마다 해야 한다.
+        static void FinishRoomScene(RoomCtx c)
+        {
+            // 충돌 연출과 공격체 발사대는 씬마다 하나씩 필요하다 —
+            // 다른 씬에 있는 인스턴스는 이 방의 적이 쓸 수 없다.
+            BuildImpactVFX(c.Root.transform, ResidueImpacts);
+            BuildProjectileSpawner(c.Root.transform, ResidueProjectiles);
 
-            BuildConnections(ctx);
-
-            // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
-            BuildImpactVFX(root.transform, ResidueImpacts);
-            BuildProjectileSpawner(root.transform, ResidueProjectiles);
-
-            // 숏컷 3곳에 봉쇄·해제 애니메이션을 붙인다. 만든 곳과 여는 곳이 달라서
-            // 여기서 한 번에 처리한다.
-            AttachSealAnimator(_shortcutA, new Vector2(4f, 2f));
-            AttachSealAnimator(_shortcutB, new Vector2(3f, 2.5f));
-            AttachSealAnimator(_shortcutC, new Vector2(4f, 2f));
-
-            // 플레이어는 R01 시작점에. 카메라도 같은 자리에서 시작한다.
-            ctx.O = R01;
-            PlacePlayerAndCamera(root, new Vector3(R01.x + 3f, R01.y + 3f, 0f));
+            // 숏컷은 방 빌드 함수가 만들어 정적 필드에 남긴다. 그 방이 만든 것만 붙이고 비운다 —
+            // 비우지 않으면 다음 방이 이미 닫힌 씬의 죽은 참조에 애니메이터를 또 붙이려 든다.
+            if (_shortcutA != null) AttachSealAnimator(_shortcutA, new Vector2(4f, 2f));
+            if (_shortcutB != null) AttachSealAnimator(_shortcutB, new Vector2(3f, 2.5f));
+            if (_shortcutC != null) AttachSealAnimator(_shortcutC, new Vector2(4f, 2f));
+            _shortcutA = _shortcutB = _shortcutC = null;
 
             // 방마다 원본 콘셉트 한 장을 카메라에 고정한다.
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
                 SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Residue");
 
-            ClotheCollisionPlaceholderRenderers(root);
-            SaveScene(scene, "Zone_Residue_Full");
-            RegisterBuildSettings();
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Debug.Log("[ResidueZoneBuilder] 잔재 전체 지역(15룸) 생성 완료");
+            ClotheCollisionPlaceholderRenderers(c.Root);
+        }
+
+        // 링크 테이블을 훑어 이 방에 속한 문을 전부 세운다. 링크 하나가 양쪽에 문을
+        // 하나씩 만들기 때문에, 한쪽만 만들어 못 돌아오는 연결이 생길 수 없다.
+        static void BuildDoorsFor(RoomCtx c, string room)
+        {
+            foreach (var link in ResidueRoomLinks.Links)
+            {
+                if (link.fromRoom == room)
+                    SpawnDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId);
+
+                if (link.toRoom == room)
+                    SpawnDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId);
+            }
+        }
+
+        static void SpawnDoor(RoomCtx c, string doorId, Side side, Vector2 anchor,
+            string targetRoom, string targetDoorId)
+        {
+            var go = new GameObject("Door_" + doorId.Replace(':', '_'));
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(anchor.x, anchor.y, 0f);
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            // 위아래 문은 넓고 얕게, 좌우 문은 좁고 높게. 지나가는 축으로는 얇아야
+            // 문 위를 걷다가 의도치 않게 빨려 들어가지 않는다.
+            col.size = side == Side.U || side == Side.D
+                ? new Vector2(3f, 1.2f)
+                : new Vector2(1.2f, 3.5f);
+
+            var door = go.AddComponent<RoomDoor>();
+            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+        }
+
+        // 문을 거치지 않고 이 방에 들어올 때(지역 첫 진입·테스트) 플레이어가 서는 자리.
+        // 방마다 바닥 표면이 y=1~3으로 달라서, 어느 방에서도 지형에 파묻히지 않는 y=4에 둔다.
+        static void BuildRoomStart(RoomCtx c)
+        {
+            var go = new GameObject("RoomStart");
+            go.transform.SetParent(c.Root.transform, false);
+            go.transform.position = new Vector3(3f, 4f, 0f);
+            go.AddComponent<RoomStart>();
+        }
+
+        // 셸에는 지형이 없다. 플레이어·카메라·HUD·RoomLoader만 두고 R01을 로드시킨다.
+        static void BuildResidueShell()
+        {
+            var scene = NewScene();
+            var root = new GameObject("Zone_Residue");
+
+            // 전역 싱글턴은 셸이 소유한다. 셸에 GameManager가 없으면 같은 씬의 Player가
+            // GameManager.Instance보다 먼저 Awake해 NullReference가 쏟아진다(GameManager.cs 주석).
+            Spawn("GameManager", Vector3.zero);
+
+            // 씬이 어느 지역인지 직접 선언한다. GameManager가 이 표식으로 ZoneData를 고른다.
+            var marker = new GameObject("ZoneMarker");
+            marker.transform.SetParent(root.transform, false);
+            var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
+            SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Residue);
+
+            // 잔재 환경음은 방이 아니라 지역에 속한다. 셸에 두어야 방을 옮길 때마다 끊겼다
+            // 다시 시작하지 않는다(예전에는 Full 씬 전용 런타임 보정이 붙여 주던 것이다).
+            root.AddComponent<ResidueAmbientAudio>();
+
+            // 플레이어 시작 좌표는 의미가 없다. 진입점이 R01을 로드하면서 RoomStart로 옮긴다.
+            PlacePlayerAndCamera(root, new Vector3(3f, 4f, 0f));
+
+            // RoomLoader는 씬 루트로 남긴다. Zone 루트의 자식으로 붙이면 방 씬을 언로드할 때
+            // 함께 사라질 위험이 있고, 싱글턴이 중간에 죽으면 전환이 통째로 멈춘다.
+            var loaderGo = new GameObject("RoomLoader");
+            loaderGo.AddComponent<RoomLoader>();
+            loaderGo.AddComponent<ResidueEntryPoint>();
+
+            SaveScene(scene, "Zone_Residue");
         }
 
         // ---------------- R01 입구 경계 (D0) ----------------
         // 사망 요소도 이동을 막는 요소도 없다. 캐릭터 크기와 배경 규모를 비교하는 방.
         static void BuildR01(RoomCtx c)
         {
-            c.O = R01;
             c.Variant = 1;
             c.Floor(0, 26, 2);
             c.Floor(8, 11, 3);   // 둔덕 1유닛
@@ -889,7 +914,6 @@ namespace HiddenWeight.EditorTools
         // "실패해도 다른 길이 된다"를 가르친다. 상부 다리는 보상, 하부 통로는 안전한 우회.
         static void BuildR02(RoomCtx c)
         {
-            c.O = R02;
             c.Variant = 1;
             c.Floor(0, 8, 2);
             // 하부 통로. 상부 다리(x 8~14.5) 아래를 지나 "다리 오른쪽 바깥"인 x=17에서 올라온다.
@@ -919,7 +943,6 @@ namespace HiddenWeight.EditorTools
         // 지역의 중앙 허브. 첫 방문에는 남동쪽 낮은 길만 열려 있고, 숏컷 A·B는 보이지만 못 지나간다.
         static void BuildR03(RoomCtx c)
         {
-            c.O = R03;
             c.Variant = 2;
             c.Floor(0, 20, 2);   // 서쪽 입구 + 중앙 손바닥 광장
             c.Floor(20, 30, 1);  // 남동쪽 R04로 가는 "가장 낮은 길"
@@ -944,7 +967,6 @@ namespace HiddenWeight.EditorTools
         // 수직 하강. 모든 상층 추락은 하층 안전 바닥으로 이어지고 피해가 없다.
         static void BuildR04(RoomCtx c)
         {
-            c.O = R04;
             c.Variant = 3;
             c.Floor(0, 24, 2);    // 하층 안전 바닥
             c.Floor(0, 6, 18);    // 상층 관찰대 (입구 2,20)
@@ -986,7 +1008,6 @@ namespace HiddenWeight.EditorTools
         // 짧은 정밀 이동 퍼즐. 즉사도 체력 피해도 쓰지 않는다.
         static void BuildS1(RoomCtx c)
         {
-            c.O = S1;
             c.Variant = 3;
             c.Floor(0, 18, 1);   // 실패 시 떨어지는 안전 바닥
 
@@ -1008,7 +1029,6 @@ namespace HiddenWeight.EditorTools
         // 되감기 획득과 1회 필수·1회 선택 튜토리얼. 실패·적·시간제한이 없다.
         static void BuildR05(RoomCtx c)
         {
-            c.O = R05;
             c.Variant = 2;
             c.Floor(0, 12, 2);
             // 1단계 턱은 실측 기본 점프 높이(2.72)보다 높은 3유닛이다. 복원 블록의 상단과
@@ -1029,7 +1049,9 @@ namespace HiddenWeight.EditorTools
             // 블록 상단 y=4를 밟은 뒤 1유닛 더 올라가므로 밑면에 머리가 걸리지 않는다.
             var primary = ResidueRewindable(c.Root.transform, c.P(10.5f, 3.5f));
             primary.name = "R05_PrimaryRestore";
-            LinkRewindToShortcut(primary, _shortcutA);
+            // 숏컷 A는 R03 씬에 있다. 오브젝트 참조 대신 id를 구워, 되감는 순간 진행 상태에
+            // 열림을 남긴다. R03에 다시 들어서면 사슬다리가 이미 내려와 있다.
+            LinkRewindToShortcut(primary, "residue_shortcut_a");
 
             // 선택 대상: 끊어진 다리 조각. 복원하면 위쪽 재화 가지를 편하게 건넌다.
             ResidueRewindable(c.Root.transform, c.P(20f, 6.5f));
@@ -1047,7 +1069,6 @@ namespace HiddenWeight.EditorTools
         // 되감기와 이동을 결합한다. 매복 적(매달린 손가락)을 처음 소개하는 방.
         static void BuildR06(RoomCtx c)
         {
-            c.O = R06;
             c.Variant = 3;
             c.Floor(0, 8, 2);
             // 4유닛 상승. 바닥에 닿는 복원 계단을 발판으로 써야만 오른다(기본 점프 2.72).
@@ -1079,7 +1100,6 @@ namespace HiddenWeight.EditorTools
         // 선택형 잠금 전투. 전투 시작 전 전장을 내려다볼 수 있다.
         static void BuildS2(RoomCtx c)
         {
-            c.O = S2;
             c.Variant = 3;
             c.Floor(0, 24, 2);
             BuildSafePlatform(c.Root.transform, c.P(4f, 10f));   // 상부 관찰·안전 발판
@@ -1106,7 +1126,6 @@ namespace HiddenWeight.EditorTools
         // 높낮이가 있는 다리 전투. 아래는 체력 1 피해 후 직전 안전 발판으로 되돌리는 위험 영역.
         static void BuildR07(RoomCtx c)
         {
-            c.O = R07;
             c.Variant = 2;
             c.Floor(0, 8, 3);
             c.Floor(11, 20, 5);   // 넓은 직선교 — 돌진형 구간(폭 9)
@@ -1137,7 +1156,6 @@ namespace HiddenWeight.EditorTools
         // 수직 이동 숙련. 구간마다 안전 발판이 있고 전체 바닥까지 떨어지지 않는다.
         static void BuildR08(RoomCtx c)
         {
-            c.O = R08;
             c.Variant = 3;
             c.Floor(0, 24, 2);
 
@@ -1162,8 +1180,9 @@ namespace HiddenWeight.EditorTools
             var pulleyB = ResidueRewindable(c.Root.transform, c.P(19f, 26f));
             pulleyA.name = "R08_PulleySafe";
             pulleyB.name = "R08_PulleyFast";
-            LinkRewindToShortcut(pulleyA, _shortcutB);
-            LinkRewindToShortcut(pulleyB, _shortcutB);
+            // 숏컷 B도 R03 씬에 있어 R05의 숏컷 A와 같이 id로 연결한다.
+            LinkRewindToShortcut(pulleyA, "residue_shortcut_b");
+            LinkRewindToShortcut(pulleyB, "residue_shortcut_b");
 
             c.Room("Room08", 24f, 30f);
         }
@@ -1172,7 +1191,6 @@ namespace HiddenWeight.EditorTools
         // 전투 중 무엇을 먼저 복원할지 고르게 한다.
         static void BuildR09(RoomCtx c)
         {
-            c.O = R09;
             c.Variant = 2;
             // 초반 관찰 발판과 중앙 전투 구간은 이어 둔다. 사이를 구덩이로 두면 낙하 → 위험 영역
             // 복귀 → 다시 낙하가 반복돼 주 동선이 성립하지 않는다(봇이 여기서 멈췄다).
@@ -1214,7 +1232,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- R10 손목 감시탑 (D4, 중간 보스) ----------------
         static void BuildR10(RoomCtx c)
         {
-            c.O = R10;
             c.Variant = 1;
             c.Floor(0, 24, 3);
             BuildResidueWall(c.Root.transform, "R10_Wall_L", c.P(1f, 7f), new Vector2(1f, 7f));
@@ -1243,9 +1260,11 @@ namespace HiddenWeight.EditorTools
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
-            // 입장 후 2초 관찰 뒤 출구 잠금. 승리하면 잠금 해제 + 숏컷 C + 큰 재화.
+            // 입장 후 2초 관찰 뒤 출구 잠금. 승리하면 잠금 해제 + 큰 재화.
+            // 숏컷 C를 여는 것은 이 보스의 승리다(LEVEL_21_RESIDUE_ROOMS.md R10 "승리 후 R07 숏컷").
+            // 숏컷 자체는 R07 씬에 있으므로 오브젝트가 아니라 id로 연결한다.
             BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
-                new[] { new[] { boss } }, new int[0], reward, _shortcutC);
+                new[] { new[] { boss } }, new int[0], reward, _shortcutC, "residue_shortcut_c");
 
             c.Room("Room10", 24f, 18f);
         }
@@ -1254,7 +1273,6 @@ namespace HiddenWeight.EditorTools
         // 보스 전 정적. 전투가 없고, 실패해도 아래 안전 통로로 우회한다.
         static void BuildR11(RoomCtx c)
         {
-            c.O = R11;
             c.Variant = 2;
             c.Floor(0, 10, 3);
             c.Floor(10, 28, 1);   // 실패 시 우회하는 아래 통로
@@ -1274,6 +1292,28 @@ namespace HiddenWeight.EditorTools
             BuildDecor(c.Root.transform, "R11_S3_Hint", c.P(14f, 10f), new Vector2(2f, 2f),
                 "Tile", new Color(0.32f, 0.3f, 0.4f));
 
+            // S3로 오르는 서쪽 계단. R12로 가는 길(발판 13.5·18)에서 완전히 떨어진 서쪽 바닥
+            // (x 0~10, 표면 y=3) 위에만 세운다 — 되감기 게이트를 R12 동선에 놓지 않으려면
+            // 비밀방 가지가 주 동선과 물리적으로 갈라져 있어야 한다.
+            // 발판 콜라이더는 3x0.5, 중심 기준이라 윗면 = y+0.25, 아랫면 = y-0.25다.
+            //   1단 (3, 5.0)   : 윗면 5.25. 바닥 3 → 2.25 상승(점프 2.72, 여유 0.47).
+            //                    아랫면 4.75 > 바닥 위 몸통 상단 4.4라 밑을 걸어 지나갈 수 있다.
+            //   2단 (7, 7.2)   : 윗면 7.45. 1단 5.25 → 2.20 상승(여유 0.52).
+            //                    가로 간격 1단 오른끝 4.5 → 2단 왼끝 5.5 = 1.0. 2.2 오르는 데
+            //                    0.21초, 걷기 6로도 1.27 나아가므로 넉넉하다.
+            BuildSafePlatform(c.Root.transform, c.P(3f, 5f));
+            BuildSafePlatform(c.Root.transform, c.P(7f, 7.2f));
+
+            // S3 문 앞을 막는 되감기 게이트. 블로커는 1x3 중심 기준이라 x 4.0~5.0, y 5.25~8.25를
+            // 차지한다. 1단 윗면(5.25)에 밑을 붙여 세워 아래로 빠져나갈 틈이 없고, 윗면 8.25는
+            // 1단에서 뛰어 닿는 최고 발높이 7.97보다 높아 넘어갈 수도 없다. 오른끝 5.0은 2단
+            // 왼끝 5.5와 맞물려, 열리기 전에는 2단에 올라설 방법이 아예 없다(2단은 바닥에서
+            // 4.45 위라 직접 못 뛴다).
+            // R12 동선은 막지 않는다 — 게이트 밑면 5.25는 서쪽 바닥을 걷는 몸통 상단 4.4보다
+            // 0.85 높고, 게이트는 x 4~5라 R12로 가는 발판(x 12~15, 16.5~19.5)과 닿지 않는다.
+            // 이 게이트가 "균열 클리어 후 잔재 재방문"을 성립시킨다(LEVEL_00_INDEX.md §0).
+            BuildGate(c.Root.transform, c.P(4.5f, 6.75f), EmotionId.Rewind, true);
+
             c.Room("Room11", 28f, 16f);
         }
 
@@ -1281,7 +1321,6 @@ namespace HiddenWeight.EditorTools
         // 자각 보유 + 균열 클리어로만 들어온다. 전투·낙하·시간제한 없음.
         static void BuildS3(RoomCtx c)
         {
-            c.O = S3;
             c.Variant = 1;
             c.Floor(0, 20, 2);
 
@@ -1300,7 +1339,6 @@ namespace HiddenWeight.EditorTools
         // ---------------- R12 기억의 교수대 (D5, 지역 보스) ----------------
         static void BuildR12(RoomCtx c)
         {
-            c.O = R12;
             c.Variant = 1;
             c.Floor(0, 30, 3);
             BuildResidueWall(c.Root.transform, "R12_Wall_L", c.P(1f, 8f), new Vector2(1f, 8f));
@@ -1311,8 +1349,8 @@ namespace HiddenWeight.EditorTools
                 BuildResidueProp(c.Root.transform, $"R12_Chain_{i}", c.P(8f + i * 7f, 9f), new Vector2(1.5f, 7f), "Prop_r1_c4");
 
             // 바닥의 복원 가능한 안전 발판 2개. 3단계에서 하나는 다시 부서진다.
-            ResidueRewindable(c.Root.transform, c.P(10f, 4f));
-            ResidueRewindable(c.Root.transform, c.P(20f, 4f));
+            var arenaLeft = ResidueRewindable(c.Root.transform, c.P(10f, 4f));
+            var arenaRight = ResidueRewindable(c.Root.transform, c.P(20f, 4f));
 
             // 기억침을 섞는다. 되감기로 복원한 발판 뒤에 숨어 피하는 것이 공략의 일부다.
             // 전용 시트(MemoryInstructor_*)를 쓴다 — 손목 감시자 그림을 재사용하던 것을
@@ -1343,6 +1381,16 @@ namespace HiddenWeight.EditorTools
                                    "InstructorSlam", "InstructorHook" },
                 phaseClip: "InstructorPhase");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
+
+            // 3단계에서 보스가 다시 부수는 전장 발판. 예전에는 Full 씬 전용 런타임 보정
+            // (ResidueLoopRuntime)이 방 경계로 찾아 넣어 줬는데, 그 보정은 방 씬에서 돌지
+            // 않는다 — 같은 씬 안의 참조이므로 굽는 시점에 박아 둔다.
+            SetField(boss.GetComponent<BossController>(), "arenaRewindables", p =>
+            {
+                p.arraySize = 2;
+                p.GetArrayElementAtIndex(0).objectReferenceValue = arenaLeft.GetComponent<Rewindable>();
+                p.GetArrayElementAtIndex(1).objectReferenceValue = arenaRight.GetComponent<Rewindable>();
+            });
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r12_boss", c.P(15f, 4.5f), 60, true);
             var finalEncounter = BuildEncounter(c.Root.transform, "residue_r12_boss", c.P(15f, 8f), new Vector2(26f, 12f), true,

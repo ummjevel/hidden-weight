@@ -238,6 +238,38 @@ namespace HiddenWeight.Enemies
             if (lockObjects == null) return;
             foreach (var lockObject in lockObjects)
                 if (lockObject != null) lockObject.SetActive(locked);
+
+            if (locked) PullMembersInside();
+        }
+
+        // 잠금이 걸리는 순간 구역 밖에 나가 있던 적을 안으로 데려온다.
+        //
+        // 적은 순찰하므로 전투가 시작되기 전에 조우 구역을 벗어나 있을 수 있다. 그 상태로
+        // 벽이 올라오면 벽이 적과 플레이어를 갈라놓아, 죽일 수 없는 적을 기다리며 영원히
+        // 갇힌다(실제 플레이에서 나온 문제다). 방이 씬으로 갈라진 뒤로는 벽 바깥이 곧 방의
+        // 끝이라 우회로도 없다.
+        void PullMembersInside()
+        {
+            var bounds = GetComponent<Collider2D>();
+            if (bounds == null || waves == null) return;
+
+            Bounds area = bounds.bounds;
+            foreach (var wave in waves)
+            {
+                if (wave?.members == null) continue;
+                foreach (var member in wave.members)
+                {
+                    if (member == null) continue;
+
+                    Vector3 p = member.transform.position;
+                    if (area.Contains(new Vector3(p.x, p.y, area.center.z))) continue;
+
+                    // 세로는 건드리지 않는다 — 공중에 있던 적을 바닥으로 내리거나 지형에
+                    // 밀어 넣지 않기 위해서다. 가로만 구역 안으로 당긴다.
+                    float x = Mathf.Clamp(p.x, area.min.x + 1f, area.max.x - 1f);
+                    member.transform.position = new Vector3(x, p.y, p.z);
+                }
+            }
         }
 
         int AliveInWave(int index)

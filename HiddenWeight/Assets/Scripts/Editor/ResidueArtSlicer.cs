@@ -130,16 +130,16 @@ namespace HiddenWeight.EditorTools
                                            "WalkerAttack", "WalkerHit", "WalkerDeath" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v2.png",
                         Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "FingerIdle", "FingerWalk", "FingerRun",
-                                           "FingerAttack", "FingerHit", "FingerDeath" } },
+                        RowClips = new[] { "FingerV2Idle", "FingerV2Walk", "FingerV2Run",
+                                           "FingerV2Attack", "FingerV2Hit", "FingerV2Death" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v2.png",
                         Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "CarrierIdle", "CarrierWalk", "CarrierRun",
-                                           "CarrierAttack", "CarrierHit", "CarrierDeath" } },
+                        RowClips = new[] { "CarrierV2Idle", "CarrierV2Walk", "CarrierV2Run",
+                                           "CarrierV2Attack", "CarrierV2Hit", "CarrierV2Death" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v2.png",
                         Columns = 8, Rows = 6, Pivot = new Vector2(0.5f, 0.5f),
-                        RowClips = new[] { "HardenedIdle", "HardenedWalk", "HardenedRun",
-                                           "HardenedAttack", "HardenedHit", "HardenedDeath" } },
+                        RowClips = new[] { "HardenedV2Idle", "HardenedV2Walk", "HardenedV2Run",
+                                           "HardenedV2Attack", "HardenedV2Hit", "HardenedV2Death" } },
 
             // 동작별 시트(1256x314 = 4열 1행, 셀 314px). 위 _v2 통합 시트와 같은 커밋으로
             // 들어왔고 동작이 파일명에 박혀 있어 추측할 것이 없다. 방향(Left/Right)까지
@@ -149,28 +149,31 @@ namespace HiddenWeight.EditorTools
             // 없어 _v2에만 있으므로, 네 몬스터의 기본을 한 세대로 맞추려면 그쪽이어야 한다.
             // 여기서는 겹치지 않는 이름으로 잘라 두어, 방향별 연출이나 개별 동작이 필요할 때
             // 바로 가져다 쓸 수 있게만 해 둔다.
-            ActionSheet("HangingFinger_Idle_Right", "FingerIdleR"),
+            ActionSheet("HangingFinger_Idle_Right", "FingerIdle"),
+            ActionSheet("HangingFinger_GroundCrawl_Right", "FingerWalk"),
             ActionSheet("HangingFinger_GroundCrawl_Left", "FingerCrawlL"),
+            ActionSheet("HangingFinger_DropAttack_Left", "FingerDropAttackL"),
+            ActionSheet("HangingFinger_HitDeath_Left", "FingerHitDeathL"),
             // 이 한 장만 _v2가 _4x314 뒤에 붙어 있어 ActionSheet의 경로 규칙에서 벗어난다.
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_GroundCrawl_Left_4x314_v2.png",
                         Columns = 4, Rows = 1, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "FingerCrawlLV2" } },
-            ActionSheet("HangingFinger_DropAttack_Left", "FingerDropAttackL"),
-            ActionSheet("HangingFinger_HitDeath_Left", "FingerHitDeathL"),
+            ActionSheet("HangingFinger_DropAttack_Right", "FingerAttack"),
+            ActionSheet("HangingFinger_HitDeath_Right", "FingerHit"),
 
             ActionSheet("HardenedResidue_Idle_Left", "HardenedIdleL"),
-            ActionSheet("HardenedResidue_Idle_Right", "HardenedIdleR"),
+            ActionSheet("HardenedResidue_Idle_Right", "HardenedIdle"),
             ActionSheet("HardenedResidue_Walk_Left", "HardenedWalkL"),
-            ActionSheet("HardenedResidue_Walk_Right", "HardenedWalkR"),
+            ActionSheet("HardenedResidue_Walk_Right", "HardenedWalk"),
             ActionSheet("HardenedResidue_FistSlam_Left", "HardenedFistSlamL"),
-            ActionSheet("HardenedResidue_FistSlam_Right", "HardenedFistSlamR"),
+            ActionSheet("HardenedResidue_FistSlam_Right", "HardenedAttack"),
             ActionSheet("HardenedResidue_ShieldCrumble_Left", "HardenedShieldCrumbleL"),
-            ActionSheet("HardenedResidue_ShieldCrumble_Right", "HardenedShieldCrumbleR"),
+            ActionSheet("HardenedResidue_ShieldCrumble_Right", "HardenedHit"),
 
-            ActionSheet("MourningCarrier_Idle_Right", "CarrierIdleR"),
-            ActionSheet("MourningCarrier_Walk_Right", "CarrierWalkR"),
-            ActionSheet("MourningCarrier_Charge_Right", "CarrierChargeR"),
-            ActionSheet("MourningCarrier_HitCollapse_Right", "CarrierHitCollapseR"),
+            ActionSheet("MourningCarrier_Idle_Right", "CarrierIdle"),
+            ActionSheet("MourningCarrier_Walk_Right", "CarrierWalk"),
+            ActionSheet("MourningCarrier_Charge_Right", "CarrierAttack"),
+            ActionSheet("MourningCarrier_HitCollapse_Right", "CarrierHit"),
 
             // 흑요석 등불 짐승. 아직 적 정의가 없어 소비하는 곳이 없지만, 잘라 두면
             // 새 적을 만들 때 프레임을 그대로 집어 올 수 있다.

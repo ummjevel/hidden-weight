@@ -79,6 +79,30 @@ namespace HiddenWeight.EditorTools
 
         // 다가가기만 해도 스스로 갈라져 무너지는 발판. 위험이 아니라 교재라서 피해 판정이
         // 없고, 잠시 뒤 되살아나 다음에 지나가는 사람에게도 같은 장면을 보여 준다.
+        // 문짝 없는 문틀. 기둥과 상인방만 세우고 그 사이는 비워 둔다 — 지나갈 수 없는데
+        // 문의 형태만 서 있는 것이 이 방의 연출이다(설계 4.3).
+        static void BuildFractureStandingFrame(Transform parent, Vector2 pos)
+        {
+            var go = new GameObject("F03_DoorFrame");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+
+            const float postWidth = 0.5f;
+            const float openingHalf = 0.9f;
+            const float postHeight = 3.1f;
+            var stone = new Color(FractureStone.r, FractureStone.g, FractureStone.b, 0.9f);
+
+            DoorPiece(go.transform, "FramePostLeft", "FractureTerrain_r2_c3",
+                new Vector2(-openingHalf - postWidth * 0.5f, 0f),
+                new Vector2(postWidth, postHeight), stone, 3);
+            DoorPiece(go.transform, "FramePostRight", "FractureTerrain_r2_c3",
+                new Vector2(openingHalf + postWidth * 0.5f, 0f),
+                new Vector2(postWidth, postHeight), stone, 3);
+            DoorPiece(go.transform, "FrameLintel", "FractureTerrain_r1_c3",
+                new Vector2(0f, postHeight),
+                new Vector2(openingHalf * 2f + postWidth * 2f, 0.65f), stone, 3);
+        }
+
         // 갈라진 자아의 발밑 그림자. 두 개체가 같은 규격을 써야 농도 차이만으로 읽힌다.
         static SpriteRenderer BuildSplitSelfShadow(Transform parent)
         {
@@ -986,8 +1010,11 @@ namespace HiddenWeight.EditorTools
                 new Vector2(3.5f, 0.6f), new Color(0.7f, 0.9f, 0.85f));
 
             // 숏컷 A의 문틀. 문짝은 미래 위치에서 깜빡이고, F05에서 예지로 확정된다.
-            BuildDecor(c.Root.transform, "F03_DoorFrame", c.P(5f, 10.5f), new Vector2(4.4f, 3f),
-                "FractureDoor_r1_c4", FractureStone, 0f, -4);
+            //
+            // 얇은 아치 한 겹으로 그렸더니 화면에서는 창백한 막대 두 개로만 보였다 —
+            // "문틀만 있고 문짝이 없다"는 의도가 읽히는 게 아니라 덜 만든 것처럼 보였다.
+            // 방 문과 같은 대리석 문설주로 세워, 비어 있는 가운데가 곧 의미가 되게 한다.
+            BuildFractureStandingFrame(c.Root.transform, c.P(5f, 9.3f));
 
             // 랜드마크: 떠 있는 시계탑과 하늘 균열을 중앙에서 동시에 본다(4.3절).
             BuildDecor(c.Root.transform, "F03_ClockTower", c.P(10f, 13f), new Vector2(3.4f, 12f),

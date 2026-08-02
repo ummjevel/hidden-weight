@@ -85,5 +85,67 @@ namespace HiddenWeight.Tests
             yield return null;
             Assert.IsNull(GameObject.Find("ForesightGhost"), "예지가 끝났는데 고스트가 남았다.");
         }
+
+        // 균열의 핵심 약속이다(설계 7.2 공정성 규칙):
+        // "예지 고스트가 보여준 위치와 실제 2초 뒤 위치는 항상 일치한다."
+        //
+        // 이게 깨지면 플레이어는 정확한 정보를 받았다고 믿고 움직였다가 맞는다 —
+        // 어려운 게 아니라 부당해진다. 지역 전체가 이 약속 위에 서 있는데 여태
+        // 아무도 확인한 적이 없어, 예측과 실제를 직접 대 본다.
+        [UnityTest]
+        public IEnumerator 예지가_보여준_위치와_실제_2초_뒤가_일치한다(
+            [Values("F04", "F06", "F07", "F09")] string room)
+        {
+            yield return RoomTestHarness.EnterRoom("Fracture", room);
+            Time.timeScale = 1f;
+            yield return new WaitForFixedUpdate();
+
+            const float lead = 2f;      // Emotion_Foresight.previewLeadTime
+            const float tolerance = 0.35f;
+
+            var targets = new System.Collections.Generic.List<(IForeseeable f, Vector3 predicted, string name)>();
+            foreach (var mono in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude))
+            {
+                if (mono is not IForeseeable f) continue;
+                if (!f.PredictActive(lead)) continue;
+                targets.Add((f, f.PredictPosition(lead), mono.GetType().Name + " @ " + mono.name));
+            }
+
+            if (targets.Count == 0) yield break;   // 예지 대상이 없는 방은 검사할 것이 없다
+
+            float waited = 0f;
+            while (waited < lead)
+            {
+                waited += Time.fixedDeltaTime;
+                yield return new WaitForFixedUpdate();
+            }
+
+            var wrong = new StringBuilder();
+            foreach (var (f, predicted, name) in targets)
+            {
+                if (f == null || f.Transform == null) continue;
+                float error = Mathf.Abs(f.Transform.position.x - predicted.x);
+                if (error > tolerance)
+                {
+                    var body = f.Transform.GetComponent<Rigidbody2D>();
+                    var mb = f as MonoBehaviour;
+                    var touching = new System.Collections.Generic.List<Collider2D>();
+                    var col = f.Transform.GetComponent<Collider2D>();
+                    if (col != null) col.GetContacts(touching);
+                    var names = new System.Collections.Generic.List<string>();
+                    foreach (var c in touching) if (c != null) names.Add(c.name);
+
+                    wrong.AppendLine($"    {name}: 예측 x={predicted.x:F2}, 실제 x={f.Transform.position.x:F2} "
+                                     + $"(어긋남 {error:F2}) 속도={(body != null ? body.linearVelocity.ToString("F2") : "-")} "
+                                     + $"컴포넌트켜짐={(mb != null && mb.isActiveAndEnabled)} "
+                                     + $"닿은것=[{string.Join(",", names)}]");
+                }
+            }
+
+            Debug.Log($"[{room}] 예지 대상 {targets.Count}개 검사, 어긋남 "
+                      + (wrong.Length == 0 ? "없음" : "있음\n" + wrong));
+            Assert.IsEmpty(wrong.ToString(),
+                $"{room}: 예지가 보여준 위치와 실제 2초 뒤가 다르다 — 지역의 공정성 규칙이 깨진다.\n" + wrong);
+        }
     }
 }

@@ -46,10 +46,10 @@ namespace HiddenWeight.EditorTools
         static readonly Color GazeStone = new Color(0.33f, 0.30f, 0.45f);
         static readonly Color GazeMirror = new Color(0.72f, 0.80f, 0.85f);
 
-        // 숨죽이기 게이트 규격. 플레이어 콜라이더는 0.8x1.4, 숨죽이면 0.6배라 0.48x0.84가 된다.
+        // 숨죽이기 게이트 규격. 플레이어 콜라이더는 0.8x1.4, 숨죽이면 0.55배라 0.44x0.77이 된다.
         // 그래서 아래 두 값 사이를 지나갈 수 있는 것은 숨죽인 몸뿐이다.
-        const float CrawlClearance = 1.1f;  // 낮은 천장: 0.84 < 1.1 < 1.4
-        const float SlotWidth = 0.66f;      // 좁은 세로 틈: 0.48 < 0.66 < 0.8
+        const float CrawlClearance = 1.1f;  // 낮은 천장: 0.77 < 1.1 < 1.4
+        const float SlotWidth = 0.66f;      // 좁은 세로 틈: 0.44 < 0.66 < 0.8
 
         // 숏컷은 만든 곳(G03·G07)과 여는 곳(G05·G08·G10)이 다르므로 들고 있는다.
         static Shortcut _gazeShortcutA;
@@ -143,7 +143,10 @@ namespace HiddenWeight.EditorTools
         }
 
         // 안쪽에서 여는 숏컷 장치.
-        static ShortcutLever BuildShortcutLever(Transform parent, string name, Vector2 pos, Shortcut target)
+        // targetShortcutId: target이 다른 방 씬에 있어(예: G05 레버 → G03 숏컷 A) 지금 이
+        // 빌드 패스에서 이미 null로 구워진 경우를 위한 대안. ShortcutLever.cs 주석 참고.
+        static ShortcutLever BuildShortcutLever(Transform parent, string name, Vector2 pos, Shortcut target,
+                                                string targetShortcutId = null)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -164,6 +167,8 @@ namespace HiddenWeight.EditorTools
 
             var lever = go.AddComponent<ShortcutLever>();
             SetField(lever, "target", p => p.objectReferenceValue = target);
+            if (!string.IsNullOrEmpty(targetShortcutId))
+                SetField(lever, "targetShortcutId", p => p.stringValue = targetShortcutId);
             SetField(lever, "visual", p => p.objectReferenceValue = sr);
             return lever;
         }
@@ -210,8 +215,11 @@ namespace HiddenWeight.EditorTools
         }
 
         // 승강기. waypoints는 시작 위치 기준 상대 좌표다.
+        // shortcutId: shortcut이 다른 방 씬에 있어(예: G08 승강기 → G03 숏컷 B) 지금 이
+        // 빌드 패스에서 이미 null로 구워진 경우를 위한 대안. LiftPlatform.cs 주석 참고.
         static LiftPlatform BuildLift(Transform parent, string name, Vector2 pos, Vector2[] waypoints,
-                                      Shortcut shortcut, Color tint)
+                                      Shortcut shortcut, Color tint, string shortcutId = null,
+                                      float returnDelay = 0f)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -240,6 +248,9 @@ namespace HiddenWeight.EditorTools
                     p.GetArrayElementAtIndex(i).vector2Value = waypoints[i];
             });
             if (shortcut != null) SetField(lift, "linkedShortcut", p => p.objectReferenceValue = shortcut);
+            if (!string.IsNullOrEmpty(shortcutId))
+                SetField(lift, "linkedShortcutId", p => p.stringValue = shortcutId);
+            if (returnDelay > 0f) SetField(lift, "returnDelay", p => p.floatValue = returnDelay);
             return lift;
         }
 
@@ -676,15 +687,17 @@ namespace HiddenWeight.EditorTools
             foreach (var link in GazeRoomLinks.Links)
             {
                 if (link.fromRoom == room)
-                    SpawnGazeDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId);
+                    SpawnGazeDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId,
+                        link.requiredShortcutId);
 
                 if (link.toRoom == room)
-                    SpawnGazeDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId);
+                    SpawnGazeDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId,
+                        link.requiredShortcutId);
             }
         }
 
         static void SpawnGazeDoor(RoomCtx c, string doorId, Side side, Vector2 anchor,
-            string targetRoom, string targetDoorId)
+            string targetRoom, string targetDoorId, string requiredShortcutId = null)
         {
             var go = new GameObject("Door_" + doorId.Replace(':', '_'));
             go.transform.SetParent(c.Root.transform, false);
@@ -697,7 +710,8 @@ namespace HiddenWeight.EditorTools
                 : new Vector2(1.2f, 3.5f);
 
             var door = go.AddComponent<RoomDoor>();
-            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side),
+                requiredShortcutId);
         }
 
         static void BuildGazeRoomStart(RoomCtx c)
@@ -845,35 +859,41 @@ namespace HiddenWeight.EditorTools
         }
 
         // ---------------- G02 고정된 시선교 (D1→D2) ----------------
-        // 첫 시선 학습. 기둥 뒤에 서면 완전히 차단되고, 실패해도 하부 우회로로 떨어질 뿐이다.
+        // 첫 시선 학습. 하부 우회로(y=1)는 시선(y=8)과 수직 거리만 6.3유닛이라 위치와
+        // 무관하게 항상 시선 사거리(6유닛) 밖이다 — 그래서 "가짜 벽" 없이도 무조건
+        // 안전하다. 다리(y=3.75)는 반대로 그 사거리 안에 들어와 노출된다.
+        // 두 우회로는 길이(10유닛)를 맞췄고, 우회로2 끝에서 바닥(y=3)으로 올라서는 지점
+        // (x=26)은 시선 B에서 8.2유닛 떨어져 있어야 안전하다 — 짧게 잘라 올라서면(예:
+        // x=22, 5.2유닛) 시선 사거리 안에서 다시 잡힌다.
         static void BuildG02(RoomCtx c)
         {
-            c.Floor(0, 8, 2);
-            c.Floor(8, 17, 1);   // 하부 안전 우회로
-            c.Floor(17, 20, 3);
-            c.Floor(20, 22, 1);
-            c.Floor(22, 28, 3);  // 출구 (28,3)
+            c.Floor(0, 4, 2);     // 안전한 진입 구간
+            c.Floor(4, 12, 1);    // 하부 우회로 1 — 시선 A 회피, 길이 8
+            c.Floor(12, 15, 3);   // 재회 구간. 다리를 안 타도 여기 서 있으면 시선 하나엔 노출된다
+            c.Floor(15, 23, 1);   // 하부 우회로 2 — 시선 B 회피, 우회로 1과 동일 길이 8
+            c.Floor(23, 28, 3);   // 출구 (28,3). 시선 B에서 8.2유닛 떨어져 안전하게 올라선다
 
-            // 상부 다리. 놓쳐도 하부로 떨어질 뿐이다.
-            BuildSolidBlock(c.Root.transform, "G02_Bridge_A", c.P(9.5f, 3.75f), new Vector2(3f, 0.5f), "Ground", GazeStone);
-            BuildSolidBlock(c.Root.transform, "G02_Bridge_B", c.P(14f, 3.75f), new Vector2(2.5f, 0.5f), "Ground", GazeStone);
+            // 첫 시선용 다리 
+            // 우회로1로 떨어질 뿐이라 위험 부담 없이 재시도한다.
+            BuildSolidBlock(c.Root.transform, "G02_Bridge_1A", c.P(8f, 4f), new Vector2(6f, 0.5f), "Ground", GazeStone);
 
-            // 첫 시선: 기둥 하나로 완전히 막힌다.
-            BuildCoverPillar(c.Root.transform, "G02_Pillar_A", c.P(6.5f, 4f), new Vector2(1.2f, 4f));
-            var retreatA = BuildRetreatPoint(c.Root.transform, "G02_Retreat_A", c.P(5f, 3f));
-            PlaceGaze(c.Root.transform, c.P(11f, 8f), 270f, 0f, retreat: retreatA);
+            // 두 번째 시선용 다리
+            BuildSolidBlock(c.Root.transform, "G02_Bridge_2A", c.P(19f, 4f), new Vector2(6f, 0.5f), "Ground", GazeStone);
 
-            // 두 번째 시선: 상부 다리를 훑는다. 하부로 내려가면 아예 닿지 않는다.
-            var retreatB = BuildRetreatPoint(c.Root.transform, "G02_Retreat_B", c.P(12f, 2f));
+            // 첫 시선: 다리 위에서 잡히면 하부 우회로1 초입으로 돌아간다.
+            var retreatA = BuildRetreatPoint(c.Root.transform, "G02_Retreat_A", c.P(4f, 2f));
+            PlaceGaze(c.Root.transform, c.P(8f, 8f), 270f, 0f, retreat: retreatA);
+
+            // 두 번째 시선: 다리 위에서 잡히면 하부 우회로2 초입으로 돌아간다.
+            var retreatB = BuildRetreatPoint(c.Root.transform, "G02_Retreat_B", c.P(17f, 2f));
             PlaceGaze(c.Root.transform, c.P(19f, 8f), 270f, 0f, retreat: retreatB);
-            BuildCoverPillar(c.Root.transform, "G02_Pillar_B", c.P(16.5f, 5f), new Vector2(1.2f, 4f));
 
-            // 첫 적은 두 시선 사이의 안전 구역에. 시선과 적이 동시에 압박하지 않게 한다(4.2절).
-            BuildGazeEnemy(c.Root.transform, c.P(24f, 4f), GazeEnemyKind.Pilgrim);
+            // 첫 적은 두 시선 사거리 밖인 출구 구간에 둔다(4.2절 "시선과 적이 동시에 압박하지 않게").
+            BuildGazeEnemy(c.Root.transform, c.P(27f, 4f), GazeEnemyKind.Pilgrim);
 
             for (int i = 0; i < 4; i++)
-                BuildCurrencyPickup(c.Root.transform, c.P(11.5f + i * 0.6f, 5f));
-            BuildHealingPickup(c.Root.transform, c.P(26.5f, 4f));
+                BuildCurrencyPickup(c.Root.transform, c.P(12.3f + i * 0.5f, 5f));
+            BuildHealingPickup(c.Root.transform, c.P(26.3f, 3.8f));
 
             c.Room("GazeRoom02", 28f, 16f);
         }
@@ -911,10 +931,11 @@ namespace HiddenWeight.EditorTools
         static void BuildG04(RoomCtx c)
         {
             c.Floor(0, 8, 18);        // 상층 관찰대 (입구 2,18)
-            // 하층 안전 바닥. 로컬 8~9를 비워 GS1으로 내려가는 구멍을 만든다.
-            // 깊이를 2로 줄인다 — 8칸짜리 깊은 구멍이면 다시 기어 올라올 수 없다.
-            c.Floor(0, 8, 2, 2);
-            c.Floor(9, 24, 2, 2);
+            // 하층 안전 바닥. 맨 왼쪽 로컬 0~1을 비워 GS1으로 내려가는 구멍을 만든다 —
+            // 주 동선(지그재그 하강, x=9 이후)과 물리적으로 떨어져 있어 실수로 빠지지 않고,
+            // 일부러 왼쪽 끝까지 걸어가야만 찾는다. 깊이를 2로 줄인다 — 8칸짜리 깊은
+            // 구멍이면 다시 기어 올라올 수 없다.
+            c.Floor(1, 24, 2, 2);
 
             // 지그재그 하강. 한 번 실패해도 하층 바닥으로 이어져 진행은 가능하다(4.4절).
             BuildSafePlatform(c.Root.transform, c.P(11f, 15f));
@@ -922,9 +943,7 @@ namespace HiddenWeight.EditorTools
             BuildSafePlatform(c.Root.transform, c.P(11f, 9f));
             BuildSafePlatform(c.Root.transform, c.P(14.5f, 6f));
 
-            // 구멍 위를 반쯤 덮는 발판. 주 동선은 끊기지 않고, 왼쪽 끝으로 내려서면 GS1이다.
-            BuildSafePlatform(c.Root.transform, c.P(6.5f, 2.6f));
-            BuildDecor(c.Root.transform, "G04_GS1_Hint", c.P(8.5f, 2.2f), new Vector2(1.6f, 0.3f),
+            BuildDecor(c.Root.transform, "G04_GS1_Hint", c.P(0.5f, 2.2f), new Vector2(1.6f, 0.3f),
                 "Tile", new Color(0.2f, 0.18f, 0.28f));
 
             // 철창과 그 안의 존재들. 다가가면 반대편을 본다는 연출은 아트 단계의 몫이고,
@@ -993,8 +1012,11 @@ namespace HiddenWeight.EditorTools
             // 3) 공격 불가 — 적 앞에서 숨죽이면 공격이 막힌다는 것을 안전하게 확인한다.
             BuildGazeEnemy(c.Root.transform, c.P(21f, 3f), GazeEnemyKind.Pilgrim);
 
-            // 마지막에 사슬막 A를 안쪽에서 연다.
-            BuildShortcutLever(c.Root.transform, "G05_ChainLever", c.P(24.5f, 3.2f), _gazeShortcutA);
+            // 마지막에 사슬막 A를 안쪽에서 연다. _gazeShortcutA는 G03 자기 차례가 끝나면
+            // FinishGazeRoomScene이 null로 비우므로(다음 방이 죽은 참조를 붙잡지 않도록),
+            // 여기 도착할 때는 이미 null이다 — id로 연다.
+            BuildShortcutLever(c.Root.transform, "G05_ChainLever", c.P(24.5f, 3.2f), _gazeShortcutA,
+                targetShortcutId: "gaze_shortcut_a");
 
             c.Room("GazeRoom05", 26f, 14f);
         }
@@ -1030,8 +1052,12 @@ namespace HiddenWeight.EditorTools
             LinkScreamer(mouthA, dormantA);
             LinkScreamer(mouthB, dormantB);
 
-            BuildCoverPillar(c.Root.transform, "G06_Cover_A", c.P(9f, 4f), new Vector2(1.2f, 4f));
-            BuildCoverPillar(c.Root.transform, "G06_Cover_B", c.P(19f, 10f), new Vector2(1.2f, 4f));
+            // 바닥(2)·발판(8) 높이에 그대로 붙이되 높이는 점프 높이(2.72)보다 낮은 2.2로
+            // 낮춘다 — G10과 같은 이유: 붙어 있어야 GazeHazard의 라인캐스트 차단이 실제로
+            // 통하고, 낮아야 걸어서(뛰어서) 지나갈 수 있다. 원래 높이 4는 바닥에 딱 붙은
+            // 채로 점프해도 못 넘는 벽이었다.
+            BuildCoverPillar(c.Root.transform, "G06_Cover_A", c.P(9f, 3.1f), new Vector2(1.2f, 2.2f));
+            BuildCoverPillar(c.Root.transform, "G06_Cover_B", c.P(19f, 9.1f), new Vector2(1.2f, 2.2f));
 
             for (int i = 0; i < 5; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(14f + i * 1.1f, 9f));
@@ -1104,8 +1130,11 @@ namespace HiddenWeight.EditorTools
             PlaceGaze(c.Root.transform, c.P(27f, 16f), 240f, 55f);
 
             // 구간 사이 완전한 안전지대(폭 3 이상). 시선이 닿지 않는 기둥 그림자다.
-            BuildCoverPillar(c.Root.transform, "G07_Cover_A", c.P(11.5f, 6f), new Vector2(3f, 2f));
-            BuildCoverPillar(c.Root.transform, "G07_Cover_B", c.P(20.5f, 6f), new Vector2(3f, 2f));
+            // 바닥(4)에서 1 띄운 배치는 서 있는 몸(바닥 위 1.4)과 0.4만큼 겹치면서도
+            // 점프(2.72)로는 못 넘는 높이(꼭대기까지 3)였다 — 바닥에 붙이고 낮춰서
+            // 실제로 그림자 역할을 하면서 뛰어넘을 수 있게 한다.
+            BuildCoverPillar(c.Root.transform, "G07_Cover_A", c.P(11.5f, 5.1f), new Vector2(3f, 2.2f));
+            BuildCoverPillar(c.Root.transform, "G07_Cover_B", c.P(20.5f, 5.1f), new Vector2(3f, 2.2f));
 
             BuildGazeEnemy(c.Root.transform, c.P(30f, 5f), GazeEnemyKind.Pilgrim);
             BuildGazeEnemy(c.Root.transform, c.P(26f, 12f), GazeEnemyKind.Audience);
@@ -1135,9 +1164,12 @@ namespace HiddenWeight.EditorTools
 
             // 승강기는 바닥에 붙여 두고 곧게 위로만 올린다. 1유닛 띄우면 걸어오다 옆면에
             // 부딪혀 지나쳐 버리고, 대각선 구간을 두면 타고 가던 중에 미끄러진다(봇이 둘 다 겪었다).
+            // _gazeShortcutB도 G05_ChainLever와 같은 이유로 여기서는 이미 null이라 id로 연다.
+            // 3초 뒤 출발점으로 되돌아온다 — 왕복 승강기라 다시 타고 오르내릴 수 있다.
             var lift = BuildLift(c.Root.transform, "G08_Lift", c.P(6f, 2.6f),
                 new[] { new Vector2(0f, 22.6f) },
-                _gazeShortcutB, new Color(0.5f, 0.7f, 0.8f));
+                _gazeShortcutB, new Color(0.5f, 0.7f, 0.8f), shortcutId: "gaze_shortcut_b",
+                returnDelay: 3f);
 
             // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공으로 떨어지지 않게 막는다.
             // 이 방의 출구는 위(22,26)뿐이라 바닥 오른쪽 바깥에는 아무것도 없다.
@@ -1204,11 +1236,13 @@ namespace HiddenWeight.EditorTools
             // 출구 선반(y=7)까지 한 칸씩 오르는 계단으로 만든다. 예전에는 +4를 한 번에
             // 올라야 해서 실측 점프 높이(2.72)로는 아무도 나갈 수 없었고, 떠 있는 발판
             // 두 장으로 고쳤더니 이번에는 선반 옆면에 걸렸다. 지형 계단이 가장 확실하다.
+            // 칸 폭은 2유닛으로 통일한다 — 중간 두 칸이 1유닛이던 버전은 승리 직후 급하게
+            // 오르다 발을 헛디디기 좋을 만큼 좁았다(표준 발판 폭 권장치 1.5 미만).
             c.Floor(0, 16, 3);
             c.Floor(16, 18, 4);
-            c.Floor(18, 19, 5);
-            c.Floor(19, 20, 6);
-            c.Floor(20, 24, 7);   // 출구 (24,7)
+            c.Floor(18, 20, 5);
+            c.Floor(20, 22, 6);
+            c.Floor(22, 24, 7);   // 출구 (24,7)
 
             // 체크포인트는 전장 바깥이다 — 재도전 20초 목표를 지키려면 문 앞이어야 한다.
             BuildCheckpoint(c.Root.transform, c.P(1.5f, 4f));
@@ -1220,9 +1254,15 @@ namespace HiddenWeight.EditorTools
             var lidL = BuildPlainWall(c.Root.transform, "G10_Lid_L", c.P(5f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
             var lidR = BuildPlainWall(c.Root.transform, "G10_Lid_R", c.P(13f, 9.5f), new Vector2(1.2f, 7f), GazeStone);
 
-            // 중앙 엄폐 기둥. 홍채 훑기를 숨죽이기 대신 엄폐로도 넘길 수 있게 한다.
-            BuildCoverPillar(c.Root.transform, "G10_Cover_A", c.P(7f, 5f), new Vector2(1.4f, 3f));
-            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(12f, 5f), new Vector2(1.4f, 3f));
+            // 중앙 엄폐 기둥. 홍채 훑기를 숨죽이기 대신 엄폐로도 넘길 수 있게 한다
+            // (BossController.GazeSweep이 obstacleMask로 라인캐스트 차단을 본다 — 보스와
+            // 플레이어가 둘 다 바닥 높이라 기둥이 바닥에 닿아 있어야 실제로 시야를 막는다.
+            // G02처럼 바닥 위로 띄우면 판정 자체가 기둥 아래를 지나가 버려 엄폐가 무의미해진다).
+            // 대신 높이를 점프 높이(2.72)보다 낮은 2.2로 낮춰 걸어서 못 지나가는 문제
+            // 없이 뛰어넘을 수 있게 한다 — "바닥까지 닿는 완전한 벽"이던 원래 버그와
+            // 달리 승리 후 통행은 점프 한 번으로 해결된다.
+            BuildCoverPillar(c.Root.transform, "G10_Cover_A", c.P(7f, 4.1f), new Vector2(1.4f, 2.2f));
+            BuildCoverPillar(c.Root.transform, "G10_Cover_B", c.P(12f, 4.1f), new Vector2(1.4f, 2.2f));
 
             var boss = BuildBoss(c.Root.transform, c.P(9f, 5f), "Enemy_Gaze_Gatekeeper", 14,
                 new[]
@@ -1251,9 +1291,13 @@ namespace HiddenWeight.EditorTools
 
             // 전장을 가두는 벽은 조우가 전투 중에만 세운다(Encounter의 Lock_L/Lock_R).
             // 돌진이 벽에 박히는 것도 그것으로 성립하므로 상시 벽을 따로 두지 않는다.
+            //
+            // _gazeShortcutC는 G07 자기 차례가 끝나면 FinishGazeRoomScene이 null로 비우므로
+            // (G05_ChainLever·G08_Lift와 같은 이유) 여기 도착할 때는 이미 null이다 — id로
+            // 연다. 이 인자가 빠져 있으면 승리해도 숏컷 C(G07↔G10 왕복로)가 영원히 안 열린다.
             var reward = BuildRewardChest(c.Root.transform, "gaze_g10_boss", c.P(6f, 4.5f), 45, false);
             BuildEncounter(c.Root.transform, "gaze_g10_boss", c.P(10f, 7f), new Vector2(14f, 10f), true,
-                new[] { new[] { boss } }, new int[0], reward, _gazeShortcutC);
+                new[] { new[] { boss } }, new int[0], reward, _gazeShortcutC, "gaze_shortcut_c");
 
             c.Room("GazeRoom10", 24f, 18f);
         }
@@ -1322,8 +1366,13 @@ namespace HiddenWeight.EditorTools
             // 전장을 관객석·중앙 무대·좌우 엄폐막 세 층으로 읽히게 만든다(4.12절).
             BuildDecor(c.Root.transform, "G12_Gallery", c.P(15f, 14f), new Vector2(26f, 3f),
                 "Tile", new Color(0.22f, 0.2f, 0.32f), 0f, -6);
-            BuildCoverPillar(c.Root.transform, "G12_Curtain_L", c.P(6f, 6.5f), new Vector2(1.4f, 4f));
-            BuildCoverPillar(c.Root.transform, "G12_Curtain_R", c.P(24f, 6.5f), new Vector2(1.4f, 4f));
+            // G10 Cover_A/B와 같은 이유·같은 치수: 바닥(4)에 그대로 붙여야 보스의 GazeSweep
+            // 라인캐스트 차단이 실제로 통하고, 높이는 점프 높이(2.72)보다 낮은 2.2로 낮춰
+            // 승리 후(혹은 전투 중 이동 시) 걸어서·뛰어서 지나갈 수 있게 한다. 원래 높이
+            // 4에 바닥에서 0.5 띄운 배치는 서 있는 플레이어 몸(바닥 위 1.4)과 겹쳐 걸리면서도
+            // 시야는 못 막는, 이도 저도 아닌 치수였다.
+            BuildCoverPillar(c.Root.transform, "G12_Curtain_L", c.P(6f, 5.1f), new Vector2(1.4f, 2.2f));
+            BuildCoverPillar(c.Root.transform, "G12_Curtain_R", c.P(24f, 5.1f), new Vector2(1.4f, 2.2f));
 
             // 관객 조각상 5개. 자각이 없으면 다섯이 같은 예고를 보내고, 자각 중에는 하나만 남는다.
             for (int i = 0; i < 5; i++)

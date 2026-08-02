@@ -38,8 +38,8 @@ namespace HiddenWeight.EditorTools
                 d.inputMode = SkillInput.Hold;
                 d.channelTime = 0f;
                 d.cooldown = 0f;
-                d.moveSpeedMultiplier = 0.45f;
-                d.hushScale = 0.6f;
+                d.moveSpeedMultiplier = 0.65f;
+                d.hushScale = 0.55f;
             });
 
             var foresight = LoadOrCreate<EmotionData>($"{Folder}/Emotion_Foresight.asset", d =>

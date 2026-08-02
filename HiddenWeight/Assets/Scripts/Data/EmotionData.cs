@@ -15,9 +15,9 @@ namespace HiddenWeight.Data
         public float channelTime; // 되감기 채널링 1.0. 나머지 0
         public float cooldown; // 되감기 2, 예지 3, 숨죽이기 0
         public float range; // 되감기 6, 예지 8
-        public float moveSpeedMultiplier; // 되감기 0(이동 불가), 숨죽이기 0.45, 예지 1
+        public float moveSpeedMultiplier; // 되감기 0(이동 불가), 숨죽이기 0.65, 예지 1
         public float effectDuration; // 예지 고스트 표시 시간 1.5
         public float previewLeadTime; // 예지가 내다보는 미래 초 2.0
-        public float hushScale; // 숨죽이기 스케일 배수 0.6
+        public float hushScale; // 숨죽이기 스케일 배수 0.55
     }
 }

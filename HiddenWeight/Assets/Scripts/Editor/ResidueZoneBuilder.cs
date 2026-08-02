@@ -871,15 +871,17 @@ namespace HiddenWeight.EditorTools
             foreach (var link in ResidueRoomLinks.Links)
             {
                 if (link.fromRoom == room)
-                    SpawnDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId);
+                    SpawnDoor(c, link.FromDoorId, link.fromSide, link.fromAnchor, link.toRoom, link.ToDoorId,
+                        link.requiredShortcutId);
 
                 if (link.toRoom == room)
-                    SpawnDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId);
+                    SpawnDoor(c, link.ToDoorId, link.toSide, link.toAnchor, link.fromRoom, link.FromDoorId,
+                        link.requiredShortcutId);
             }
         }
 
         static void SpawnDoor(RoomCtx c, string doorId, Side side, Vector2 anchor,
-            string targetRoom, string targetDoorId)
+            string targetRoom, string targetDoorId, string requiredShortcutId = null)
         {
             var go = new GameObject("Door_" + doorId.Replace(':', '_'));
             go.transform.SetParent(c.Root.transform, false);
@@ -894,7 +896,8 @@ namespace HiddenWeight.EditorTools
                 : new Vector2(1.2f, 3.5f);
 
             var door = go.AddComponent<RoomDoor>();
-            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+            door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side),
+                requiredShortcutId);
         }
 
         // 문을 거치지 않고 이 방에 들어올 때(지역 첫 진입·테스트) 플레이어가 서는 자리.

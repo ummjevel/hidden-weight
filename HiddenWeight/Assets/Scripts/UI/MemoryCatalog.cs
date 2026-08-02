@@ -8,10 +8,11 @@ namespace HiddenWeight.UI
     {
         static readonly Dictionary<string, string> Titles = new Dictionary<string, string>
         {
-            { "residue_s1", "손가락 아래의 목소리" },
-            { "residue_skill", "되돌릴 수 있는 것" },
-            { "residue_r11", "쌓인 무게" },
-            { "residue_final", "남겨 둔 문" },
+            { "residue_s1", "반복된 형상" },
+            { "residue_skill", "되감기" },
+            { "residue_r11", "회랑의 형상" },
+            { "residue_final", "감춰진 눈" },
+            { "residue_core", "기억 파편" },
             { "gaze_g04", "등을 돌린 자리" },
             { "gaze_gs1", "보이지 않는 관객" },
             { "gaze_skill", "눈을 뜨는 연습" },

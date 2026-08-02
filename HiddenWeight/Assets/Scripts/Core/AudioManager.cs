@@ -69,14 +69,37 @@ namespace HiddenWeight.Core
 
         void ApplySettings()
         {
+#if UNITY_EDITOR
+            // 에디터 개발·QA 중에만 전체 음소거. 플레이어 설정 값은 보존하고,
+            // 빌드에서는 아래의 실제 마스터 음량을 그대로 사용한다.
+            AudioListener.volume = 0f;
+            const bool muteForDevelopment = true;
+#else
             AudioListener.volume = UISettings.MasterVolume;
-            if (_bgmSource != null) _bgmSource.volume = UISettings.BgmVolume;
+            const bool muteForDevelopment = false;
+#endif
+            if (_bgmSource != null)
+            {
+                _bgmSource.mute = muteForDevelopment;
+                _bgmSource.volume = UISettings.BgmVolume;
+            }
             if (_sfxSources != null)
                 foreach (var source in _sfxSources)
-                    if (source != null) source.volume = UISettings.SfxVolume;
+                    if (source != null)
+                    {
+                        source.mute = muteForDevelopment;
+                        source.volume = UISettings.SfxVolume;
+                    }
             else if (_sfxSource != null)
+            {
+                _sfxSource.mute = muteForDevelopment;
                 _sfxSource.volume = UISettings.SfxVolume;
-            if (_loopSource != null) _loopSource.volume = UISettings.SfxVolume * _loopVolume;
+            }
+            if (_loopSource != null)
+            {
+                _loopSource.mute = muteForDevelopment;
+                _loopSource.volume = UISettings.SfxVolume * _loopVolume;
+            }
         }
 
         public void PlayBgm(AudioClip clip, float fadeSeconds = 1f)

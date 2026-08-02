@@ -44,11 +44,27 @@ namespace HiddenWeight.UI
             UIBuilder.Select(_actionButtons.Count > 0 ? _actionButtons[0] : _backButton);
         }
 
-        public void Hide() => _panel.SetActive(false);
+        public void Hide()
+        {
+            // 설정을 바꾸며 Rebuild한 오브젝트는 Destroy가 프레임 끝에 처리된다. 같은 프레임에
+            // 홈으로 돌아오면 이전 버튼이 한 장 더 남은 것처럼 보이므로 먼저 즉시 숨긴다.
+            foreach (var go in _dynamicItems)
+                if (go != null) go.SetActive(false);
+            _panel.SetActive(false);
+            if (EventSystem.current != null
+                && EventSystem.current.currentSelectedGameObject != null
+                && EventSystem.current.currentSelectedGameObject.transform.IsChildOf(_panel.transform))
+                EventSystem.current.SetSelectedGameObject(null);
+        }
 
         void Rebuild(int preferredButton = -1)
         {
-            foreach (var go in _dynamicItems) Destroy(go);
+            foreach (var go in _dynamicItems)
+            {
+                if (go == null) continue;
+                go.SetActive(false); // Destroy 지연 중 한 프레임 겹쳐 보이는 잔상을 막는다.
+                Destroy(go);
+            }
             _dynamicItems.Clear();
             _actionButtons.Clear();
             _body.enabled = true;

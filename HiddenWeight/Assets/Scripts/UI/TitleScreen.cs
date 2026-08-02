@@ -58,16 +58,19 @@ namespace HiddenWeight.UI
         }
 
         // 지역으로 바로 들어가는 QA용 입구. 정식 빌드에는 절대 노출하지 않는다.
-        // 감정 능력 3종과 자각을 전부 열어 둔다 — 응시는 숨죽이기·자각, 균열은 예지가
-        // 없으면 필수 동선 자체가 막혀서 지역 단독 검증이 불가능하다.
+        // 잔재는 R05에서 되감기를 처음 배우는 흐름까지 검수해야 하므로 선해금하지 않는다.
+        // 응시·균열 바로가기는 기존 QA 편의를 유지한다(이번 작업 범위 밖).
         void StartZoneTest(string sceneName)
         {
             var progress = GameManager.Instance.Progress;
             progress.ResetAll();
-            progress.UnlockSkill(EmotionId.Rewind);
-            progress.UnlockSkill(EmotionId.Hush);
-            progress.UnlockSkill(EmotionId.Foresight);
-            progress.GrantAwareness();
+            if (!sceneName.Contains("Residue"))
+            {
+                progress.UnlockSkill(EmotionId.Rewind);
+                progress.UnlockSkill(EmotionId.Hush);
+                progress.UnlockSkill(EmotionId.Foresight);
+                progress.GrantAwareness();
+            }
 
             GameManager.Instance.SetState(GameState.Playing);
             SceneFlow.LoadWithFade(sceneName);
@@ -87,6 +90,16 @@ namespace HiddenWeight.UI
         }
 
         void ShowSettings() => _sections.Show(PauseSection.Settings);
+
+        void LateUpdate()
+        {
+            // 설정 패널의 뒤로 버튼은 공용 패널 내부에서 닫히므로 타이틀 버튼 포커스를 모른다.
+            // 닫힌 뒤 선택이 비어 있으면 설정 버튼으로 돌려 홈 화면의 강조가 깨끗하게 하나만 남게 한다.
+            if (_sections != null && !_sections.IsVisible && _settingsButton != null
+                && UnityEngine.EventSystems.EventSystem.current != null
+                && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject == null)
+                UIBuilder.Select(_settingsButton);
+        }
 
         void BuildHierarchy()
         {

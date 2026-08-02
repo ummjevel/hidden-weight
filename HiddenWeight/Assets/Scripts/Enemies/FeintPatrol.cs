@@ -57,7 +57,7 @@ namespace HiddenWeight.Enemies
 
         void FixedUpdate()
         {
-            float now = Time.time;
+            float now = World.ZoneClock.Now;
             float targetX = PathXAt(now);
             float aheadX = PathXAt(now + Time.fixedDeltaTime);
 
@@ -151,7 +151,7 @@ namespace HiddenWeight.Enemies
             // 고스트가 실제로는 오지 않을 자리를 가리키게 되고, 그 순간 "고스트는 언제나
             // 정확하다"는 약속이 깨진다. 멈춰 있는 것의 미래는 제자리다.
             if (!enabled || !isActiveAndEnabled) return transform.position;
-            return new Vector3(PathXAt(Time.time + leadSeconds),
+            return new Vector3(PathXAt(World.ZoneClock.Now + leadSeconds),
                                transform.position.y, transform.position.z);
         }
 

@@ -126,7 +126,10 @@ namespace HiddenWeight.Tests
                     sampled = 0f;
                     trace.Append($" t+{waited:F2}:");
                     foreach (var (f, _, _) in targets)
-                        if (f != null && f.Transform != null)
+                        // 인터페이스 참조에 == null을 쓰면 유니티가 파괴한 오브젝트를
+                        // 걸러내지 못한다(유니티의 == 오버로드는 UnityEngine.Object 타입에서만
+                        // 동작한다). 방이 언로드되거나 적이 죽으면 여기서 터진다.
+                        if (f is MonoBehaviour alive && alive != null && f.Transform != null)
                             // 실제/궤도목표 — 목표가 움직이는데 실제가 멈춰 있으면 못 따라가는 것,
                             // 둘 다 멈추면 궤도 자체가 멈춘 것이다.
                             trace.Append($" {f.Transform.position.x:F2}/{f.PredictPosition(0f).x:F2}");
@@ -137,7 +140,8 @@ namespace HiddenWeight.Tests
             var wrong = new StringBuilder();
             foreach (var (f, predicted, name) in targets)
             {
-                if (f == null || f.Transform == null) continue;
+                if (f is not MonoBehaviour behaviour || behaviour == null) continue;
+                if (f.Transform == null) continue;
                 float error = Mathf.Abs(f.Transform.position.x - predicted.x);
                 if (error > tolerance)
                 {

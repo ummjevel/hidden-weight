@@ -28,7 +28,7 @@ namespace HiddenWeight.World
             get
             {
                 if (period <= 0f) return false;
-                return Mathf.Repeat(Time.time + phaseOffset, period) < telegraphSeconds;
+                return Mathf.Repeat(ZoneClock.Now + phaseOffset, period) < telegraphSeconds;
             }
         }
 

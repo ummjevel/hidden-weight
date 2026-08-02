@@ -122,6 +122,9 @@ namespace HiddenWeight.World
                 }
 
                 CurrentRoom = roomName;
+                // 방에 들어설 때도 위상을 맞춘다 — 되돌아왔을 때 발판이 처음 봤던
+                // 리듬으로 돌아가야 방을 "같은 곳"으로 읽는다(설계 10절).
+                ZoneClock.Reset();
                 PlacePlayer(loaded, roomName, arriveAtDoorId);
                 SyncCamera(loaded);
 

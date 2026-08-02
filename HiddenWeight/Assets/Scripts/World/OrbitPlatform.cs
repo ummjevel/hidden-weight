@@ -8,7 +8,12 @@ namespace HiddenWeight.World
     //
     // 위치를 시간의 순수 함수로 둔다. MovingPlatform과 같은 이유다 — 예지 고스트가
     // "정확히 2초 뒤"를 가리켜야 하고(7.2절 공정성 규칙), 사망 후에는 항상 같은 위상으로
-    // 돌아와야 실패에서 배울 수 있다(10절). Time.time만 쓰면 두 조건이 동시에 만족된다.
+    // 돌아와야 실패에서 배울 수 있다(10절).
+    //
+    // 그 시간은 Time.time이 아니라 ZoneClock.Now다. Time.time을 쓰면 앞의 조건만
+    // 만족하고 뒤의 조건은 깨진다 — 죽고 다시 시도할 때마다 발판이 제각각의 위상에 있어
+    // 같은 점프가 매번 다른 타이밍을 요구한다(예전 주석은 둘 다 된다고 적혀 있었으나
+    // 사실이 아니었다).
     [RequireComponent(typeof(Rigidbody2D))]
     public class OrbitPlatform : MonoBehaviour, IForeseeable
     {
@@ -54,7 +59,7 @@ namespace HiddenWeight.World
 
         void FixedUpdate()
         {
-            var next = PositionAt(Time.time);
+            var next = PositionAt(ZoneClock.Now);
             var delta = next - transform.position;
             _rb.MovePosition(next);
             CarryRiders(delta);
@@ -74,7 +79,7 @@ namespace HiddenWeight.World
                 hit.transform.position += delta;
         }
 
-        public Vector3 PredictPosition(float leadSeconds) => PositionAt(Time.time + leadSeconds);
+        public Vector3 PredictPosition(float leadSeconds) => PositionAt(ZoneClock.Now + leadSeconds);
         public bool PredictActive(float leadSeconds) => true;
 
     }

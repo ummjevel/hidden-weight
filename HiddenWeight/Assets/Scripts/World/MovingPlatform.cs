@@ -38,13 +38,13 @@ namespace HiddenWeight.World
 
         void FixedUpdate()
         {
-            var next = PositionAt(Time.time);
+            var next = PositionAt(ZoneClock.Now);
             var delta = next - transform.position;
             _rb.MovePosition(next);
             if (_riderOnTop != null) _riderOnTop.position += delta;
         }
 
-        public Vector3 PredictPosition(float lead) => PositionAt(Time.time + lead);
+        public Vector3 PredictPosition(float lead) => PositionAt(ZoneClock.Now + lead);
         public bool PredictActive(float lead) => true;
 
         void OnCollisionEnter2D(Collision2D collision)

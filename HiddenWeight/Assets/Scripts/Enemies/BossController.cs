@@ -131,6 +131,21 @@ namespace HiddenWeight.Enemies
 
         public void ConfigureArena(params Rewindable[] rewindables) => arenaRewindables = rewindables;
 
+        // 개별 보스의 난도 튜닝용이다. 기본 직렬화 값은 건드리지 않고 호출된 인스턴스에만
+        // 적용하므로, R10을 완화해도 R12와 다른 지역 보스의 속도는 그대로 유지된다.
+        public void ConfigureDifficulty(float recovery, float charge, float sweepWarning,
+                                        float chargeWarning, float slamWarning,
+                                        float projectileWarning, float range)
+        {
+            recoverSeconds = Mathf.Max(0.1f, recovery);
+            chargeSpeed = Mathf.Max(0.1f, charge);
+            sweepTelegraph = Mathf.Max(0.1f, sweepWarning);
+            chargeTelegraph = Mathf.Max(0.1f, chargeWarning);
+            slamTelegraph = Mathf.Max(0.1f, slamWarning);
+            projectileTelegraph = Mathf.Max(0.1f, projectileWarning);
+            sweepRange = Mathf.Max(0.5f, range);
+        }
+
         void OnEnable() => StartCoroutine(FightRoutine());
 
         IEnumerator FightRoutine()

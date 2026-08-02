@@ -99,8 +99,8 @@ namespace HiddenWeight.Tests
 
             report.AppendLine();
             report.AppendLine("--- 레벨 요구치와 비교 ---");
-            report.AppendLine("프롤로그 Room2 구덩이 폭: 4 유닛 (x 36~40)");
-            report.AppendLine("프롤로그 Room3 굴뚝: 벽 하단 y=2.2, 꼭대기 출구 y=9.5");
+            report.AppendLine("프롤로그 T03 대시 틈: 4 유닛 (x 60~64)");
+            report.AppendLine("프롤로그 T02 굴뚝: 폭 4 유닛 (x 42~46), 상부 바닥 y=9");
             report.AppendLine("잔재 Room2 무너진 다리 폭: 3 유닛 (x 35~38)");
 
             Debug.Log(report.ToString());
@@ -109,9 +109,8 @@ namespace HiddenWeight.Tests
             Assert.Greater(runJumpDistance, 1f, "달리기 점프로 앞으로 나아가지 못한다.\n" + report);
         }
 
-        // 프롤로그 Room2는 x40~44 구간의 바닥이 양옆(y=3)보다 3 낮은 y=0이다. 브리핑상
-        // "착지 실패 시 낮은 통로로 떨어져 안전하게 재시도"하는 구덩이인데, 실제로 떨어졌을 때
-        // 다시 올라올 수 있는지를 봇으로 확인한다. 못 올라오면 재시도가 아니라 진행 불가다.
+        // 프롤로그 T02는 x30~35 구간의 바닥이 주 바닥보다 2 낮다. 첫 점프 실패가
+        // "하부 안전길"이 되어 다시 주 동선에 합류하는지를 확인한다.
         [UnityTest]
         public IEnumerator 프롤로그_구덩이에_빠져도_다시_올라올_수_있다()
         {
@@ -119,7 +118,7 @@ namespace HiddenWeight.Tests
             yield return null;
 
             var player = PlayerController.Instance;
-            player.TeleportTo(new Vector3(42f, 1f, 0f)); // 구덩이 한가운데
+            player.TeleportTo(new Vector3(32f, -1f, 0f)); // 하부 안전길 한가운데
             for (int i = 0; i < 60; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
 
             var report = new StringBuilder();
@@ -127,8 +126,8 @@ namespace HiddenWeight.Tests
             report.AppendLine("구덩이 바닥에 선 위치: " + player.transform.position.ToString("F2"));
 
             int groundMask = LayerMask.GetMask("Ground");
-            var pitFloor = Physics2D.Raycast(new Vector2(42f, 8f), Vector2.down, 20f, groundMask);
-            var ledge = Physics2D.Raycast(new Vector2(46f, 8f), Vector2.down, 20f, groundMask);
+            var pitFloor = Physics2D.Raycast(new Vector2(32f, 8f), Vector2.down, 20f, groundMask);
+            var ledge = Physics2D.Raycast(new Vector2(38f, 8f), Vector2.down, 20f, groundMask);
             report.AppendLine("구덩이 바닥 표면 y: " + (pitFloor.collider == null ? "없음" : pitFloor.point.y.ToString("F2"))
                 + " / 나갈 발판(x=46) 표면 y: " + (ledge.collider == null ? "없음" : ledge.point.y.ToString("F2")));
 
@@ -139,7 +138,7 @@ namespace HiddenWeight.Tests
             // 탈출 여부만 확인하면 되므로, 탈출이 확인되는 즉시 멈춘다 — 계속 달리게 두면
             // 봇이 그 뒤로 이어지는 다른 구간(예: 출구 굴뚝)까지 타고 올라가 씬 전환을 유발할 수 있고,
             // 그러면 이 씬의 PlayerController가 파괴돼 이후 접근에서 죽은 참조 예외가 난다.
-            for (int attempt = 0; attempt < 8 && !(bestY > 3.7f && bestX > 44f); attempt++)
+            for (int attempt = 0; attempt < 8 && !(bestY > 0.7f && bestX > 37f); attempt++)
             {
                 float dir = attempt % 2 == 0 ? 1f : -1f;
                 for (int i = 0; i < 90; i++)
@@ -155,21 +154,18 @@ namespace HiddenWeight.Tests
                     yield return new WaitForFixedUpdate();
                     bestY = Mathf.Max(bestY, player.transform.position.y);
                     bestX = Mathf.Max(bestX, player.transform.position.x);
-                    if (bestY > 3.7f && bestX > 44f) break;
+                    if (bestY > 0.7f && bestX > 37f) break;
                 }
             }
 
-            report.AppendLine("도달한 최고 y: " + bestY.ToString("F2") + " (탈출하려면 약 3.7 필요)");
-            report.AppendLine("도달한 최대 x: " + bestX.ToString("F2") + " (구덩이는 x 40~44)");
+            report.AppendLine("도달한 최고 y: " + bestY.ToString("F2") + " (주 바닥 중심은 약 0.7)");
+            report.AppendLine("도달한 최대 x: " + bestX.ToString("F2") + " (합류 지점은 x 37 이후)");
             report.AppendLine("최종 위치: " + player.transform.position.ToString("F2"));
             Debug.Log(report.ToString());
 
-            // 양옆 바닥 표면이 y=3이므로 캡슐 반높이 0.7을 더해 y≈3.7까지 올라야 나갈 수 있다.
-            // "지금 어디 있나"가 아니라 "구덩이를 벗어난 적이 있나"로 판정한다 — 봇은 탈출한 뒤에도
-            // 계속 달리다가 다른 낮은 지대에 있을 수 있다.
-            Assert.Greater(bestY, 3.7f,
+            Assert.Greater(bestY, 0.7f,
                 "구덩이에 빠지면 다시 올라올 수 없다 — 되돌릴 방법이 없어 진행 불가 상태가 된다.\n" + report);
-            Assert.Greater(bestX, 44f,
+            Assert.Greater(bestX, 37f,
                 "구덩이 밖으로 나가지 못했다.\n" + report);
         }
 
@@ -205,9 +201,8 @@ namespace HiddenWeight.Tests
                 + " (점프 높이 2.72로는 6을 못 올라온다)");
         }
 
-        // 프롤로그 Room3은 좌우 벽(x=58, x=61) 사이 굴뚝을 벽점프 핑퐁으로 올라 꼭대기
-        // 출구 트리거(59.5, 9.5)에 닿아야 클리어된다. 예선 영상이 지나갈 경로라 실제로
-        // 오를 수 있는지 봇으로 확인한다.
+        // 프롤로그 T02는 좌우 벽(x=42, x=46) 사이 폭 4 굴뚝을 벽점프로 올라
+        // y=9 상부 바닥으로 합류해야 한다.
         [UnityTest]
         public IEnumerator 프롤로그_굴뚝을_벽점프로_오를_수_있다()
         {
@@ -216,7 +211,7 @@ namespace HiddenWeight.Tests
 
             var player = PlayerController.Instance;
             var body = player.GetComponent<Rigidbody2D>();
-            player.TeleportTo(new Vector3(59.5f, 1f, 0f)); // 굴뚝 아래
+            player.TeleportTo(new Vector3(44f, 1f, 0f)); // 굴뚝 아래
             for (int i = 0; i < 60; i++) { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
 
             var report = new StringBuilder();
@@ -226,17 +221,10 @@ namespace HiddenWeight.Tests
             float bestY = player.transform.position.y;
             float dir = 1f;
 
-            bool clearedZone = false;
+            bool reachedTop = false;
 
             for (int i = 0; i < 900; i++)
             {
-                // 출구 트리거에 닿으면 다음 지역이 로드되면서 이 플레이어는 파괴된다 = 클리어.
-                if (player == null)
-                {
-                    clearedZone = true;
-                    break;
-                }
-
                 var frame = new PlayerInput.Frame { jumpHeld = true };
 
                 if (player.IsGrounded)
@@ -262,20 +250,18 @@ namespace HiddenWeight.Tests
                 PlayerInput.Injected = frame;
                 yield return new WaitForFixedUpdate();
 
-                // 대기 중에 지역이 바뀌면(=클리어) 플레이어가 파괴돼 있다.
-                if (player == null) { clearedZone = true; break; }
                 bestY = Mathf.Max(bestY, player.transform.position.y);
+                if (bestY > 9.2f) { reachedTop = true; break; }
             }
 
-            report.AppendLine("출구 트리거 발동(다음 지역 로드): " + clearedZone);
-            report.AppendLine("도달한 최고 y: " + bestY.ToString("F2") + " (출구 트리거는 y 8~11)");
-            report.AppendLine("최종 위치: " + (player == null ? "(다음 지역으로 전환됨)"
-                : player.transform.position.ToString("F2")));
+            report.AppendLine("상부 합류 도달: " + reachedTop);
+            report.AppendLine("도달한 최고 y: " + bestY.ToString("F2") + " (상부 바닥은 y=9)");
+            report.AppendLine("최종 위치: " + player.transform.position.ToString("F2"));
             report.AppendLine("현재 지역: " + GameManager.Instance.Progress.CurrentZone);
             Debug.Log(report.ToString());
 
-            Assert.IsTrue(clearedZone || bestY > 8f,
-                "굴뚝 꼭대기(출구 트리거 y8~11)까지 오르지 못했다 — 프롤로그를 클리어할 수 없다.\n" + report);
+            Assert.IsTrue(reachedTop,
+                "T02 굴뚝 꼭대기까지 오르지 못했다 — 프롤로그를 클리어할 수 없다.\n" + report);
         }
 
         // 중첩 코루틴 실행 헬퍼.

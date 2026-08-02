@@ -22,6 +22,18 @@ namespace HiddenWeight.World
         public Transform Transform => transform;
         public Sprite CurrentSprite => _sprite != null ? _sprite.sprite : null;
 
+        // 이미 생성된 씬의 특정 발판 경로를 안전하게 보정한다. 호출하지 않는 기존 발판은
+        // 직렬화된 offset/period와 Awake에서 잡은 원점을 그대로 사용한다.
+        public void ConfigurePath(Vector3 origin, Vector2 pathOffset, float pathPeriod)
+        {
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+            _origin = origin;
+            offset = pathOffset;
+            period = Mathf.Max(0.1f, pathPeriod);
+            transform.position = origin;
+            if (_rb != null) _rb.position = origin;
+        }
+
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();

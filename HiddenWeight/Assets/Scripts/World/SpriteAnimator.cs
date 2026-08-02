@@ -42,6 +42,13 @@ namespace HiddenWeight.World
         [SerializeField] bool lockFeetToGround = false;
         [SerializeField] float groundY = 0f;
 
+        // 시트 셀의 중앙과 실제 그림의 중앙이 다른 경우가 있다. R10 손목의 감시자는 왼팔의
+        // 긴 칼 때문에 셀 안에서 몸통이 오른쪽으로 치우쳐 있어, 루트/피격 판정과 그림이 따로
+        // 노는 것처럼 보였다. 첫 대기 프레임의 '실제로 그려진 bounds' 중앙을 한 번 기준으로
+        // 삼으면 공격 프레임마다 위치가 흔들리지 않으면서 몸 전체를 판정 중앙에 놓을 수 있다.
+        [SerializeField] bool lockReferenceCenter = false;
+        [SerializeField] float referenceCenterX = 0f;
+
         // "지금 실제로 화면에 그려지는 렌더러"는 이것 하나다. 좌우 반전·피격 점멸처럼
         // 겉모습을 건드리는 쪽은 전부 여기를 봐야 한다 — 예전에는 프리팹 루트에 남아 있던
         // 꺼진 렌더러를 잡아, 안 보이는 그림만 뒤집히고 점멸이 엉뚱한 그림을 켜 놓았다.
@@ -54,6 +61,22 @@ namespace HiddenWeight.World
         public string CurrentClip => _current != null ? _current.name : null;
         public bool IsFinished => _current != null && !_current.loop && _frame >= _current.frames.Length - 1;
         public event System.Action<string, int> FrameDisplayed;
+
+        // 적처럼 루트가 몸통 콜라이더의 중심인 오브젝트는 로컬 y=0이 발바닥이 아니다.
+        // 실제 콜라이더 하단을 넘겨 주면 모든 애니메이션 프레임의 발을 그 선에 고정한다.
+        public void LockFeetToLocalY(float localY)
+        {
+            lockFeetToGround = true;
+            groundY = localY;
+            if (_current != null) Apply();
+        }
+
+        public void LockReferenceCenterToLocalX(float localX)
+        {
+            lockReferenceCenter = true;
+            referenceCenterX = localX;
+            if (_current != null) Apply();
+        }
 
         void Awake()
         {
@@ -138,13 +161,29 @@ namespace HiddenWeight.World
             if (scale <= 0f) return;
             target.transform.localScale = new Vector3(scale, scale, 1f);
 
-            if (!lockFeetToGround) return;
-
-            // sprite.bounds.min.y는 피벗 기준 트리밍된 하단(발) 위치다(스케일 전 단위).
-            // 스케일을 곱해 실제 렌더 크기로 바꾼 뒤, 그만큼 위/아래로 밀어 발을 groundY에 둔다.
             var pos = target.transform.localPosition;
-            pos.y = groundY - sprite.bounds.min.y * scale;
+
+            if (lockReferenceCenter)
+            {
+                var reference = ReferenceSprite();
+                if (reference != null)
+                    pos.x = referenceCenterX - reference.bounds.center.x * scale;
+            }
+
+            if (lockFeetToGround)
+            {
+                // sprite.bounds.min.y는 피벗 기준 트리밍된 하단(발) 위치다(스케일 전 단위).
+                // 스케일을 곱해 실제 렌더 크기로 바꾼 뒤, 그만큼 위/아래로 밀어 발을 groundY에 둔다.
+                pos.y = groundY - sprite.bounds.min.y * scale;
+            }
             target.transform.localPosition = pos;
+        }
+
+        Sprite ReferenceSprite()
+        {
+            if (clips == null || clips.Length == 0) return null;
+            return clips[0].frames != null && clips[0].frames.Length > 0
+                ? clips[0].frames[0] : null;
         }
 
         // 기준 배율은 첫 클립의 첫 프레임(플레이어는 PlayerIdle_00 = 서 있는 포즈)에서

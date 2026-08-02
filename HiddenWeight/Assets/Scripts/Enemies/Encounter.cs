@@ -32,6 +32,9 @@ namespace HiddenWeight.Enemies
         [SerializeField] float observeSeconds = 2f; // 입장 후 잠그기까지 관찰 시간
         [SerializeField] Wave[] waves;
         [SerializeField] GameObject[] lockObjects;  // 전투 중에만 켜지는 잠금 콜라이더
+        // 기존 씬에 새 bool 필드가 없을 때 Unity 기본값은 false다. 그래서 "잠금"의 반대값을
+        // 저장한다 — 기존 응시·균열·보스 조우는 데이터 재생성 없이도 계속 잠긴다.
+        [SerializeField] bool allowsTraversal;
         [SerializeField] RewardChest victoryReward;
         [SerializeField] Shortcut victoryShortcut;
         // 숏컷이 다른 방 씬에 있으면 오브젝트 참조가 null로 구워진다(R10 보스 → R07 숏컷 C).
@@ -50,6 +53,7 @@ namespace HiddenWeight.Enemies
         public bool IsFinished => _finished;
         public string Id => encounterId;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? "보스" : displayName;
+        public bool LocksTraversal => !allowsTraversal;
         public Enemy BossEnemy { get; private set; }
 
         // 보스뿐 아니라 모든 조우가 알린다. HUD는 BossEnemy가 있는 조우만 골라 체력 바를
@@ -61,6 +65,14 @@ namespace HiddenWeight.Enemies
             if (target == null || _runtimeVictoryObjects.Contains(target)) return;
             _runtimeVictoryObjects.Add(target);
             target.SetActive(_finished);
+        }
+
+        // 일반 적을 선택 전투로 쓸 때 호출한다. 기본값은 true라 기존 지역의 조우와
+        // 보스전은 그대로 잠기며, 잔재의 지정된 주 동선 조우만 false로 설정한다.
+        public void ConfigureTraversalLock(bool shouldLock)
+        {
+            allowsTraversal = !shouldLock;
+            if (allowsTraversal) SetLocks(false);
         }
 
         void Start()
@@ -235,6 +247,7 @@ namespace HiddenWeight.Enemies
 
         void SetLocks(bool locked)
         {
+            locked &= !allowsTraversal;
             if (lockObjects == null) return;
             foreach (var lockObject in lockObjects)
                 if (lockObject != null) lockObject.SetActive(locked);

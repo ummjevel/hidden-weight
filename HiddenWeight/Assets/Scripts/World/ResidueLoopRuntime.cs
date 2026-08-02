@@ -25,8 +25,168 @@ namespace HiddenWeight.World
             if (GetComponent<ResidueAmbientAudio>() == null) gameObject.AddComponent<ResidueAmbientAudio>();
             // 각 컴포넌트의 Start가 초기 상태를 적용한 다음 연결한다.
             yield return null;
+            ConfigureR05PrimaryRestore();
+            ConfigureR05OptionalRestoreAndRewards();
+            ConfigureR08Pulleys();
+            ConfigureR10ArenaEntrance();
+            ConfigureR10MidBoss();
+            ConfigureOptionalMainPathEncounters();
             ConfigurePassages();
             ConfigureFinalEncounter();
+        }
+
+        void ConfigureR10ArenaEntrance()
+        {
+            // R10의 보스 조우는 자체 Lock_L/Lock_R을 전투 시작 2초 뒤 켠다. 예전 빌드의
+            // R10_Wall_L/R까지 상시 활성화되어 있으면 서쪽 입구에서 바닥 진행이 완전히
+            // 막히고, 벽 위도 천장 때문에 오를 수 없다. 상시 벽만 제거하고 전투 잠금은 유지한다.
+            foreach (string name in new[]
+                     {
+                         "R10_Wall_L", "R10_Wall_R",
+                         "R12_Wall_L", "R12_Wall_R",
+                     })
+            {
+                var wall = GameObject.Find(name);
+                if (wall != null) wall.SetActive(false);
+            }
+        }
+
+        void ConfigureR10MidBoss()
+        {
+            var room = FindRoom("Room10");
+            if (room == null) return;
+
+            // 기존 Full 씬에도 즉시 반영한다. R12 최종 보스는 Room10 밖이므로 건드리지 않는다.
+            foreach (var candidate in FindObjectsByType<BossController>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (!room.WorldBounds.Contains(candidate.transform.position)) continue;
+
+                candidate.transform.localScale = Vector3.one * 1.25f;
+                candidate.ConfigureDifficulty(1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
+                candidate.GetComponentInChildren<SpriteAnimator>(true)
+                    ?.LockReferenceCenterToLocalX(0f);
+            }
+
+            // 저장된 Full 씬의 두 y=9 발판을 재활용해 출구 계단으로 내린다. 별도 충돌체를
+            // 겹쳐 만들지 않으므로 보스가 죽은 뒤 계단 모서리에 끼는 문제도 생기지 않는다.
+            var platforms = new List<BoxCollider2D>();
+            foreach (var platform in FindObjectsByType<BoxCollider2D>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (platform.gameObject.name != "SafePlatform"
+                    && !platform.gameObject.name.StartsWith("R10_ExitStep_")) continue;
+                if (!room.WorldBounds.Contains(platform.bounds.center)) continue;
+                platforms.Add(platform);
+            }
+            platforms.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+            if (platforms.Count < 2) return;
+
+            PlaceExitStep(platforms[0], "R10_ExitStep_Low", room, 19.25f, 5f);
+            PlaceExitStep(platforms[platforms.Count - 1], "R10_ExitStep_High", room, 22f, 7f);
+        }
+
+        static void PlaceExitStep(BoxCollider2D platform, string name, Room room, float x, float y)
+        {
+            platform.gameObject.name = name;
+            platform.transform.position = (Vector2)room.WorldBounds.min + new Vector2(x, y);
+        }
+
+        void ConfigureOptionalMainPathEncounters()
+        {
+            // R09의 일반·정예는 선택 전투다. 놓친 적을 찾아 역주행하지 않아도 R10에
+            // 도착하면 중간 보스가 시작된다. R10 중간 보스와 R12 최종 보스는 보스전
+            // 자체의 완결을 위해 기존처럼 처치할 때까지 전장을 잠근다.
+            var optionalIds = new HashSet<string>
+            {
+                "residue_r09_main",
+                "residue_r09_elite",
+            };
+
+            foreach (var encounter in FindObjectsByType<Encounter>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (optionalIds.Contains(encounter.Id))
+                    encounter.ConfigureTraversalLock(false);
+        }
+
+        void ConfigureR08Pulleys()
+        {
+            foreach (string name in new[] { "R08_PulleySafe", "R08_PulleyFast" })
+            {
+                var pulley = GameObject.Find(name);
+                if (pulley == null) continue;
+                var body = pulley.GetComponent<Rigidbody2D>();
+                if (body == null) continue;
+
+                // 파손 위치로 떨어지는 것은 유지하되 옆으로 구르지는 않게 한다. 장치와 K 표식이
+                // 누워 보이면 무엇을 복원하는지 읽히지 않는다.
+                body.constraints |= RigidbodyConstraints2D.FreezeRotation;
+                body.angularVelocity = 0f;
+                pulley.transform.rotation = Quaternion.identity;
+            }
+        }
+
+        void ConfigureR05PrimaryRestore()
+        {
+            var primary = GameObject.Find("R05_PrimaryRestore")?.GetComponent<Rewindable>();
+            var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
+            Sprite platform = palette != null ? palette.ResiduePlatformFor(3f) : null;
+            if (primary == null || platform == null) return;
+
+            // 기획대로 오른쪽 턱까지 끊김 없이 잇는 폭 3을 유지한다. 복원 순간 겹침은
+            // Rewindable이 실제 플레이어 몸통만 판별해 발판 바로 위로 빼낸다.
+            // 바닥 표면(local y=2)과 발판 밑면 사이를 1.5유닛 확보한다. 기존 1유닛은
+            // 플레이어 몸통보다 낮아 채널링 직후 아래에 끼었다.
+            // Short 발판 원화 상단 약 20%는 난간 장식이다. 돌 보행면을 실제 충돌면에 맞춘다.
+            primary.ConfigureRestoredPlatform(platform, new Vector2(3f, 1f),
+                new Vector2(0f, 0.5f), 0.20f);
+        }
+
+        void ConfigureR05OptionalRestoreAndRewards()
+        {
+            var room = FindRoom("Room05");
+            var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
+            Sprite platform = palette != null ? palette.ResiduePlatformFor(3f) : null;
+            if (room == null || platform == null) return;
+
+            // 두 번째 대상은 복원 뒤 폭 3의 선택 발판이 된다. 잔해/장치 그림을 그대로
+            // 고정하면 판정과 그림의 윗면이 달라 공중에 서는 것처럼 보인다.
+            Vector2 optionalPoint = (Vector2)room.WorldBounds.min + new Vector2(20f, 6.5f);
+            Rewindable optional = null;
+            float bestDistance = float.MaxValue;
+            foreach (var rewindable in FindObjectsByType<Rewindable>(FindObjectsSortMode.None))
+            {
+                if (!room.WorldBounds.Contains(rewindable.transform.position)
+                    || rewindable.name == "R05_PrimaryRestore"
+                    || rewindable.name == "R05_ChainDevice") continue;
+                float distance = Vector2.Distance(rewindable.transform.position, optionalPoint);
+                if (distance >= bestDistance) continue;
+                bestDistance = distance;
+                optional = rewindable;
+            }
+            if (optional != null && bestDistance < 1f)
+                optional.ConfigureRestoredPlatform(platform, new Vector2(3f, 1f),
+                    default, 0.20f);
+
+            // 보상 4개를 좁은 직선으로 겹치면 하나의 충돌 없는 바닥처럼 보인다.
+            // 실제 선택 발판 위에 성긴 호로 배치해 "따라가서 줍는 물체"로 읽히게 한다.
+            var rewards = new List<CurrencyPickup>();
+            foreach (var pickup in FindObjectsByType<CurrencyPickup>(FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (!room.WorldBounds.Contains(pickup.transform.position)) continue;
+                Vector2 local = pickup.transform.position - room.WorldBounds.min;
+                if (local.x >= 18f && local.x <= 23f && local.y >= 7f)
+                    rewards.Add(pickup);
+            }
+            rewards.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+            Vector2[] arc =
+            {
+                new Vector2(18.3f, 8.1f), new Vector2(19.8f, 8.7f),
+                new Vector2(21.3f, 8.7f), new Vector2(22.8f, 8.1f),
+            };
+            for (int i = 0; i < rewards.Count && i < arc.Length; i++)
+                rewards[i].transform.position = (Vector2)room.WorldBounds.min + arc[i];
         }
 
         void ConfigurePassages()
@@ -133,7 +293,7 @@ namespace HiddenWeight.World
                 var core = Instantiate(template.gameObject, RoomPoint("Room12", 24f, 4.5f), Quaternion.identity, transform);
                 core.name = "StoryFragment_residue_core";
                 var fragment = core.GetComponent<StoryFragment>();
-                fragment.Configure("residue_core", "가르치려던 목소리가 멎자, 남은 것은 내가 고른 기억뿐이었다.");
+                fragment.Configure("residue_core", "기억의 교수대에서 발견한 파편.");
                 core.SetActive(false);
                 encounter.RegisterVictoryObject(core);
             }

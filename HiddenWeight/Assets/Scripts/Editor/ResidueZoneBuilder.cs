@@ -316,6 +316,55 @@ namespace HiddenWeight.EditorTools
             FitSprite(renderer, width, 2f);
         }
 
+        // 생성된 V3 발판을 종횡비 그대로 배치한다. 피벗이 하단 중앙이므로 그림의 윗면을
+        // 콜라이더 윗면에 맞추고, 가로·세로를 따로 늘리지 않는다.
+        static void ApplyResiduePlatformV3(GameObject block, string spriteName, float worldWidth,
+                                           int sortingOrder = 4)
+        {
+            var sprite = Art(spriteName);
+            var collider = block != null ? block.GetComponent<BoxCollider2D>() : null;
+            if (sprite == null || collider == null || sprite.bounds.size.x <= 0f) return;
+
+            var old = block.transform.Find("ResiduePlatformV3");
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+            var rootRenderer = block.GetComponent<SpriteRenderer>();
+            if (rootRenderer != null) rootRenderer.enabled = false;
+
+            var art = new GameObject("ResiduePlatformV3");
+            art.transform.SetParent(block.transform, false);
+            float uniform = worldWidth / sprite.bounds.size.x;
+            Vector3 parentScale = block.transform.lossyScale;
+            art.transform.localScale = new Vector3(
+                uniform / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+                uniform / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)), 1f);
+
+            float worldBottom = collider.bounds.max.y - sprite.bounds.size.y * uniform;
+            art.transform.position = new Vector3(collider.bounds.center.x, worldBottom,
+                block.transform.position.z);
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = sortingOrder;
+        }
+
+        static GameObject PlaceResidueStairV3(Transform parent, string name, Vector2 basePosition,
+                                              float worldWidth, bool risesRight)
+        {
+            var sprite = Art(risesRight ? "ResidueStairUpRight" : "ResidueStairUpLeft");
+            if (sprite == null || sprite.bounds.size.x <= 0f) return null;
+
+            var old = parent.Find(name);
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(basePosition.x, basePosition.y, 0f);
+            float scale = worldWidth / sprite.bounds.size.x;
+            go.transform.localScale = Vector3.one * scale;
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 4;
+            return go;
+        }
+
         // BuildSolidBlock은 localScale로 충돌 크기를 낸다. 거기에 아트를 직접 얹으면 스프라이트가
         // 그 배율에 딸려 늘어나 버리므로, 스케일이 1인 자식에 그려 넣고 원본 렌더러는 끈다.
         static void ApplyArtOverlay(GameObject block, string spriteName, Vector2 worldSize, int sortingOrder)
@@ -896,15 +945,12 @@ namespace HiddenWeight.EditorTools
         {
             c.Variant = 1;
             c.Floor(0, 26, 2);
-            c.Floor(8, 11, 3);   // 둔덕 1유닛
-            c.Floor(15, 18, 3);  // 계단 1단
-            c.Floor(16, 18, 4);  // 계단 2단
 
             BuildCheckpoint(c.Root.transform, c.P(5f, 3f));
 
-            BuildCurrencyPickup(c.Root.transform, c.P(15f, 4f));
-            BuildCurrencyPickup(c.Root.transform, c.P(16.5f, 4.5f));
-            BuildCurrencyPickup(c.Root.transform, c.P(18f, 5f));
+            BuildCurrencyPickup(c.Root.transform, c.P(15f, 3.2f));
+            BuildCurrencyPickup(c.Root.transform, c.P(16.5f, 3.2f));
+            BuildCurrencyPickup(c.Root.transform, c.P(18f, 3.2f));
 
             c.Room("Room01", 26f, 14f);
             BuildBoundary(c.Root.transform, "Zone_WestBoundary", c.P(-0.5f, 0f).x);
@@ -925,8 +971,10 @@ namespace HiddenWeight.EditorTools
             c.Floor(22, 28, 3);  // 출구 (28,3)
 
             // 끊어진 상부 다리. 조각 사이 2유닛 = 표준 점프. 놓쳐도 하부로 떨어질 뿐이다.
-            BuildSolidBlock(c.Root.transform, "R02_Bridge_A", c.P(9.25f, 3.75f), new Vector2(2.5f, 0.5f), "Ground");
-            BuildSolidBlock(c.Root.transform, "R02_Bridge_B", c.P(13.5f, 3.75f), new Vector2(2f, 0.5f), "Ground");
+            var bridgeA = BuildSolidBlock(c.Root.transform, "R02_Bridge_A", c.P(9.25f, 3.75f), new Vector2(2.5f, 0.5f), "Ground");
+            var bridgeB = BuildSolidBlock(c.Root.transform, "R02_Bridge_B", c.P(13.5f, 3.75f), new Vector2(2f, 0.5f), "Ground");
+            ApplyResiduePlatformV3(bridgeA, "ResiduePlatformShort", 2.8f);
+            ApplyResiduePlatformV3(bridgeB, "ResiduePlatformShort", 2.3f);
 
             // 두 적은 12유닛 떨어뜨린다 — 동시에 감지되지 않게(명세 10유닛 이상).
             BuildResidueEnemy(c.Root.transform, c.P(6f, 3f), ResidueEnemyKind.Walker);
@@ -985,11 +1033,9 @@ namespace HiddenWeight.EditorTools
                 "Tile", new Color(0.3f, 0.28f, 0.34f));
             BuildSafePlatform(c.Root.transform, c.P(7.5f, 6f));
 
-            // 다시 올라가는 벽점프 굴뚝 — 폭 4, 높이 8.
-            // 벽 하단을 바닥(y=2)에서 2유닛 띄운다. 1유닛만 띄우면 키 1.4의 플레이어가 굴뚝
-            // 안으로 걸어 들어가지 못해 입구가 막힌 것과 같아진다(봇이 R08에서 그렇게 멈췄다).
-            BuildResidueWall(c.Root.transform, "R04_Chimney_L", c.P(18f, 8f), new Vector2(1f, 8f));
-            BuildResidueWall(c.Root.transform, "R04_Chimney_R", c.P(22f, 8f), new Vector2(1f, 8f));
+            // 비대칭 벽 옆 마지막 구간은 통과 경로다. 충돌 없는 벽 그림이 남지 않도록
+            // 오른쪽 벽은 만들지 않고 왼쪽 등반 벽만 유지한다.
+            BuildResidueWall(c.Root.transform, "R04_Chimney_L", c.P(18f, 8.5f), new Vector2(1f, 7f));
 
             // 명세: "중층 폭 5유닛 발판, 플레이어가 위에서 먼저 관찰". 폭 3 발판 위에 두면
             // 돌아설 자리가 없어 제자리에서 떠는 것처럼 보인다.
@@ -1018,7 +1064,7 @@ namespace HiddenWeight.EditorTools
             ResidueCrumbling(c.Root.transform, c.P(16f, 9f));
 
             BuildStoryFragment(c.Root.transform, c.P(16f, 10.5f), "residue_s1",
-                "이름이 남지 않은 것들도, 여기서는 나란히 누워 있었다.", EmotionId.None, false);
+                "철망 안에 같은 형상이 반복되어 있다.", EmotionId.None, false);
             for (int i = 0; i < 6; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(15f + i * 0.4f, 10f));
 
@@ -1042,8 +1088,9 @@ namespace HiddenWeight.EditorTools
             BuildCheckpoint(c.Root.transform, c.P(7f, 3f)); // 체크포인트 2 — 능력 획득 직전
 
             BuildStoryFragment(c.Root.transform, c.P(8.5f, 4f), "residue_skill",
-                "그때로 돌아갈 수만 있다면, 손끝이라도 붙잡았을 텐데.", EmotionId.Rewind, false);
-            BuildTutorialHint(c.Root.transform, c.P(11f, 6f), "K 홀드  —  되감기");
+                "무너진 구조물을 복원한다.", EmotionId.Rewind, false);
+            BuildTutorialHint(c.Root.transform, c.P(11f, 6f),
+                "K를 계속 누르면 구조물이 복원됩니다.");
 
             // 대상 1: 바닥(y=2)과 턱(y=5) 사이의 실제 디딤 높이(y=3.5)에 복원된다.
             // 블록 상단 y=4를 밟은 뒤 1유닛 더 올라가므로 밑면에 머리가 걸리지 않는다.
@@ -1055,8 +1102,12 @@ namespace HiddenWeight.EditorTools
 
             // 선택 대상: 끊어진 다리 조각. 복원하면 위쪽 재화 가지를 편하게 건넌다.
             ResidueRewindable(c.Root.transform, c.P(20f, 6.5f));
-            for (int i = 0; i < 4; i++)
-                BuildCurrencyPickup(c.Root.transform, c.P(18.5f + i * 0.7f, 7.5f));
+            // 재화를 좁은 직선으로 겹치면 충돌 없는 바닥처럼 보인다. 성긴 호로 띄워
+            // 선택 발판을 따라가는 보상임을 명확히 한다.
+            BuildCurrencyPickup(c.Root.transform, c.P(18.3f, 8.1f));
+            BuildCurrencyPickup(c.Root.transform, c.P(19.8f, 8.7f));
+            BuildCurrencyPickup(c.Root.transform, c.P(21.3f, 8.7f));
+            BuildCurrencyPickup(c.Root.transform, c.P(22.8f, 8.1f));
 
             // 사슬은 선택 연출 대상으로 남긴다. 숏컷은 첫 필수 복원에서 이미 열린다.
             var chain = ResidueRewindable(c.Root.transform, c.P(22f, 7f));
@@ -1085,7 +1136,7 @@ namespace HiddenWeight.EditorTools
             // 매복 적. 착지점 좌우 3유닛은 비워 둔다.
             BuildResidueEnemy(c.Root.transform, c.P(18f, 11f), ResidueEnemyKind.Finger);
             // 상승 구간 바닥이 y=6이므로 그 위에 세운다.
-            BuildResidueEnemy(c.Root.transform, c.P(12f, 7f), ResidueEnemyKind.Walker);
+            BuildResidueEnemy(c.Root.transform, c.P(12f, 7f), ResidueEnemyKind.Walker, "WalkerR06");
 
             // 선택 대상: 복원하면 S2 입구가 열린다. 주 동선 문은 닫히지 않는다.
             ResidueRewindable(c.Root.transform, c.P(21f, 6f));
@@ -1130,8 +1181,13 @@ namespace HiddenWeight.EditorTools
             c.Floor(0, 8, 3);
             c.Floor(11, 20, 5);   // 넓은 직선교 — 돌진형 구간(폭 9)
             c.Floor(23, 30, 8);   // 출구 (30,8)
+            // R07→R08 직전의 높은 바닥은 낭떠러지 위에 떠 있어 런타임 자동 외곽선만으로는
+            // 배경에 묻혔다. 충돌과 같은 x=23~30, 표면 y=8에 잔재 바닥을 명시적으로 겹친다.
+            PlaceFloorArt(c.Root.transform, c.P(26.5f, 8f), 7f, c.Variant);
             // y=5 → y=8은 한 번에 오르면 +3이라 실측 점프 높이(2.72)를 넘는다. 중간 발판을 둔다.
             BuildSafePlatform(c.Root.transform, c.P(21.5f, 6.5f));
+            // 실제 충돌이 없는 아치형 계단 원화는 통과 가능한 거대한 벽처럼 보여 사용하지
+            // 않는다. 위에서 만든 SafePlatform의 정식 발판 그림만 이동 경로로 표시한다.
 
             // 다리 사이 틈 아래의 위험 영역. 복귀 지점은 방 입구가 아니라 직전 안전 발판이다.
             var recovery = new GameObject("R07_Recovery");
@@ -1160,13 +1216,23 @@ namespace HiddenWeight.EditorTools
             c.Floor(0, 24, 2);
 
             // 하단 8유닛: 폭 4 벽점프 굴뚝
-            BuildResidueWall(c.Root.transform, "R08_Chimney_L", c.P(4f, 8f), new Vector2(1f, 8f));
-            BuildResidueWall(c.Root.transform, "R08_Chimney_R", c.P(8f, 8f), new Vector2(1f, 8f));
-            c.Tiles(2, 11, 10, 11);  // 구간 사이 안전 발판
+            // 정상 모서리와 착지 타일이 맞물리면 벽 붙잡기 판정이 풀리지 않는다.
+            // 왼쪽은 왕복 벽점프 높이를 확보하고, 오른쪽은 y=13 착지대 윗면과 높이를
+            // 일치시킨다. 따라서 정상에서 별도의 높은 턱에 걸리지 않고 우측으로 나간다.
+            BuildResidueWall(c.Root.transform, "R08_Chimney_L", c.P(4f, 8.5f), new Vector2(1f, 9f));
+            BuildResidueWall(c.Root.transform, "R08_Chimney_R", c.P(8f, 8.5f), new Vector2(1f, 9f));
+            // 예전에는 x=2~11 발판이 굴뚝 내부까지 가로질러 local y=10에 천장처럼 생겼다.
+            // 굴뚝 내부는 끝까지 비우고, 정상에서 벽 점프로 잡을 수 있는 오른쪽 바깥에만
+            // 착지대를 두어 다음 이동 발판 구간으로 옮겨 서게 한다.
+            c.Tiles(8, 12, 12, 13);  // 굴뚝 우측 상단 안전 착지대
 
             // 중단 10유닛: 왕복 이동 발판 2개
-            BuildMovingPlatform(c.Root.transform, c.P(13f, 13f), new Vector2(4f, 0f), 4f);
-            BuildMovingPlatform(c.Root.transform, c.P(13f, 17f), new Vector2(4f, 0f), 4f);
+            var lowerLift = BuildMovingPlatform(c.Root.transform, c.P(13f, 13f), new Vector2(4f, 0f), 4f);
+            lowerLift.name = "R08_MovingLower";
+            var upperLift = BuildMovingPlatform(c.Root.transform, c.P(13f, 15.5f), new Vector2(4f, 0f), 4f);
+            upperLift.name = "R08_MovingUpper";
+            var upperStep = BuildSafePlatform(c.Root.transform, c.P(14.25f, 18f));
+            upperStep.name = "R08_UpperStep";
             c.Tiles(16, 22, 20, 21);
 
             // 상단 6유닛: 무너지는 발판 2개와 안전 벽면
@@ -1216,12 +1282,14 @@ namespace HiddenWeight.EditorTools
             ResidueRewindable(c.Root.transform, c.P(25f, 4f)); // 다리
             ResidueRewindable(c.Root.transform, c.P(21f, 4f)); // 방어벽
 
-            BuildEncounter(c.Root.transform, "residue_r09_main", c.P(16f, 5f), new Vector2(20f, 6f), false,
+            var mainEncounter = BuildEncounter(c.Root.transform, "residue_r09_main", c.P(16f, 5f), new Vector2(20f, 6f), false,
                 new[] { new[] { finger }, new[] { carrier } }, new[] { 0 }, null, null);
+            mainEncounter.ConfigureTraversalLock(false);
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r09_elite", c.P(14f, 10.5f), 15, false);
-            BuildEncounter(c.Root.transform, "residue_r09_elite", c.P(11f, 11f), new Vector2(10f, 6f), true,
+            var eliteEncounter = BuildEncounter(c.Root.transform, "residue_r09_elite", c.P(11f, 11f), new Vector2(10f, 6f), true,
                 new[] { new[] { elite } }, System.Array.Empty<int>(), reward, null);
+            eliteEncounter.ConfigureTraversalLock(false);
 
             for (int i = 0; i < 4; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(25.5f + i * 0.5f, 5f)); // 대시 선택 경로 보상
@@ -1234,10 +1302,14 @@ namespace HiddenWeight.EditorTools
         {
             c.Variant = 1;
             c.Floor(0, 24, 3);
-            BuildResidueWall(c.Root.transform, "R10_Wall_L", c.P(1f, 7f), new Vector2(1f, 7f));
-            BuildResidueWall(c.Root.transform, "R10_Wall_R", c.P(23f, 7f), new Vector2(1f, 7f));
-            BuildSafePlatform(c.Root.transform, c.P(5f, 9f));
-            BuildSafePlatform(c.Root.transform, c.P(19f, 9f));
+            // 상시 외벽은 두지 않는다. Encounter가 전투 시작 뒤에만 Lock_L/Lock_R을 켠다.
+            // 두 체계를 겹치면 입구부터 막혀 보스 전장에 들어갈 수 없다.
+            // 승리 뒤 오른쪽 출구(높이 7)까지 두 번의 일반 점프로 올라간다. 예전 y=9 발판은
+            // 바닥에서 첫 점프로 닿지 않아 보스를 쓰러뜨리고도 방을 나갈 수 없었다.
+            var exitStepLow = BuildSafePlatform(c.Root.transform, c.P(19.25f, 5f));
+            exitStepLow.name = "R10_ExitStep_Low";
+            var exitStepHigh = BuildSafePlatform(c.Root.transform, c.P(22f, 7f));
+            exitStepHigh.name = "R10_ExitStep_High";
 
             // 체크포인트 3은 전장 "바깥"이다 — 재진입 30초 이내 목표를 지키려면 문 앞이어야 한다.
             BuildCheckpoint(c.Root.transform, c.P(2f, 4f));
@@ -1247,7 +1319,7 @@ namespace HiddenWeight.EditorTools
             ResidueRewindable(c.Root.transform, c.P(16f, 4f));
 
             // 감시 파동을 섞는다. 전장이 넓어 붙기만 해서는 안 되게 만드는 원거리 압박이다.
-            var boss = BuildBoss(c.Root.transform, c.P(18f, 5f), "Enemy_Residue_Watcher", 12,
+            var boss = BuildBoss(c.Root.transform, c.P(18f, 5f), "Enemy_Residue_Watcher", 8,
                 new[]
                 {
                     BossController.Move.GroundSweep, BossController.Move.Projectile,
@@ -1257,10 +1329,17 @@ namespace HiddenWeight.EditorTools
                 moveClips: new[] { "WatcherAnimSweep", "WatcherAnimSweep",
                                    "WatcherAnimCharge", "WatcherAnimDrop" },
                 phaseClip: "WatcherAnimStun");
+            // BuildBoss의 공통 2배 확대는 최종 보스용 화면 점유에 가깝다. R10은 플레이어의
+            // 약 2배 높이(아트 약 4유닛)만 차지하게 줄이고, 실루엣 중심을 판정 중앙에 맞춘다.
+            boss.transform.localScale = Vector3.one * 1.25f;
+            boss.GetComponentInChildren<SpriteAnimator>()?.LockReferenceCenterToLocalX(0f);
+            boss.GetComponent<BossController>().ConfigureDifficulty(
+                1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
-            // 입장 후 2초 관찰 뒤 출구 잠금. 승리하면 잠금 해제 + 큰 재화.
+            // R09 적 처치 여부와 무관하게 이 방에 도착하면 시작하는 필수 중간 보스.
+            // 전투가 시작된 뒤에는 승리할 때까지 전장을 잠그고, 승리하면 큰 재화와 숏컷을 연다.
             // 숏컷 C를 여는 것은 이 보스의 승리다(LEVEL_21_RESIDUE_ROOMS.md R10 "승리 후 R07 숏컷").
             // 숏컷 자체는 R07 씬에 있으므로 오브젝트가 아니라 id로 연결한다.
             BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
@@ -1283,7 +1362,7 @@ namespace HiddenWeight.EditorTools
             BuildSafePlatform(c.Root.transform, c.P(18f, 4f));
 
             BuildStoryFragment(c.Root.transform, c.P(6f, 4f), "residue_r11",
-                "돌이킬 수 없다는 말은, 돌아보지 말라는 뜻이 아니었다.", EmotionId.None, false);
+                "벽의 홈마다 서로 다른 형상이 놓여 있다.", EmotionId.None, false);
 
             // 보스 방향을 가리키는 교수대 실루엣.
             BuildResidueProp(c.Root.transform, "R11_GallowsSilhouette", c.P(26f, 4f), new Vector2(4f, 7f), "Prop_r2_c1");
@@ -1331,7 +1410,7 @@ namespace HiddenWeight.EditorTools
             // 여기 안쪽에 또 두면 최종 파편과 같은 자리에 겹쳐 파편이 지형에 파묻힌다.
             // 파편은 착지 지점(x=14)에서 조금 걸어 들어간 안쪽에 둔다.
             BuildStoryFragment(c.Root.transform, c.P(6f, 3f), "residue_final",
-                "처음부터, 그것은 나를 보고 있었다.", EmotionId.None, false);
+                "벽 뒤에서 거대한 눈이 드러났다.", EmotionId.None, false);
 
             c.Room("Secret03", 20f, 14f);
         }
@@ -1341,8 +1420,8 @@ namespace HiddenWeight.EditorTools
         {
             c.Variant = 1;
             c.Floor(0, 30, 3);
-            BuildResidueWall(c.Root.transform, "R12_Wall_L", c.P(1f, 8f), new Vector2(1f, 8f));
-            BuildResidueWall(c.Root.transform, "R12_Wall_R", c.P(29f, 8f), new Vector2(1f, 8f));
+            // 평상시 입구·출구는 열어 둔다. Encounter의 Lock_L/Lock_R이 전투 시작 뒤에만
+            // 전장을 잠근다. 상시 외벽까지 겹치면 서쪽에서 방 안으로 진입할 수 없다.
 
             // 천장 교수대 사슬 3개 — 2단계에서 보스가 이 중 하나에서 떨어진다.
             for (int i = 0; i < 3; i++)
@@ -1398,7 +1477,7 @@ namespace HiddenWeight.EditorTools
 
             // 지역 보스 승리 뒤 핵심 기억을 드러내고, 해당 완료 상태가 있어야만 응시로 나간다.
             var core = BuildStoryFragment(c.Root.transform, c.P(24f, 4.5f), "residue_core",
-                "가르치려던 목소리가 멎자, 남은 것은 내가 고른 기억뿐이었다.", EmotionId.None, false);
+                "기억의 교수대에서 발견한 파편.", EmotionId.None, false);
             core.SetActive(false);
             SetField(finalEncounter, "victoryObjects", p =>
             {

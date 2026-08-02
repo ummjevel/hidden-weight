@@ -15,6 +15,9 @@ namespace HiddenWeight.World
         SpriteRenderer _source;
         SpriteRenderer _outline;
         TextMesh _marker;
+        MeshRenderer _markerRenderer;
+        Transform _player;
+        bool _residueScene;
 
         void Start()
         {
@@ -34,6 +37,13 @@ namespace HiddenWeight.World
             }
             if (_target == null || _source == null) { enabled = false; return; }
 
+            _residueScene = gameObject.scene.name.Contains("Residue");
+            if (_residueScene)
+            {
+                var playerObject = GameObject.FindGameObjectWithTag("Player");
+                if (playerObject != null) _player = playerObject.transform;
+            }
+
             var go = new GameObject("RewindOutline");
             // 실제 아트의 스케일·회전을 그대로 물려받아 외곽선이 본체와 정확히 겹치게 한다.
             go.transform.SetParent(_source.transform, false);
@@ -49,25 +59,36 @@ namespace HiddenWeight.World
             _marker = markerObject.AddComponent<TextMesh>();
             // LegacyRuntime 폰트에는 ◇ 글리프가 없어 흰 네모로 보인다. ASCII 키 문자는
             // 모든 기본 폰트에서 보장되므로 대상 표식과 실제 입력을 동시에 보여 준다.
-            _marker.text = "K";
+            _marker.text = _residueScene ? "K 길게" : "K";
             _marker.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _marker.fontSize = 48;
-            _marker.characterSize = 0.08f;
+            _marker.characterSize = _residueScene ? 0.045f : 0.08f;
             _marker.anchor = TextAnchor.MiddleCenter;
             _marker.alignment = TextAlignment.Center;
-            var markerRenderer = markerObject.GetComponent<MeshRenderer>();
-            markerRenderer.material = _marker.font.material;
-            markerRenderer.sortingOrder = 39;
-            markerRenderer.enabled = false;
+            _markerRenderer = markerObject.GetComponent<MeshRenderer>();
+            _markerRenderer.material = _marker.font.material;
+            _markerRenderer.sortingOrder = 39;
+            _markerRenderer.enabled = false;
         }
 
         void Update()
         {
             if (_outline == null) return;
 
+            if (_residueScene && _player == null)
+            {
+                var playerObject = GameObject.FindGameObjectWithTag("Player");
+                if (playerObject != null) _player = playerObject.transform;
+            }
+
             bool show = _target.CanRewind;
             _outline.enabled = show;
-            if (_marker != null) _marker.GetComponent<MeshRenderer>().enabled = show;
+            // 잔재의 K 표식은 예전에는 방 반대편에서도 보여서 발판이 사라진 빈 공간에
+            // 글자만 둥둥 떠 있었다. 대상은 아웃라인/잔상으로 계속 찾을 수 있게 두되,
+            // 조작 표식은 실제 되감기 사거리 부근에 들어왔을 때만 보여 준다.
+            bool markerInRange = !_residueScene || (_player != null
+                && Vector2.Distance(_player.position, transform.position) <= 6f);
+            if (_markerRenderer != null) _markerRenderer.enabled = show && markerInRange;
             if (!show) return;
 
             // 본체 스프라이트가 꺼진 상태(무너진 발판)에서도 아웃라인은 자리를 표시해야 하므로
@@ -79,8 +100,12 @@ namespace HiddenWeight.World
             if (_marker != null)
             {
                 _marker.color = new Color(outlineColor.r, outlineColor.g, outlineColor.b, alpha);
-                _marker.transform.localPosition = new Vector3(
-                    0f, 1.15f + Mathf.Sin(Time.time * pulseSpeed) * 0.08f, 0f);
+                if (_residueScene)
+                {
+                    _marker.transform.position = transform.position + Vector3.up
+                        * (1.15f + Mathf.Sin(Time.time * pulseSpeed) * 0.08f);
+                    _marker.transform.rotation = Quaternion.identity;
+                }
             }
         }
     }

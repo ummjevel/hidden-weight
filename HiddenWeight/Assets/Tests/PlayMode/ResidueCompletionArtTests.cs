@@ -46,6 +46,9 @@ namespace HiddenWeight.Tests
 
             var animator = platform.GetComponentInChildren<SpriteAnimator>();
             Assert.IsNotNull(animator, "붕괴 발판에 상태 애니메이터가 붙지 않았다 — 시트가 연결되지 않았다.");
+            var platformRenderer = animator.GetComponent<SpriteRenderer>();
+            Assert.IsNotNull(platformRenderer, "붕괴 발판 상태 그림을 그릴 렌더러가 없다.");
+            float intactAlpha = platformRenderer.color.a;
 
             foreach (var clip in new[] { "PlatformCrack", "PlatformCollapse", "PlatformBroken", "PlatformRestore" })
                 Assert.IsTrue(animator.Has(clip), clip + " 클립이 없다.");
@@ -77,12 +80,22 @@ namespace HiddenWeight.Tests
             { PlayerInput.Injected = default; yield return new WaitForFixedUpdate(); }
             Assert.IsTrue(platform.HasCrumbled, "발판이 무너지지 않았다.");
 
+            var rewindSensor = platform.transform.Find("RewindTargetSensor")?.GetComponent<Collider2D>();
+            Assert.IsNotNull(rewindSensor, "무너진 발판을 K 되감기 대상으로 찾을 센서가 없다.");
+            Assert.IsTrue(rewindSensor.enabled && rewindSensor.isTrigger,
+                "발판이 무너진 뒤 되감기 감지 센서가 켜지지 않았다.");
+            Assert.IsTrue(platformRenderer.enabled && platformRenderer.color.a <= 0.5f,
+                "무너진 발판 자리에 복원 대상을 알려 줄 반투명 잔상이 남지 않았다.");
+
             platform.Rewind();
             yield return null;
 
             Debug.Log("===== 발판 복구 ===== 클립=" + animator.CurrentClip);
             Assert.AreEqual("PlatformRestore", animator.CurrentClip,
                 "되감기로 복구했는데 복구 클립이 재생되지 않는다.");
+            Assert.IsFalse(rewindSensor.enabled, "복구된 발판의 되감기 전용 센서가 계속 켜져 있다.");
+            Assert.AreEqual(intactAlpha, platformRenderer.color.a, 0.001f,
+                "복구된 발판이 반투명 잔상 상태로 남았다.");
         }
 
         [UnityTest]

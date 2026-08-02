@@ -606,10 +606,43 @@ namespace HiddenWeight.EditorTools
             _fractureShortcutA = _fractureShortcutB = _fractureShortcutC = null;
             _fractureSecretDoor = null;
 
+            BuildFractureRoomEdges(c);
+
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
                 SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture");
 
             ClotheCollisionPlaceholderRenderers(c.Root);
+        }
+
+        // 방의 좌우 끝을 막는다.
+        //
+        // 방을 씬으로 쪼갠 뒤 각 방은 독립된 공간인데 좌우가 열려 있었다 — 12개 방 중
+        // 거의 전부가 그랬다. 문(트리거 폭 1.2)에만 의존하므로 대시나 낙하로 스쳐 지나가면
+        // 그대로 허공이다. VoidRespawn이 30유닛 아래에서 잡아 주기는 하지만, 설계 10절이
+        // 말하는 "체력 1 피해와 방별 안전지점 복귀"는 그런 모습이 아니다.
+        //
+        // 벽은 방 경계 바깥에 세운다. 문은 방 끝(경계선 위)에 있으므로 플레이어가 문
+        // 트리거에 먼저 닿고, 벽은 그 너머를 막는다 — 문 통과를 방해하지 않는다.
+        static void BuildFractureRoomEdges(RoomCtx c)
+        {
+            foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
+            {
+                var bounds = room.WorldBounds;
+                float height = bounds.size.y + 12f;   // 위아래로 넉넉히 — 뛰어넘지 못하게
+                float middle = bounds.center.y;
+
+                foreach (var (name, x) in new[]
+                {
+                    ("Fracture_RoomEdge_W", bounds.min.x - 0.5f),
+                    ("Fracture_RoomEdge_E", bounds.max.x + 0.5f),
+                })
+                {
+                    var wall = BuildSolidBlock(c.Root.transform, name,
+                        new Vector2(x, middle), new Vector2(1f, height), "Wall");
+                    var sr = wall.GetComponent<SpriteRenderer>();
+                    if (sr != null) sr.enabled = false;   // 보이지 않는 경계다
+                }
+            }
         }
 
         static void BuildFractureDoorsFor(RoomCtx c, string room)

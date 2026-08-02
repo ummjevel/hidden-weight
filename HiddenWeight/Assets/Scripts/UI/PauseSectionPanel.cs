@@ -151,7 +151,7 @@ namespace HiddenWeight.UI
             var mainRow = CreateMapRow("MainRoute", 96f);
             for (int i = 1; i <= MainRooms; i++)
             {
-                if (i > 1) CreateConnector(mainRow, 14f, 4f);
+                if (i > 1) CreateConnector(mainRow, LinkWidth, 4f);
                 string roomId = zone + "/" + prefix + "Room" + i.ToString("00");
                 CreateMapChip(mainRow, roomId, roomId.EndsWith("/" + currentRoom),
                               visited.Contains(roomId));
@@ -161,7 +161,7 @@ namespace HiddenWeight.UI
             var branchRow = CreateMapRow("SecretBranches", 84f);
             for (int i = 1; i <= MainRooms; i++)
             {
-                if (i > 1) CreateSpacer(branchRow, 14f);
+                if (i > 1) CreateSpacer(branchRow, LinkWidth);
 
                 int index = System.Array.IndexOf(SecretParents, i);
                 if (index < 0)
@@ -184,7 +184,10 @@ namespace HiddenWeight.UI
                 + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
         }
 
-        const float ChipWidth = 96f;
+        // 12칸 + 연결선 11개가 패널 안에 들어와야 한다. 넓게 잡으면 뒤쪽 방(F08~F12)이
+        // 오른쪽으로 잘려 나가 지도가 절반만 보인다.
+        const float ChipWidth = 74f;
+        const float LinkWidth = 10f;
 
         RectTransform CreateMapRow(string name, float height)
         {
@@ -194,9 +197,13 @@ namespace HiddenWeight.UI
             var layout = row.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 0f;
             layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = false;
+            // 폭을 레이아웃이 통제해야 LayoutElement.preferredWidth가 먹는다. 끄면 자식이
+            // 각자 기본 크기(100)로 남아 12칸이 패널을 넘어가고 뒤쪽 방이 잘려 나간다.
+            layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = false;
+            // 이걸 켜 두면 연결선이 행 높이만큼 늘어나 얇은 선이 아니라 큰 덩어리가 된다.
+            layout.childForceExpandHeight = false;
             _dynamicItems.Add(row);
             return (RectTransform)row.transform;
         }
@@ -245,13 +252,13 @@ namespace HiddenWeight.UI
             layout.childControlHeight = true;
             layout.childForceExpandHeight = false;
 
-            var code = UIBuilder.CreateText(chip.transform, "Code", current ? 28 : 24,
+            var code = UIBuilder.CreateText(chip.transform, "Code", current ? 24 : 20,
                                             TextAnchor.MiddleCenter);
             code.text = (branch ? "↳ " : string.Empty) + RoomCode(roomId);
             if (current) code.color = Color.white;
             else if (!discovered) code.color = new Color(code.color.r, code.color.g, code.color.b, 0.4f);
 
-            var label = UIBuilder.CreateText(chip.transform, "Name", 13, TextAnchor.UpperCenter);
+            var label = UIBuilder.CreateText(chip.transform, "Name", 11, TextAnchor.UpperCenter);
             label.text = discovered ? RoomName(roomId) : "미탐사";
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
             label.color = new Color(label.color.r, label.color.g, label.color.b,

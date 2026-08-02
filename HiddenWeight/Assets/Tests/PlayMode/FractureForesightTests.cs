@@ -113,10 +113,24 @@ namespace HiddenWeight.Tests
 
             if (targets.Count == 0) yield break;   // 예지 대상이 없는 방은 검사할 것이 없다
 
-            float waited = 0f;
+            // 어긋나는 대상이 실제로 어떻게 움직이는지 궤적을 남긴다 — "안 움직인다"와
+            // "위상이 어긋난다"는 원인이 전혀 다르다.
+            var trace = new StringBuilder();
+            float waited = 0f, sampled = 0f;
             while (waited < lead)
             {
                 waited += Time.fixedDeltaTime;
+                sampled += Time.fixedDeltaTime;
+                if (sampled >= 0.25f)
+                {
+                    sampled = 0f;
+                    trace.Append($" t+{waited:F2}:");
+                    foreach (var (f, _, _) in targets)
+                        if (f != null && f.Transform != null)
+                            // 실제/궤도목표 — 목표가 움직이는데 실제가 멈춰 있으면 못 따라가는 것,
+                            // 둘 다 멈추면 궤도 자체가 멈춘 것이다.
+                            trace.Append($" {f.Transform.position.x:F2}/{f.PredictPosition(0f).x:F2}");
+                }
                 yield return new WaitForFixedUpdate();
             }
 
@@ -143,7 +157,9 @@ namespace HiddenWeight.Tests
             }
 
             Debug.Log($"[{room}] 예지 대상 {targets.Count}개 검사, 어긋남 "
-                      + (wrong.Length == 0 ? "없음" : "있음\n" + wrong));
+                      + (wrong.Length == 0 ? "없음" : "있음\n" + wrong)
+                      + (wrong.Length == 0 ? "" : "\n  궤적:" + trace));
+            if (wrong.Length > 0) Debug.Log($"[{room}] 궤적:{trace}");
             Assert.IsEmpty(wrong.ToString(),
                 $"{room}: 예지가 보여준 위치와 실제 2초 뒤가 다르다 — 지역의 공정성 규칙이 깨진다.\n" + wrong);
         }

@@ -124,9 +124,21 @@ namespace HiddenWeight.Enemies
         // 같은 물리 스텝 안에서 다른 행동 스크립트들의 FixedUpdate보다 반드시 나중에 실행되므로,
         // 여기서 정한 값이 이번 스텝에 실제로 반영된다. LateUpdate에서 하면 이번 프레임엔 맞게
         // 눌러도 다음 물리 스텝에서 그 스크립트들이 다시 덮어써 버려 클램프가 무의미해진다.
+        // 궤도가 시간의 함수인 적(균열의 FeintPatrol 등)은 이 보호를 받으면 안 된다.
+        //
+        // 이 클램프는 "걸어가다 낭떠러지 앞에서 멈춘다"는 반응형 이동을 전제한다. 그런데
+        // 궤도형은 위치가 아니라 **시각**으로 어디 있어야 하는지가 정해져 있어서, 한 번
+        // 속도를 0으로 눌리면 시간만 흐르고 위치는 뒤처져 영영 따라잡지 못한다. 실제로
+        // F07의 새싹이 궤도 오른쪽 끝에 속도 0으로 영구히 고정됐고, 그 결과 예지가
+        // 보여준 2초 뒤 위치에 적이 오지 않아 지역의 공정성 규칙이 깨졌다.
+        //
+        // 궤도형은 자기 경로가 지형 위에 있다는 것을 배치가 보장한다 — 보호가 필요 없다.
+        public bool SuppressLedgeGuard { get; set; }
+
         void FixedUpdate()
         {
             if (_rb == null || _bodyCollider == null) return;
+            if (SuppressLedgeGuard) return;
             if (_rb.bodyType != RigidbodyType2D.Dynamic) return; // 매복 중(천장에 붙음)인 경우 등은 그대로 둔다
 
             float vx = _rb.linearVelocity.x;

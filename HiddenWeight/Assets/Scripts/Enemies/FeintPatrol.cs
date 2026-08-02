@@ -33,6 +33,10 @@ namespace HiddenWeight.Enemies
             // 속도가 먹지 않아 **궤도 끝에 영구히 고정된다**(F07에서 실제로 그랬다).
             // 그러면 예지는 계속 앞을 계산하고 적은 오지 않는다 — 공정성 규칙이 깨진다.
             Body.sleepMode = RigidbodySleepMode2D.NeverSleep;
+
+            // 낭떠러지 클램프는 걸어 다니는 적을 위한 것이다. 궤도형이 그걸 맞으면 속도가
+            // 0으로 눌린 채 시간만 흘러 궤도에서 영영 뒤처진다(Enemy.SuppressLedgeGuard 주석).
+            Self.SuppressLedgeGuard = true;
         }
 
         // 왕복 궤도. 위상만으로 x가 정해진다.
@@ -88,6 +92,21 @@ namespace HiddenWeight.Enemies
             Body.linearVelocity = new Vector2(travel + drift, Body.linearVelocity.y);
             float speedX = travel + drift;
 
+            // 궤도가 권위다. 속도만으로 따라가면 물리적으로 방해받는 순간 뒤처지는데,
+            // 시간은 계속 흐르므로 한 번 벌어진 차이는 스스로 좁혀지지 않는다 — F07의
+            // 새싹이 반환점에서 되돌아오지 못한 채 궤도와 1.5유닛 벌어졌고, 그만큼
+            // 예지 고스트가 오지 않을 자리를 가리켰다.
+            //
+            // 이 지역이 요구하는 것은 "적이 걸어서 거기 도달한다"가 아니라 "2초 뒤 거기
+            // 있다"이다(설계 7.2). 차이가 커지면 위치를 직접 끌어당겨 그 약속을 지킨다.
+            // 한 스텝에 옮기는 양을 묶어 두므로 순간이동으로 보이지 않는다.
+            if (Mathf.Abs(error) > TrackTolerance)
+            {
+                float step = Mathf.Min(Mathf.Abs(error), Data.moveSpeed * 3f * Time.fixedDeltaTime);
+                Body.position = new Vector2(
+                    Body.position.x + Mathf.Sign(error) * step, Body.position.y);
+            }
+
             // 궤도가 SmoothStep이라 반환점에서 속도가 0에 수렴한다. 그때도 Walk를 틀면
             // 제자리에서 걷는 그림이 미끄러지는 것처럼 보인다.
             UpdateLocomotionClip(speedX);
@@ -100,6 +119,9 @@ namespace HiddenWeight.Enemies
             FaceTowards(heading);
             ApplyFeintLean(IsFeinting(now) ? -heading : 0);
         }
+
+        // 궤도에서 이만큼 벗어나면 위치를 직접 맞춘다.
+        const float TrackTolerance = 0.12f;
 
         const float FeintLeanDegrees = 14f;
         Transform _art;

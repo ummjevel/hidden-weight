@@ -52,15 +52,70 @@ namespace HiddenWeight.Enemies
             float aheadX = PathXAt(now + Time.fixedDeltaTime);
 
             // 속도로 따라간다. 위치를 직접 밀어 넣으면 지형 충돌과 접촉 피해가 깨진다.
-            float drift = (targetX - transform.position.x) / Time.fixedDeltaTime;
-            float travel = (aheadX - targetX) / Time.fixedDeltaTime;
-            Body.linearVelocity = new Vector2(
-                Mathf.Clamp(travel + drift, -Data.moveSpeed * 4f, Data.moveSpeed * 4f),
-                Body.linearVelocity.y);
+            //
+            // 보정(drift)은 궤도에서 밀려난 만큼을 되돌리는 항이다. 지형에 막혀 있으면 오차가
+            // 계속 쌓이고, 풀리는 순간 최대 속도로 튀어 순간이동처럼 보인다. 보정은 한 걸음
+            // 크기로 묶고, 오래 막혀 있으면 궤도 자체를 지금 위치로 다시 잡는다.
+            float error = targetX - transform.position.x;
+            if (Mathf.Abs(error) > ReanchorDistance)
+            {
+                _blockedTimer += Time.fixedDeltaTime;
+                if (_blockedTimer >= ReanchorSeconds)
+                {
+                    _origin.x += error;
+                    _blockedTimer = 0f;
+                    error = 0f;
+                }
+            }
+            else
+            {
+                _blockedTimer = 0f;
+            }
 
+            float drift = Mathf.Clamp(error / Time.fixedDeltaTime,
+                                      -Data.moveSpeed, Data.moveSpeed);
+            float travel = (aheadX - targetX) / Time.fixedDeltaTime;
+            float speedX = Mathf.Clamp(travel + drift,
+                                       -Data.moveSpeed * 2f, Data.moveSpeed * 2f);
+            Body.linearVelocity = new Vector2(speedX, Body.linearVelocity.y);
+
+            // 궤도가 SmoothStep이라 반환점에서 속도가 0에 수렴한다. 그때도 Walk를 틀면
+            // 제자리에서 걷는 그림이 미끄러지는 것처럼 보인다.
+            UpdateLocomotionClip(speedX);
+
+            // 페인트는 몸의 방향을 뒤집지 않는다. 뒤집으면 진행 방향과 실루엣이 어긋난 채
+            // 미끄러져 연출이 아니라 버그로 읽힌다(원래 의도는 "속인다"였다). 대신 상체를
+            // 반대쪽으로 기울여 곧 돌아설 것처럼 보이게 한다 — 궤도는 그대로이므로
+            // 예지 고스트는 여전히 정확하다.
             int heading = aheadX >= targetX ? 1 : -1;
-            FaceTowards(IsFeinting(now) ? -heading : heading);
-            Self.PlayClip("Walk");
+            FaceTowards(heading);
+            ApplyFeintLean(IsFeinting(now) ? -heading : 0);
+        }
+
+        // 궤도에서 이만큼 벗어난 채 이만큼 오래 버티면 막힌 것으로 본다.
+        const float ReanchorDistance = 0.6f;
+        const float ReanchorSeconds = 0.5f;
+        float _blockedTimer;
+
+        const float FeintLeanDegrees = 14f;
+        Transform _art;
+
+        void ApplyFeintLean(int direction)
+        {
+            // 겉모습만 기울인다. 루트를 돌리면 콜라이더가 함께 돌아 판정이 어긋난다.
+            if (_art == null)
+            {
+                var animator = GetComponentInChildren<World.SpriteAnimator>();
+                _art = animator != null ? animator.transform
+                     : Sprite != null ? Sprite.transform : null;
+                if (_art == null || _art == transform) return;
+            }
+
+            float target = direction * FeintLeanDegrees;
+            float current = _art.localEulerAngles.z;
+            if (current > 180f) current -= 360f;
+            _art.localRotation = Quaternion.Euler(0f, 0f,
+                Mathf.MoveTowards(current, target, 90f * Time.fixedDeltaTime));
         }
 
         public Vector3 PredictPosition(float leadSeconds)

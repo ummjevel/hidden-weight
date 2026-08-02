@@ -78,9 +78,14 @@ namespace HiddenWeight.World
         static void BuildTraversalEdges()
         {
             var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
+            ConfigureR04ChimneyEntry();
+            ConfigureR08ChimneyExit();
+            DisableR07FakeStairWall();
+            DisableLegacyResidueFloorArt(palette);
             foreach (var tilemap in FindObjectsByType<Tilemap>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
+                FlattenResidueEntrance(tilemap);
                 // 일부 예전 생성 씬에는 이 값이 꺼진 채 저장돼 있다. 충돌은 남아 있어
                 // "안 보이는데 막히는 바닥"이 되므로 런타임에서 반드시 복구한다.
                 var tileRenderer = tilemap.GetComponent<TilemapRenderer>();
@@ -121,6 +126,196 @@ namespace HiddenWeight.World
             BuildWallClimbSurfaces(palette);
             BuildPlatformSurfaces(palette);
             BuildBlockedHints();
+        }
+
+        static void DisableR07FakeStairWall()
+        {
+            var stair = GameObject.Find("R07_StairVisual");
+            var room = GameObject.Find("Room07")?.GetComponent<Room>();
+            if (stair == null || room == null || !IsResidue(stair.scene.name)) return;
+
+            // 이 스프라이트는 계단과 거대한 아치 벽이 한 장이다. 실제 충돌은 중간의
+            // SafePlatform에만 있어 아치 부분을 그대로 통과하므로 가짜 벽 전체를 숨긴다.
+            foreach (var renderer in stair.GetComponentsInChildren<SpriteRenderer>(true))
+                renderer.enabled = false;
+        }
+
+        static void ConfigureR04ChimneyEntry()
+        {
+            var left = GameObject.Find("R04_Chimney_L")?.GetComponent<BoxCollider2D>();
+            var right = GameObject.Find("R04_Chimney_R")?.GetComponent<BoxCollider2D>();
+            var room = GameObject.Find("Room04")?.GetComponent<Room>();
+            if (left == null || right == null || room == null
+                || !IsResidue(left.gameObject.scene.name))
+                return;
+
+            float floorY = room.WorldBounds.min.y + 2f;
+            float topY = room.WorldBounds.min.y + 12f;
+            SetWallVerticalSpan(left, floorY + 3f, topY); // 걸어서 들어가는 왼쪽 입구
+            // 마지막 오른쪽 벽은 통과 경로로 확정됐다. 상부 콜라이더와 그림 일부만 남기면
+            // 통과 가능한 가짜 벽처럼 보이므로 판정과 시각물을 함께 제거한다.
+            right.enabled = false;
+            foreach (var renderer in right.GetComponentsInChildren<SpriteRenderer>(true))
+                renderer.enabled = false;
+        }
+
+        static void ConfigureR08ChimneyExit()
+        {
+            var left = GameObject.Find("R08_Chimney_L")?.GetComponent<BoxCollider2D>();
+            var right = GameObject.Find("R08_Chimney_R")?.GetComponent<BoxCollider2D>();
+            var room = GameObject.Find("Room08")?.GetComponent<Room>();
+            if (left == null || right == null || room == null
+                || !IsResidue(left.gameObject.scene.name))
+                return;
+
+            // 왼쪽은 왕복 벽점프 높이를 확보하고, 오른쪽은 착지대 보행면(local y=13)과
+            // 정확히 이어 붙인다. 오른쪽 벽이 더 낮으면 꼭대기에 붙은 캐릭터가 착지대의
+            // 세로 옆면에 막혀 멈춘다.
+            float bottomY = room.WorldBounds.min.y + 4f;
+            float leftTopY = room.WorldBounds.min.y + 13f;
+            float rightTopY = room.WorldBounds.min.y + 13f;
+            SetWallVerticalSpan(left, bottomY, leftTopY);
+            SetWallVerticalSpan(right, bottomY, rightTopY);
+            InvalidateMismatchedWallVisual(left);
+            InvalidateMismatchedWallVisual(right);
+            ConfigureR08LiftRoute(room);
+        }
+
+        static void ConfigureR08LiftRoute(Room room)
+        {
+            var movers = new System.Collections.Generic.List<MovingPlatform>();
+            foreach (var mover in FindObjectsByType<MovingPlatform>(
+                         FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                if (room.WorldBounds.Contains(mover.transform.position)) movers.Add(mover);
+            movers.Sort((a, b) => a.transform.position.y.CompareTo(b.transform.position.y));
+
+            Vector3 origin = room.WorldBounds.min;
+            if (movers.Count >= 1)
+            {
+                movers[0].name = "R08_MovingLower";
+                movers[0].ConfigurePath(origin + new Vector3(13f, 13f, 0f),
+                    new Vector2(4f, 0f), 4f);
+            }
+            if (movers.Count >= 2)
+            {
+                // 기존 y=17은 아래 발판보다 4유닛 높아 최대 점프로 닿지 않는다.
+                movers[1].name = "R08_MovingUpper";
+                movers[1].ConfigurePath(origin + new Vector3(13f, 15.5f, 0f),
+                    new Vector2(4f, 0f), 4f);
+            }
+
+            if (GameObject.Find("R08_UpperStep") != null
+                || GameObject.Find("R08_UpperStep_Runtime") != null)
+                return;
+
+            // 낮춘 두 번째 이동 발판과 y=21 고정 바닥 사이에도 안전 점프 높이를 유지한다.
+            var step = new GameObject("R08_UpperStep_Runtime");
+            step.transform.SetParent(room.transform, true);
+            step.transform.position = origin + new Vector3(14.25f, 18f, 0f);
+            step.layer = LayerMask.NameToLayer("Ground");
+            var collider = step.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(3f, 0.5f);
+
+            var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
+            Sprite sprite = palette != null ? palette.ResiduePlatformFor(3f) : null;
+            if (sprite == null || sprite.bounds.size.x <= 0f) return;
+            var art = new GameObject("Art");
+            art.transform.SetParent(step.transform, false);
+            float scale = 3f / sprite.bounds.size.x;
+            art.transform.localScale = Vector3.one * scale;
+            art.transform.localPosition = new Vector3(
+                -sprite.bounds.center.x * scale,
+                collider.offset.y + collider.size.y * 0.5f - sprite.bounds.max.y * scale,
+                0f);
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = 4;
+        }
+
+        static void InvalidateMismatchedWallVisual(BoxCollider2D wall)
+        {
+            Transform root = wall.transform.Find("WallClimbSurfaces_Runtime");
+            if (root == null) return;
+
+            bool hasRenderer = false;
+            Bounds artBounds = default;
+            foreach (var renderer in root.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (!renderer.enabled || renderer.sprite == null) continue;
+                if (!hasRenderer) artBounds = renderer.bounds;
+                else artBounds.Encapsulate(renderer.bounds);
+                hasRenderer = true;
+            }
+
+            if (hasRenderer
+                && Mathf.Abs(artBounds.min.y - wall.bounds.min.y) <= 0.05f
+                && Mathf.Abs(artBounds.max.y - wall.bounds.max.y) <= 0.05f)
+                return;
+
+            // 기존 루트를 다른 이름으로 치워 두면 같은 프레임에 새 높이의 정식 모듈을
+            // 만들 수 있다. Destroy의 프레임 지연 때문에 옛 루트를 그대로 두면 재생성이
+            // 건너뛰어져 가짜 윗부분이 계속 남는다.
+            root.name = "WallClimbSurfaces_Stale";
+            foreach (var renderer in root.GetComponentsInChildren<SpriteRenderer>(true))
+                renderer.enabled = false;
+            Destroy(root.gameObject);
+        }
+
+        static void SetWallVerticalSpan(BoxCollider2D wall, float bottomY, float topY)
+        {
+            float height = topY - bottomY;
+            if (height <= 0f || wall.size.y <= 0f) return;
+            float parentScaleY = wall.transform.parent != null
+                ? Mathf.Max(0.0001f, Mathf.Abs(wall.transform.parent.lossyScale.y)) : 1f;
+            Vector3 scale = wall.transform.localScale;
+            scale.y = height / (wall.size.y * parentScaleY);
+            wall.transform.localScale = scale;
+            Vector3 position = wall.transform.position;
+            position.y = (bottomY + topY) * 0.5f;
+            wall.transform.position = position;
+        }
+
+        static void FlattenResidueEntrance(Tilemap tilemap)
+        {
+            if (tilemap == null || !IsResidue(tilemap.gameObject.scene.name)) return;
+            var roomObject = GameObject.Find("Room01");
+            var room = roomObject != null ? roomObject.GetComponent<Room>() : null;
+            if (room == null) return;
+
+            Bounds bounds = room.WorldBounds;
+            int xMin = tilemap.WorldToCell(new Vector3(bounds.min.x + 0.05f, bounds.min.y, 0f)).x;
+            int xMax = tilemap.WorldToCell(new Vector3(bounds.max.x - 0.05f, bounds.min.y, 0f)).x;
+            // R01의 기본 바닥은 방 바닥 기준 local y=2다. 과거 둔덕·계단 셀이 남아
+            // 평지인데도 두 번째 계단 그림이 생성됐으므로 기본 표면보다 높은 셀만 제거한다.
+            int surfaceCellY = tilemap.WorldToCell(
+                new Vector3(bounds.min.x, bounds.min.y + 2f - 0.05f, 0f)).y;
+            bool changed = false;
+            for (int x = xMin; x <= xMax; x++)
+            for (int y = surfaceCellY + 1; y < tilemap.cellBounds.yMax; y++)
+            {
+                var cell = new Vector3Int(x, y, 0);
+                if (!tilemap.HasTile(cell)) continue;
+                tilemap.SetTile(cell, null);
+                changed = true;
+            }
+            if (changed) tilemap.RefreshAllTiles();
+        }
+
+        static void DisableLegacyResidueFloorArt(TraversalArtPalette palette)
+        {
+            if (palette == null || !palette.HasResidueModularV3) return;
+
+            // 씬에 저장된 구형 FloorArt와 런타임 V3 표면을 동시에 그리면, 실제 발밑 표면
+            // 뒤로 두 번째 바닥이 한 단 더 솟아 보인다. 잔재에서만 구형 오버레이를 끄고
+            // 충돌 Tilemap과 일치하는 런타임 모듈 하나만 사용한다.
+            foreach (var renderer in FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (renderer.name != "FloorArt"
+                    || !IsResidue(renderer.gameObject.scene.name))
+                    continue;
+                renderer.enabled = false;
+            }
         }
 
         // 길을 막는 것들에 "왜 막혔는지" 문구를 붙인다. 전투 잠금벽·능력 게이트·아직 열지 않은
@@ -188,6 +383,47 @@ namespace HiddenWeight.World
                 var root = new GameObject("PlatformSurface_Runtime");
                 root.transform.SetParent(platform.transform, false);
 
+                if (IsResidue(sceneName) && palette.HasResidueModularV3)
+                {
+                    Bounds world = platform.bounds;
+                    AddResidueHorizontalRun(root.transform, palette,
+                        new Vector3(world.min.x, world.max.y, platform.transform.position.z),
+                        new Vector3(world.max.x, world.max.y, platform.transform.position.z),
+                        true, 4);
+
+                    // 잔재 모듈은 어두운 석재라 아래에서 올려다보면 배경과 섞였다. 특히 R02의
+                    // 끊어진 다리는 충돌은 있는데 밑면이 안 보여 투명 천장처럼 느껴졌으므로,
+                    // 실제 BoxCollider 네 면을 푸른 윤곽으로 정확히 감싼다.
+                    // 네 면 윤곽은 R02의 끊어진 다리처럼 실제로 아래에서 부딪히는 얇은
+                    // 천장에만 필요하다. 모든 Ground 블록에 두르면 비밀방 덮개처럼 큰 블록의
+                    // 좌우선이 화면 전체를 가르는 밝은 기둥으로 보인다.
+                    if (!platform.name.StartsWith("R02_Bridge", System.StringComparison.Ordinal))
+                        continue;
+
+                    float residueScaleX = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.x));
+                    float residueScaleY = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.y));
+                    float residueThickX = 0.14f / residueScaleX;
+                    float residueThickY = 0.14f / residueScaleY;
+                    float residueLeft = platform.offset.x - platform.size.x * 0.5f;
+                    float residueRight = platform.offset.x + platform.size.x * 0.5f;
+                    float residueBottom = platform.offset.y - platform.size.y * 0.5f;
+                    float residueTop = platform.offset.y + platform.size.y * 0.5f;
+                    Color residueEdgeColor = TraversalEdgeColor(sceneName);
+                    AddPlatformEdge(root.transform, "PlatformEdgeTop", residueEdgeColor,
+                        new Vector2(platform.offset.x, residueTop - residueThickY * 0.5f),
+                        new Vector2(platform.size.x, residueThickY));
+                    AddPlatformEdge(root.transform, "PlatformEdgeBottom", residueEdgeColor,
+                        new Vector2(platform.offset.x, residueBottom + residueThickY * 0.5f),
+                        new Vector2(platform.size.x, residueThickY));
+                    AddPlatformEdge(root.transform, "PlatformEdgeLeft", residueEdgeColor,
+                        new Vector2(residueLeft + residueThickX * 0.5f, platform.offset.y),
+                        new Vector2(residueThickX, platform.size.y));
+                    AddPlatformEdge(root.transform, "PlatformEdgeRight", residueEdgeColor,
+                        new Vector2(residueRight - residueThickX * 0.5f, platform.offset.y),
+                        new Vector2(residueThickX, platform.size.y));
+                    continue;
+                }
+
                 // BuildSolidBlock이 크기를 localScale에 싣기 때문에 콜라이더 자체는 1x1이다.
                 // 자식은 그 스케일을 그대로 물려받으므로 로컬 단위로만 계산한다.
                 float topY = platform.offset.y + platform.size.y * 0.5f;
@@ -201,17 +437,39 @@ namespace HiddenWeight.World
 
                 var surface = new GameObject("PlatformSurface");
                 surface.transform.SetParent(root.transform, false);
-                surface.transform.localPosition = new Vector3(
-                    platform.offset.x, topY - bandHeight, 0f);
-                surface.transform.localScale = new Vector3(
-                    platform.size.x / sprite.bounds.size.x,
-                    bandHeight / sprite.bounds.size.y,
-                    1f);
+                if (sceneName.Contains("Prologue"))
+                {
+                    var surfaceScale = new Vector3(
+                        platform.size.x / sprite.bounds.size.x,
+                        bandHeight / sprite.bounds.size.y,
+                        1f);
+                    surface.transform.localScale = surfaceScale;
+                    // 튜토리얼 생성 이미지는 중앙 피벗이므로 실제 bounds의 윗끝을 맞춘다.
+                    surface.transform.localPosition = new Vector3(
+                        platform.offset.x - sprite.bounds.center.x * surfaceScale.x,
+                        topY - sprite.bounds.max.y * surfaceScale.y,
+                        0f);
+                }
+                else
+                {
+                    // 응시·균열은 기존 배치 계산을 그대로 유지한다.
+                    surface.transform.localPosition = new Vector3(
+                        platform.offset.x, topY - bandHeight, 0f);
+                    surface.transform.localScale = new Vector3(
+                        platform.size.x / sprite.bounds.size.x,
+                        bandHeight / sprite.bounds.size.y,
+                        1f);
+                }
 
                 var fill = surface.AddComponent<SpriteRenderer>();
                 fill.sprite = sprite;
                 fill.color = palette.SurfaceTintFor(sceneName);
                 fill.sortingOrder = 4;
+
+                // 튜토리얼 전용 지형 이미지가 충돌면을 충분히 보여 준다. 예전 회색 블록을
+                // 보완하던 네 면 테두리는 이제 바닥 위의 굵은 회색 선으로만 남으므로 생략한다.
+                if (sceneName.Contains("Prologue"))
+                    continue;
 
                 // 네 면을 모두 두른다. 윗면만 그리면 서서 밟는 발판은 보이지만, 세로 벽이나
                 // 천장은 플레이어가 부딪히는 면(옆·아래)에 아무것도 없어 "안 보이는데 막히는
@@ -308,6 +566,24 @@ namespace HiddenWeight.World
 
             string sceneName = tilemap.gameObject.scene.name;
             Sprite surfaceSprite = palette == null ? null : palette.SurfaceFor(sceneName);
+            if (IsResidue(sceneName) && palette != null && palette.HasResidueModularV3)
+            {
+                // 타일맵의 단순 높이차는 올라타는 독립 기둥이 아니다. 등반 기둥 이미지를
+                // 세우면 평평한 통로마다 장애물이 솟은 것처럼 보이므로, 얇은 석조 측면만 댄다.
+                AddResidueFlatWallFace(parent, palette,
+                    start + Vector3.right * (-side * 0.5f),
+                    end + Vector3.right * (-side * 0.5f), 2);
+                return;
+            }
+            if (sceneName.Contains("Prologue") && palette != null && palette.prologueFill != null)
+            {
+                // 낮은 턱의 옆면은 등반용 기둥이 아니다. 무늬가 이어지는 채움재만
+                // 실제 노출 높이만큼 붙여 가짜 장애물처럼 솟아 보이지 않게 한다.
+                AddPrologueFlatWallFace(parent, palette.prologueFill,
+                    start + Vector3.right * (-side * 0.36f),
+                    end + Vector3.right * (-side * 0.36f), 2);
+                return;
+            }
             if (surfaceSprite != null && surfaceSprite.bounds.size.x > 0f
                 && surfaceSprite.bounds.size.y > 0f)
             {
@@ -356,7 +632,26 @@ namespace HiddenWeight.World
             foreach (var wall in FindObjectsByType<BoxCollider2D>(
                          FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
-                if (wall.isTrigger || wall.gameObject.layer != LayerMask.NameToLayer("Wall")) continue;
+                string sceneName = wall.gameObject.scene.name;
+                if (wall.isTrigger || wall.gameObject.layer != LayerMask.NameToLayer("Wall"))
+                    continue;
+                // 비활성 벽 건너뛰기는 R04 통과 경로를 위한 잔재 전용 처리다.
+                // 다른 지역은 기존 동작을 유지한다.
+                if (!wall.enabled && IsResidue(sceneName)) continue;
+
+                bool residueV3 = IsResidue(sceneName) && palette != null
+                    && palette.HasResidueModularV3;
+
+                // 스크립트 재컴파일 뒤에도 런타임 루트는 남을 수 있다. 이 검사를 루트 존재
+                // 확인보다 먼저 해야, 구형 갈색 Art가 다시 켜져 콜라이더 위로 솟지 않는다.
+                if (residueV3)
+                {
+                    Transform runtimeRoot = wall.transform.Find("WallClimbSurfaces_Runtime");
+                    foreach (var oldRenderer in wall.GetComponentsInChildren<SpriteRenderer>(true))
+                        if (runtimeRoot == null || !oldRenderer.transform.IsChildOf(runtimeRoot))
+                            oldRenderer.enabled = false;
+                }
+
                 if (wall.transform.Find("WallClimbSurfaces_Runtime") != null) continue;
 
                 // 전투 잠금벽도 Wall 레이어라 여기까지 온다. 하지만 그건 올라가라고 세운 벽이
@@ -364,12 +659,26 @@ namespace HiddenWeight.World
                 // 잘못 안내하게 되므로 건너뛰고, 대신 막힌 이유를 문구로 알려 준다.
                 if (wall.GetComponentInParent<Encounter>() != null) continue;
 
-                string sceneName = wall.gameObject.scene.name;
                 Sprite sprite = palette == null ? null : palette.SurfaceFor(sceneName);
                 if (sprite == null || sprite.bounds.size.x <= 0f || sprite.bounds.size.y <= 0f) continue;
 
                 var root = new GameObject("WallClimbSurfaces_Runtime");
                 root.transform.SetParent(wall.transform, false);
+
+                if (residueV3)
+                {
+                    // 씬에 저장된 구형 세로벽 Art는 원래 벽 스케일을 다시 곱해 그린다. 런타임에
+                    // 벽 높이를 조절하면 콜라이더 위로 길게 돌출되므로 V3 벽 모듈만 남긴다.
+                    foreach (var oldRenderer in wall.GetComponentsInChildren<SpriteRenderer>(true))
+                        if (!oldRenderer.transform.IsChildOf(root.transform))
+                            oldRenderer.enabled = false;
+
+                    Bounds world = wall.bounds;
+                    AddResidueVerticalRun(root.transform, palette,
+                        new Vector3(world.center.x, world.min.y, wall.transform.position.z),
+                        new Vector3(world.center.x, world.max.y, wall.transform.position.z), 4);
+                    continue;
+                }
 
                 Color fill = palette.SurfaceTintFor(sceneName);
                 fill.a = Mathf.Max(fill.a, 0.48f);
@@ -419,6 +728,16 @@ namespace HiddenWeight.World
             string sceneName = tilemap.gameObject.scene.name;
             Sprite surfaceSprite = palette == null ? null : palette.SurfaceFor(sceneName);
 
+            if (IsResidue(sceneName) && palette != null && palette.HasResidueModularV3)
+            {
+                AddResidueGroundMass(tilemap, parent, palette, xMin, xMax, y);
+                AddResidueHorizontalRun(parent, palette, start, end, false, 1);
+                return;
+            }
+
+            if (sceneName.Contains("Prologue") && palette != null && palette.prologueFill != null)
+                AddPrologueGroundMass(tilemap, parent, palette.prologueFill, xMin, xMax, y);
+
             if (surfaceSprite != null && width > 0f)
             {
                 const float surfaceHeight = 1.65f;
@@ -436,10 +755,25 @@ namespace HiddenWeight.World
                         surface.transform.SetParent(parent, true);
                         float t = (i + 0.5f) / moduleCount;
                         // 지형 시트 피벗이 Bottom Center라 그림 윗면이 충돌 표면에 닿도록 내린다.
-                        surface.transform.position = Vector3.Lerp(start, end, t)
-                            + Vector3.down * surfaceHeight;
-                        surface.transform.localScale = new Vector3(
-                            moduleWidth / spriteSize.x, surfaceHeight / spriteSize.y, 1f);
+                        if (sceneName.Contains("Prologue"))
+                        {
+                            var worldScale = new Vector3(
+                                moduleWidth / spriteSize.x, surfaceHeight / spriteSize.y, 1f);
+                            surface.transform.localScale = worldScale;
+                            Vector3 segmentCenter = Vector3.Lerp(start, end, t);
+                            surface.transform.position = new Vector3(
+                                segmentCenter.x - surfaceSprite.bounds.center.x * worldScale.x,
+                                start.y - surfaceSprite.bounds.max.y * worldScale.y,
+                                segmentCenter.z);
+                        }
+                        else
+                        {
+                            // 응시·균열은 기존 피벗 전제와 위치 계산을 그대로 유지한다.
+                            surface.transform.position = Vector3.Lerp(start, end, t)
+                                + Vector3.down * surfaceHeight;
+                            surface.transform.localScale = new Vector3(
+                                moduleWidth / spriteSize.x, surfaceHeight / spriteSize.y, 1f);
+                        }
 
                         var renderer = surface.AddComponent<SpriteRenderer>();
                         renderer.sprite = surfaceSprite;
@@ -449,8 +783,249 @@ namespace HiddenWeight.World
                 }
             }
 
-            AddTraversalEdge(tilemap, parent, xMin, xMax, y);
+            if (!sceneName.Contains("Prologue"))
+                AddTraversalEdge(tilemap, parent, xMin, xMax, y);
         }
+
+        // 잔재 V3는 생성 원화의 종횡비를 보존한 채 조각을 반복한다. 폭이 달라도 돌과
+        // 철골의 굵기가 일정해지고, 별도의 노란 충돌선 없이 푸른 석재 윗면이 길을 알린다.
+        static void AddResidueHorizontalRun(Transform parent, TraversalArtPalette palette,
+                                            Vector3 start, Vector3 end,
+                                            bool standalone, int sortingOrder)
+        {
+            float width = Mathf.Abs(end.x - start.x);
+            if (width <= 0.01f) return;
+
+            Sprite sample = standalone
+                ? palette.ResiduePlatformFor(width)
+                : palette.residueGroundMiddle;
+            if (sample == null || sample.bounds.size.x <= 0f || sample.bounds.size.y <= 0f)
+                return;
+
+            const float targetHeight = 1.65f;
+            float naturalScale = targetHeight / sample.bounds.size.y;
+            float naturalWidth = sample.bounds.size.x * naturalScale;
+            int count = Mathf.Max(1, Mathf.CeilToInt(width / Mathf.Max(0.5f, naturalWidth * 0.94f)));
+            float segmentWidth = width / count;
+            float direction = Mathf.Sign(end.x - start.x);
+
+            for (int i = 0; i < count; i++)
+            {
+                Sprite piece = sample;
+                // 일반 보행면의 Left/Right 캡에는 세로 석주 장식이 들어 있어, 이어지는
+                // 평지에서도 통과 불가능한 장애물처럼 보였다. 실제 독립 발판이 아닌 타일맵
+                // 바닥은 중앙 평면 조각만 반복하고, 낭떠러지 여부는 지형 자체로 표현한다.
+
+                // 캡 조각의 비율도 보존한다. 연결점이 겹치도록 각 구간의 중앙을 고정한다.
+                float pieceScale = Mathf.Max(targetHeight / piece.bounds.size.y,
+                    segmentWidth / piece.bounds.size.x);
+                var go = new GameObject(standalone
+                    ? "ResiduePlatformModule" : "ResidueGroundModule");
+                go.transform.SetParent(parent, true);
+                go.transform.position = new Vector3(
+                    start.x + direction * segmentWidth * (i + 0.5f),
+                    start.y - piece.bounds.size.y * pieceScale,
+                    start.z);
+                Vector3 parentScale = parent.lossyScale;
+                go.transform.localScale = new Vector3(
+                    pieceScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+                    pieceScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)), 1f);
+
+                var renderer = go.AddComponent<SpriteRenderer>();
+                renderer.sprite = piece;
+                renderer.color = Color.white;
+                renderer.sortingOrder = sortingOrder;
+            }
+        }
+
+        static void AddResidueGroundMass(Tilemap tilemap, Transform parent,
+                                         TraversalArtPalette palette,
+                                         int xMin, int xMax, int surfaceY)
+        {
+            Sprite fill = palette.residueGroundFill;
+            if (fill == null || fill.bounds.size.x <= 0f || fill.bounds.size.y <= 0f)
+                return;
+
+            // 이 수평면 아래에서 모든 열에 공통으로 실제 타일이 이어지는 깊이까지만 채운다.
+            // 따라서 구덩이를 가짜 그림으로 막지 않으면서, 숨겨 둔 회색 타일 대신 석조 몸체가
+            // 바닥 아래로 이어져 보인다.
+            int commonBottom = tilemap.cellBounds.yMin;
+            bool first = true;
+            for (int x = xMin; x < xMax; x++)
+            {
+                int bottom = surfaceY;
+                while (bottom - 1 >= tilemap.cellBounds.yMin
+                       && tilemap.HasTile(new Vector3Int(x, bottom - 1, 0)))
+                    bottom--;
+                commonBottom = first ? bottom : Mathf.Max(commonBottom, bottom);
+                first = false;
+            }
+
+            Vector3 worldBottom = tilemap.CellToWorld(new Vector3Int(xMin, commonBottom, 0));
+            Vector3 worldTop = tilemap.CellToWorld(new Vector3Int(xMin, surfaceY + 1, 0));
+            float collisionDepth = worldTop.y - worldBottom.y;
+            float width = xMax - xMin;
+            if (collisionDepth <= 0.05f || width <= 0.05f) return;
+
+            // 충돌 타일은 낙하 방지를 위해 보통 6유닛 깊지만, 그림까지 그 깊이로 키우면
+            // 석벽 한 장이 화면 절반을 차지한다. 보행면 아래 얕은 기단만 보여 주고 나머지는
+            // 배경 어둠에 묻어 꿈 공간의 깊이로 처리한다.
+            float visibleDepth = Mathf.Min(collisionDepth, 2.15f);
+            float scale = visibleDepth / fill.bounds.size.y;
+            float naturalWidth = fill.bounds.size.x * scale;
+            int count = Mathf.Max(1, Mathf.CeilToInt(width / Mathf.Max(1f, naturalWidth * 0.9f)));
+            float segmentWidth = width / count;
+            for (int i = 0; i < count; i++)
+            {
+                var mass = new GameObject("ResidueGroundMass");
+                mass.transform.SetParent(parent, true);
+                mass.transform.position = new Vector3(
+                    xMin + segmentWidth * (i + 0.5f), worldTop.y - visibleDepth, worldBottom.z);
+                mass.transform.localScale = Vector3.one * scale;
+
+                var renderer = mass.AddComponent<SpriteRenderer>();
+                renderer.sprite = fill;
+                renderer.color = new Color(0.72f, 0.76f, 0.86f, 0.58f);
+                renderer.sortingOrder = 0;
+            }
+        }
+
+        static void AddPrologueGroundMass(Tilemap tilemap, Transform parent, Sprite fill,
+                                          int xMin, int xMax, int surfaceY)
+        {
+            if (fill == null || fill.bounds.size.x <= 0f || fill.bounds.size.y <= 0f)
+                return;
+
+            int commonBottom = tilemap.cellBounds.yMin;
+            bool first = true;
+            for (int x = xMin; x < xMax; x++)
+            {
+                int bottom = surfaceY;
+                while (bottom - 1 >= tilemap.cellBounds.yMin
+                       && tilemap.HasTile(new Vector3Int(x, bottom - 1, 0)))
+                    bottom--;
+                commonBottom = first ? bottom : Mathf.Max(commonBottom, bottom);
+                first = false;
+            }
+
+            Vector3 worldBottom = tilemap.CellToWorld(new Vector3Int(xMin, commonBottom, 0));
+            Vector3 worldTop = tilemap.CellToWorld(new Vector3Int(xMin, surfaceY + 1, 0));
+            float visibleDepth = Mathf.Min(worldTop.y - worldBottom.y, 2f);
+            float width = xMax - xMin;
+            if (visibleDepth <= 0.05f || width <= 0.05f) return;
+
+            // 일반 바닥 아래는 기둥 조각을 세우지 않고 전용 무경계 텍스처로 한 덩어리처럼
+            // 채운다. Tiled 모드라 폭이나 깊이가 달라도 이미지가 늘어나지 않는다.
+            var mass = new GameObject("PrologueGroundMass");
+            mass.transform.SetParent(parent, true);
+            mass.transform.position = new Vector3(
+                xMin + width * 0.5f, worldTop.y - visibleDepth * 0.5f, worldTop.z);
+
+            var renderer = mass.AddComponent<SpriteRenderer>();
+            renderer.sprite = fill;
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.size = new Vector2(width, visibleDepth);
+            renderer.color = new Color(0.76f, 0.78f, 1f, 0.72f);
+            renderer.sortingOrder = 0;
+        }
+
+        static void AddResidueVerticalRun(Transform parent, TraversalArtPalette palette,
+                                          Vector3 start, Vector3 end, int sortingOrder,
+                                          float targetWidth = 1f)
+        {
+            Sprite piece = palette.residueClimbPillar != null
+                ? palette.residueClimbPillar : palette.residueWallMiddle;
+            if (piece == null || piece.bounds.size.x <= 0f || piece.bounds.size.y <= 0f)
+                return;
+
+            float height = Mathf.Abs(end.y - start.y);
+            if (height <= 0.01f) return;
+
+            float naturalScale = targetWidth / piece.bounds.size.x;
+            float naturalHeight = piece.bounds.size.y * naturalScale;
+            int count = Mathf.Max(1, Mathf.CeilToInt(height / Mathf.Max(0.5f, naturalHeight * 0.96f)));
+            float segmentHeight = height / count;
+            float scaleX = naturalScale;
+            float scaleY = segmentHeight / piece.bounds.size.y;
+            float direction = Mathf.Sign(end.y - start.y);
+
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject("ResidueWallModule");
+                go.transform.SetParent(parent, true);
+                go.transform.position = new Vector3(start.x,
+                    start.y + direction * segmentHeight * (i + 0.5f), start.z);
+                Vector3 parentScale = parent.lossyScale;
+                go.transform.localScale = new Vector3(
+                    scaleX / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+                    scaleY / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)), 1f);
+
+                var renderer = go.AddComponent<SpriteRenderer>();
+                renderer.sprite = piece;
+                renderer.color = Color.white;
+                renderer.sortingOrder = sortingOrder;
+            }
+        }
+
+        static void AddResidueFlatWallFace(Transform parent, TraversalArtPalette palette,
+                                           Vector3 start, Vector3 end, int sortingOrder)
+        {
+            Sprite piece = palette.residueGroundFill;
+            if (piece == null || piece.bounds.size.x <= 0f || piece.bounds.size.y <= 0f)
+                return;
+
+            float height = Mathf.Abs(end.y - start.y);
+            if (height <= 0.01f) return;
+
+            const float faceWidth = 0.58f;
+            float scale = faceWidth / piece.bounds.size.x;
+            float naturalHeight = Mathf.Max(0.35f, piece.bounds.size.y * scale);
+            int count = Mathf.Max(1, Mathf.CeilToInt(height / naturalHeight));
+            float segmentHeight = height / count;
+            float direction = Mathf.Sign(end.y - start.y);
+            float scaleY = segmentHeight / piece.bounds.size.y;
+
+            for (int i = 0; i < count; i++)
+            {
+                var face = new GameObject("ResidueFlatWallFace");
+                face.transform.SetParent(parent, true);
+                face.transform.position = new Vector3(start.x,
+                    start.y + direction * segmentHeight * (i + 0.5f), start.z);
+                Vector3 parentScale = parent.lossyScale;
+                face.transform.localScale = new Vector3(
+                    scale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+                    scaleY / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)), 1f);
+
+                var renderer = face.AddComponent<SpriteRenderer>();
+                renderer.sprite = piece;
+                renderer.color = new Color(0.62f, 0.68f, 0.8f, 0.72f);
+                renderer.sortingOrder = sortingOrder;
+            }
+        }
+
+        static void AddPrologueFlatWallFace(Transform parent, Sprite fill,
+                                            Vector3 start, Vector3 end, int sortingOrder)
+        {
+            if (fill == null || fill.bounds.size.x <= 0f || fill.bounds.size.y <= 0f)
+                return;
+            float height = Mathf.Abs(end.y - start.y);
+            if (height <= 0.01f) return;
+
+            const float faceWidth = 0.58f;
+            var face = new GameObject("PrologueFlatWallFace");
+            face.transform.SetParent(parent, true);
+            face.transform.position = (start + end) * 0.5f;
+
+            var renderer = face.AddComponent<SpriteRenderer>();
+            renderer.sprite = fill;
+            renderer.drawMode = SpriteDrawMode.Tiled;
+            renderer.size = new Vector2(faceWidth, height);
+            renderer.color = new Color(0.76f, 0.78f, 1f, 0.78f);
+            renderer.sortingOrder = sortingOrder;
+        }
+
+        static bool IsResidue(string sceneName)
+            => sceneName.Contains("Residue");
 
         static void AddTraversalEdge(Tilemap tilemap, Transform parent,
                                      int xMin, int xMax, int y)
@@ -506,6 +1081,10 @@ namespace HiddenWeight.World
 
         static Color TraversalEdgeColor(string sceneName)
         {
+            if (sceneName.Contains("Prologue"))
+                return new Color(0.86f, 0.9f, 1f, 0.98f);
+            if (sceneName.Contains("Residue"))
+                return new Color(0.66f, 0.8f, 1f, 0.96f);
             if (sceneName.Contains("Gaze"))
                 return new Color(0.82f, 0.74f, 1f, 0.98f);
             if (sceneName.Contains("Fracture"))

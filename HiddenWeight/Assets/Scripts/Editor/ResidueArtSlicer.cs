@@ -22,6 +22,7 @@ namespace HiddenWeight.EditorTools
             public string Prefix;          // 이름 배열이 없을 때 Prefix_r{행}_c{열}로 붙인다
             public string[] Names;         // 좌→우, 위→아래 순서
             public string[] RowClips;      // 행 = 클립. 프레임 이름은 "클립_00" 형식이 된다
+            public int CellInset;          // 이웃 셀의 가장자리 픽셀이 번지는 시트만 안쪽으로 자른다
         }
 
         // 문서의 "시트 분할" 표 그대로.
@@ -90,11 +91,19 @@ namespace HiddenWeight.EditorTools
             new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "WalkerIdle", "WalkerWalk", "WalkerAttack", "WalkerHit" } },
+            // R06 QA에서 발 기준선과 셀 중앙이 어긋난 것이 확인되어 이미지 자체를 다시 정렬한
+            // 전용 시트. 기존 Walker 클립을 덮지 않고 R06만 먼저 검수할 수 있게 이름을 분리한다.
+            new Sheet { Path = "Gameplay/Enemies/Animation/ResidueWalker_v3.png",
+                        Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f), CellInset = 1,
+                        RowClips = new[] { "WalkerR06Idle", "WalkerR06Walk",
+                                           "WalkerR06Attack", "WalkerR06Hit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HangingFinger_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
                         RowClips = new[] { "FingerIdle", "FingerWalk", "FingerAttack", "FingerHit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/MourningCarrier_v1.png",
-                        Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
+                        // 실제 몸체의 발끝은 각 셀 바닥에서 약 24px 위에 있다. 중앙 피벗은
+                        // 몸을 아래로 끌어내리고, 축소 시 이웃 행의 경계까지 샘플링했다.
+                        Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.075f), CellInset = 2,
                         RowClips = new[] { "CarrierIdle", "CarrierWalk", "CarrierAttack", "CarrierHit" } },
             new Sheet { Path = "Gameplay/Enemies/Animation/HardenedResidue_v1.png",
                         Columns = 4, Rows = 4, Pivot = new Vector2(0.5f, 0.5f),
@@ -243,10 +252,13 @@ namespace HiddenWeight.EditorTools
                     else
                         name = $"{sheet.Prefix}_r{row + 1}_c{col + 1}";
 
+                    int inset = Mathf.Clamp(sheet.CellInset, 0,
+                        Mathf.Min(cellW, cellH) / 4);
                     list.Add(new SpriteMetaData
                     {
                         name = name,
-                        rect = new Rect(col * cellW, y, cellW, cellH),
+                        rect = new Rect(col * cellW + inset, y + inset,
+                            cellW - inset * 2, cellH - inset * 2),
                         alignment = (int)SpriteAlignment.Custom,
                         pivot = sheet.Pivot,
                     });

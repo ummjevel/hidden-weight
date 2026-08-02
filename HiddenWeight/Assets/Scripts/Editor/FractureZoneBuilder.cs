@@ -77,6 +77,22 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
+        // 다가가기만 해도 스스로 갈라져 무너지는 발판. 위험이 아니라 교재라서 피해 판정이
+        // 없고, 잠시 뒤 되살아나 다음에 지나가는 사람에게도 같은 장면을 보여 준다.
+        static GameObject BuildFractureOmenPlatform(Transform parent, Vector2 pos)
+        {
+            var go = BuildSafePlatform(parent, pos);
+            go.name = "F01_OmenPlatform";
+            ReplaceArt(go, "FracturePlatform_r1_c1", new Vector2(3f, 0.8f), 2);
+            AttachPlatformStates(go);
+
+            var sr = go.GetComponentInChildren<SpriteRenderer>();
+            if (sr != null) sr.color = FractureStone;
+
+            go.AddComponent<OmenPlatform>();
+            return go;
+        }
+
         static GameObject BuildFractureSafePlatform(Transform parent, Vector2 pos)
         {
             var go = BuildSafePlatform(parent, pos);
@@ -594,6 +610,75 @@ namespace HiddenWeight.EditorTools
 
             var door = go.AddComponent<RoomDoor>();
             door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side));
+
+            BuildFractureDoorVisual(go.transform, side, col.size);
+        }
+
+        // 문에 겉모습을 준다. 여태 문은 트리거 콜라이더뿐이라 화면에서는 아무것도 아니었고,
+        // 처음 오는 사람은 방의 어디가 출구인지 알 수 없었다.
+        //
+        // 문 시트의 아치 한 장만 얹어 봤더니 읽히지 않았다 — 얇은 선 한 겹이라 화려한 원화
+        // 배경에 묻히고, 앵커가 바닥 높이라 그림 절반이 바닥 아래로 들어가 공중에 뜬
+        // 낙서처럼 보였다. 그래서 지형과 같은 대리석으로 **문설주를 세운다**. 같은 재료로
+        // 지은 구조물이라 세계의 일부로 읽히고, 두 기둥 사이의 빈 곳이 곧 지나갈 자리다.
+        //
+        // 겉모습은 반드시 자식에 준다. 루트에 스케일을 주면 트리거 콜라이더가 함께 줄어
+        // 문이 열리는 범위가 달라진다.
+        static void BuildFractureDoorVisual(Transform parent, Side side, Vector2 size)
+        {
+            // 위아래로 난 문은 문설주를 세울 수 없다. 빛만 둔다.
+            bool upright = side != Side.U && side != Side.D;
+
+            const float postWidth = 0.55f;
+            const float openingHalf = 0.95f;   // 기둥 안쪽 면까지의 거리
+            const float postHeight = 3.4f;
+
+            if (upright)
+            {
+                // 지형 시트의 피벗은 Bottom이다(FractureEnvironmentArtSlicer). 중심 기준으로
+                // 놓으면 그림이 절반 높이만큼 위로 떠올라 문이 공중에 매달린다 —
+                // 실제로 한 번 그렇게 나왔다. 앵커는 바닥 높이이므로 y=0이 곧 밑동이다.
+                DoorPiece(parent, "DoorPostLeft", "FractureTerrain_r2_c3",
+                    new Vector2(-openingHalf - postWidth * 0.5f, 0f),
+                    new Vector2(postWidth, postHeight), new Color(0.82f, 0.84f, 0.95f, 1f), 5);
+                DoorPiece(parent, "DoorPostRight", "FractureTerrain_r2_c3",
+                    new Vector2(openingHalf + postWidth * 0.5f, 0f),
+                    new Vector2(postWidth, postHeight), new Color(0.82f, 0.84f, 0.95f, 1f), 5);
+                // 상인방. 두 기둥을 잇는 가로대가 있어야 "문"으로 읽힌다.
+                DoorPiece(parent, "DoorLintel", "FractureTerrain_r1_c3",
+                    new Vector2(0f, postHeight),
+                    new Vector2(openingHalf * 2f + postWidth * 2f, 0.7f),
+                    new Color(0.88f, 0.9f, 1f, 1f), 5);
+            }
+
+            // 지나갈 자리. 균열은 미래로 난 틈이므로 청록 발광이 맞다.
+            var glow = DoorPiece(parent, "DoorGlow", "FractureAmbientVFX_r1_c3",
+                new Vector2(0f, upright ? postHeight * 0.5f : 0f),
+                upright ? new Vector2(openingHalf * 1.9f, postHeight * 0.92f)
+                        : new Vector2(size.x * 1.4f, size.y * 1.2f),
+                new Color(0.62f, 0.95f, 1f, 0.55f), 4);
+            glow.gameObject.AddComponent<DoorBeacon>();
+        }
+
+        static SpriteRenderer DoorPiece(Transform parent, string name, string spriteName,
+                                        Vector2 offset, Vector2 size, Color tint, int order)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(offset.x, offset.y, 0f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = Art(spriteName);
+            sr.color = tint;
+            sr.sortingOrder = order;
+            if (sr.sprite != null)
+            {
+                var spriteSize = sr.sprite.bounds.size;
+                if (spriteSize.x > 0f && spriteSize.y > 0f)
+                    go.transform.localScale = new Vector3(
+                        size.x / spriteSize.x, size.y / spriteSize.y, 1f);
+            }
+            return sr;
         }
 
         static void BuildFractureRoomStart(RoomCtx c)
@@ -616,7 +701,8 @@ namespace HiddenWeight.EditorTools
             var zoneMarker = marker.AddComponent<HiddenWeight.Core.ZoneMarker>();
             SetField(zoneMarker, "zone", p => p.enumValueIndex = (int)ZoneId.Fracture);
 
-            PlacePlayerAndCamera(root, new Vector3(3f, 4f, 0f));
+            // 균열은 카메라 구도 연출을 쓰지 않는다 — 캐릭터 고정 추적.
+            PlacePlayerAndCamera(root, new Vector3(3f, 4f, 0f), lockCameraToPlayer: true);
 
             var loaderGo = new GameObject("RoomLoader");
             loaderGo.AddComponent<RoomLoader>();
@@ -667,26 +753,31 @@ namespace HiddenWeight.EditorTools
                 FloorArt = false
             };
 
-            BuildF01(ctx);
-            BuildF02(ctx);
-            BuildF03(ctx);
-            BuildF04(ctx);
-            BuildFS1(ctx);
-            BuildF05(ctx);
-            BuildF06(ctx);
-            BuildFS2(ctx);
-            BuildF07(ctx);
-            BuildF08(ctx);
-            BuildF09(ctx);
-            BuildF10(ctx);
-            BuildF11(ctx);
-            BuildFS3(ctx);
-            BuildF12(ctx);
+            // 방마다 오프셋을 여기서 준다.
+            //
+            // 예전에는 각 BuildFxx가 첫 줄에서 c.O = Fxx를 직접 넣었다. 방을 각자 씬으로
+            // 쪼개면서(62f891b) 방 씬은 로컬 (0,0) 기준이어야 해 그 줄을 걷어냈는데, 이
+            // Full 씬 빌더는 대신 오프셋을 주도록 고쳐지지 않았다 — 그 뒤로 이 함수는 15개
+            // 방을 전부 원점에 겹쳐 쌓는다. 커밋된 씬이 그 변경 이전에 구워져 있어서
+            // 한동안 드러나지 않았을 뿐이다(다시 구우면 봇이 첫 방에서 막힌다).
+            foreach (var (origin, build) in new (Vector2Int, System.Action<RoomCtx>)[]
+            {
+                (F01, BuildF01), (F02, BuildF02), (F03, BuildF03), (F04, BuildF04),
+                (FS1, BuildFS1), (F05, BuildF05), (F06, BuildF06), (FS2, BuildFS2),
+                (F07, BuildF07), (F08, BuildF08), (F09, BuildF09), (F10, BuildF10),
+                (F11, BuildF11), (FS3, BuildFS3), (F12, BuildF12),
+            })
+            {
+                ctx.O = origin;
+                build(ctx);
+            }
 
+            // 연결 통로는 방 상수로 절대 좌표를 직접 계산하므로 오프셋을 비워 둔다.
+            ctx.O = Vector2Int.zero;
             BuildFractureConnections(ctx);
 
             ctx.O = F01;
-            PlacePlayerAndCamera(root, new Vector3(F01.x + 3f, F01.y + 3f, 0f));
+            PlacePlayerAndCamera(root, new Vector3(F01.x + 3f, F01.y + 3f, 0f), lockCameraToPlayer: true);
 
             // 충돌 연출과 공격체 발사대는 지역에 하나씩 둔다.
             BuildImpactVFX(root.transform, FractureImpacts);
@@ -789,21 +880,32 @@ namespace HiddenWeight.EditorTools
             for (int i = 0; i < 3; i++)
             {
                 float x = 9f + i * 4f;
-                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}", c.P(x, 4.5f), new Vector2(1.6f, 3f),
-                    "FractureDoor_r1_c3", FractureStone, 0f, -5);
-                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}_Echo", c.P(x + 0.25f, 4.6f), new Vector2(1.6f, 3f),
-                    "FractureDoor_r1_c3", new Color(1f, 1f, 1f, 0.35f), 0f, -6);
+                // 바닥(y=2)에 세운다. 예전에는 y=4.5에 놓아 공중에 뜬 채였고, 게다가 문
+                // 시트를 써서 진짜 포탈문과 같은 아치로 보였다 — 지나갈 수 있을 것처럼
+                // 생긴 것이 허공에 떠 있으니 "의미 없는 그림"으로 읽힐 수밖에 없었다.
+                // 미끼는 자각에 반응할 듯한 **화단**이어야 한다(설계 4.1의 "이중 윤곽의 꽃").
+                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}", c.P(x, 2f), new Vector2(1.5f, 1.8f),
+                    "FractureProp_r1_c4", FractureStone, 0f, -5);
+                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}_Echo", c.P(x + 0.22f, 2.05f), new Vector2(1.5f, 1.8f),
+                    "FractureProp_r1_c4", new Color(1f, 1f, 1f, 0.32f), 0f, -6);
             }
 
             // 하늘의 세로 균열 — 지역 전체의 진행 방향이자 결말(2.3절 랜드마크).
+            // 단색 Tile로 그리면 하늘에 회색 막대가 선다. 부드러운 발광 조각을 늘려
+            // 빛기둥으로 읽히게 한다(그라데이션이라 세로로 늘려도 티가 나지 않는다).
             BuildDecor(c.Root.transform, "F01_SkyFracture", c.P(21f, 12f), new Vector2(0.8f, 16f),
-                "Tile", new Color(0.9f, 0.86f, 0.95f), 6f, -8);
+                "FractureAmbientVFX_r1_c1", new Color(0.9f, 0.86f, 0.95f), 6f, -8);
 
-            // 방 끝에서, 닿기도 전에 스스로 무너져 있는 발판 조각을 보여준다(4.1절).
-            BuildDecor(c.Root.transform, "F01_BrokenPlatform_A", c.P(22f, 6f), new Vector2(1.4f, 0.5f),
-                "FracturePlatform_r2_c1", FractureStone, -18f, -3);
-            BuildDecor(c.Root.transform, "F01_BrokenPlatform_B", c.P(23.6f, 5.2f), new Vector2(1f, 0.5f),
-                "FracturePlatform_r2_c2", FractureStone, 24f, -3);
+            // 방 끝에서, 닿기도 전에 스스로 무너지는 발판(4.1절).
+            //
+            // 예전에는 "이미 부서져 있는 조각" 두 개를 장식으로 놓아 두었다. 그러면 사건이
+            // 아니라 배경이 되어, 플레이어는 무엇이 일어났는지 모른 채 지나간다. 이 지역의
+            // 첫 규칙은 눈앞에서 한 번 일어나야 배운다 — 밟기 전에, 안전한 거리에서.
+            // 높이 6은 바닥(2)에서 4유닛 위라 실측 점프 높이 2.72로는 절대 닿지 않는다.
+            // 닿을 수 없는 발판이 허공에 떠 있으면 "의미 없는 그림"으로 읽힌다 —
+            // 이 발판은 다가가면 무너지는 것을 보여 주는 교재이므로, 올라갈 수 있어
+            // 보이는 높이에 두어야 "저기로 갈 수 있겠다"가 먼저 생긴다.
+            BuildFractureOmenPlatform(c.Root.transform, c.P(22.5f, 4f));
 
             for (int i = 0; i < 4; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(10f + i * 1.5f, 3.2f));
@@ -817,15 +919,39 @@ namespace HiddenWeight.EditorTools
         static void BuildF02(RoomCtx c)
         {
             c.Floor(0, 8, 2);
-            c.Floor(8, 17, 1);   // 하부 안전 우회로 — 15초 안에 주 동선으로 돌아온다
-            c.Floor(17, 20, 3);
-            c.Floor(20, 22, 1);
+            c.Floor(8, 18, 1);   // 하부 안전 우회로 — 15초 안에 주 동선으로 돌아온다
+            // 복귀 턱을 두 계단으로 나누고, 붕괴 발판 아래를 벗어난 자리에 둔다.
+            //
+            // 예전에는 x=17에서 y=1 → y=3으로 한 번에 올라야 했는데, 그 바로 위 (16.5,4)에
+            // 붕괴 발판이 있어 폭 15~18을 천장처럼 덮고 있었다. 점프하면 머리가 발판 밑면에
+            // 막혀 **하부 안전로가 막다른 길**이 됐다 — 봇이 이 방에서만 계속 멈췄다.
+            // 이 길은 실패했을 때 돌아오는 안전로다. 되돌아오는 길에 두 번째 시험을 두면 안 된다
+            // (설계 4.2 "하부 통로가 막다른 길이 되지 않도록").
+            c.Floor(18, 19, 2);
+            c.Floor(19, 20, 3);
+            c.Floor(20, 22, 2);
             c.Floor(22, 28, 3);  // 출구 (28,3)
 
             // 상부 길 발판 3개. 안전 발판과 같은 그림·같은 색이라 외형으로는 구분되지 않는다.
-            BuildFractureCrumbling(c.Root.transform, c.P(9.5f, 4f));
-            BuildFractureCrumbling(c.Root.transform, c.P(13f, 4f));
-            BuildFractureCrumbling(c.Root.transform, c.P(16.5f, 4f));
+            //
+            // 첫 발판만 더 늦게 무너진다(4.2절 "첫 발판 실패는 피해 없이"). 규칙을 처음
+            // 만나는 자리라, 무너지는 것을 보고 반응할 시간이 있어야 배운다. 두 번째부터는
+            // 기본 속도로 돌아가 같은 실수를 반복하면 실제로 떨어진다.
+            var first = BuildFractureCrumbling(c.Root.transform, c.P(9.5f, 4f));
+            var firstPlatform = first.GetComponent<CrumblingPlatform>();
+            if (firstPlatform != null)
+                SetField(firstPlatform, "crumbleDelay", p => p.floatValue = 1.1f);
+
+            BuildFractureCrumbling(c.Root.transform, c.P(12.5f, 4f));
+            // 셋째 발판은 복귀 계단(x 18~20) 위를 덮지 않도록 왼쪽으로 옮긴다.
+            BuildFractureCrumbling(c.Root.transform, c.P(15.5f, 4f));
+
+            // 하부로 떨어졌을 때 "어디로 다시 올라가는가"가 한 화면 안에 보여야 한다(4.2절).
+            // 하부 통로(y=1)에서 주 동선(y=3)으로 합류하는 턱에 은은한 빛을 세운다.
+            var rejoin = BuildDecor(c.Root.transform, "F02_RejoinLight", c.P(17.5f, 3.4f),
+                new Vector2(1.1f, 2.6f), "FractureAmbientVFX_r1_c3",
+                new Color(0.72f, 0.94f, 1f, 0.5f), 0f, -3);
+            rejoin.gameObject.AddComponent<DoorBeacon>();
 
             BuildFractureEnemy(c.Root.transform, c.P(5f, 3f), FractureEnemyKind.Sprout);
             BuildFractureEnemy(c.Root.transform, c.P(24f, 4f), FractureEnemyKind.Sprout);
@@ -864,7 +990,7 @@ namespace HiddenWeight.EditorTools
             BuildDecor(c.Root.transform, "F03_InvertedGreenhouse", c.P(20f, 14f), new Vector2(6f, 5f),
                 "FractureProp_r1_c3", new Color(0.8f, 0.92f, 0.88f), 184f, -7);
             BuildDecor(c.Root.transform, "F03_SkyFracture", c.P(27f, 14f), new Vector2(0.8f, 14f),
-                "Tile", new Color(0.9f, 0.86f, 0.95f), 5f, -8);
+                "FractureAmbientVFX_r1_c1", new Color(0.9f, 0.86f, 0.95f), 5f, -8);
 
             c.Room("FractureRoom03", 30f, 18f);
         }
@@ -888,8 +1014,10 @@ namespace HiddenWeight.EditorTools
             // 왕복 화단이 구멍 위를 지날 때는 막히고, 비켜났을 때만 내려갈 수 있다 —
             // 능력이 아니라 반복 주기 관찰로 찾는 비밀방이다.
             BuildMovingPlatform(c.Root.transform, c.P(8.5f, 2.4f), new Vector2(3.5f, 0f), 7f);
+            // 기둥은 지형 벽 켜를 그대로 쓴다 — 배경 기둥과 실제 통로가 정렬되는 순간을
+            // 읽어야 FS1을 찾을 수 있으므로(설계 4.4) 진짜 벽처럼 보여야 한다.
             BuildDecor(c.Root.transform, "F04_FS1_Pillar", c.P(8.5f, 6f), new Vector2(1f, 7f),
-                "Tile", new Color(0.8f, 0.78f, 0.9f), 0f, -6);
+                "FractureTerrain_r2_c3", new Color(0.8f, 0.78f, 0.9f), 0f, -6);
 
             BuildFractureEnemy(c.Root.transform, c.P(4f, 3f), FractureEnemyKind.Sprout);
             BuildFractureEnemy(c.Root.transform, c.P(19f, 3f), FractureEnemyKind.Sprout);
@@ -1100,7 +1228,7 @@ namespace HiddenWeight.EditorTools
             }
 
             BuildDecor(c.Root.transform, "F09_MirrorAxis", c.P(16f, 8f), new Vector2(0.4f, 12f),
-                "Tile", FractureGhost, 0f, -4);
+                "FractureAmbientVFX_r1_c1", FractureGhost, 0f, -4);
 
             var sproutA = BuildFractureEnemy(c.Root.transform, c.P(10f, 4f), FractureEnemyKind.Sprout);
             var collector = BuildFractureEnemy(c.Root.transform, c.P(19f, 4f), FractureEnemyKind.Collector);

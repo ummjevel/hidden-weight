@@ -21,6 +21,11 @@ namespace HiddenWeight.Data
         public Vector2 fromAnchor;
         public Vector2 toAnchor;
 
+        // 비어 있으면 항상 사용 가능. 값이 있으면 ProgressState.IsShortcutOpen(id)가
+        // true일 때만 문이 반응한다 — 잔재/응시의 물리적 숏컷 A/B/C처럼, 보스를 잡거나
+        // 되감기 대상을 복원해야 열리는 지름길에 쓴다. 양쪽 문 모두 같은 id를 본다.
+        public string requiredShortcutId;
+
         public static string DoorId(string linkId, Side side) => linkId + ":" + side;
 
         public string FromDoorId => DoorId(linkId, fromSide);

@@ -291,10 +291,15 @@ namespace HiddenWeight.Enemies
                     // 홍채 훑기 — 시선이 바닥을 한 방향으로 지나간다. 숨거나(숨죽이기) 훑는
                     // 선 바깥으로 비키면(엄폐·이동) 둘 다 정답이 되도록, 판정은 좁은 세로
                     // 띠 하나가 천천히 움직이는 형태다.
+                    //
+                    // 엄폐: 판정 박스에 들어와도 보스와의 직선(origin→플레이어)이 지형
+                    // (obstacleMask = Ground|Wall)에 막히면 맞지 않는다 — 엄폐 기둥 뒤에
+                    // 서면 실제로 안전해진다(GazeHazard의 라인캐스트 차단과 같은 방식).
                     int direction = player.transform.position.x >= transform.position.x ? 1 : -1;
                     float distance = sweepRange * 2f;
                     float elapsed = 0f;
                     var sweep = ShowDropShadow(transform.position);
+                    var origin = new Vector2(transform.position.x, transform.position.y - 0.5f);
 
                     while (elapsed < gazeSweepSeconds)
                     {
@@ -309,7 +314,7 @@ namespace HiddenWeight.Enemies
                         }
 
                         var seen = Physics2D.OverlapBox(center, new Vector2(gazeSweepWidth, sweepHeight), 0f, gazeMask);
-                        if (seen != null)
+                        if (seen != null && !Physics2D.Linecast(origin, seen.transform.position, obstacleMask))
                         {
                             var health = seen.GetComponentInParent<PlayerHealth>();
                             if (health != null) health.TakeDamage(_self.Data.contactDamage, center);

@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Core;
 using HiddenWeight.Data;
 
 namespace HiddenWeight.World
@@ -13,22 +14,44 @@ namespace HiddenWeight.World
     public class ShortcutLever : MonoBehaviour
     {
         [SerializeField] Shortcut target;
+        // 방이 씬으로 갈라진 뒤로 레버와 숏컷은 서로 다른 씬에 산다(G05→G03). 유니티는 씬을
+        // 넘는 오브젝트 참조를 저장하지 못해 target이 null로 구워지므로, Rewindable과 같은
+        // 방식으로 id 기반 대안을 둔다(ResidueZoneBuilder LinkRewindToShortcut과 동일 이유).
+        [SerializeField] string targetShortcutId;
         [SerializeField] SpriteRenderer visual;   // 열리면 색이 바뀐다
         [SerializeField] Color openedTint = new Color(0.9f, 0.85f, 0.6f);
 
         void Start()
         {
             if (target != null && target.IsOpen) MarkOpened();
+            else if (target == null && IsLinkedShortcutOpen()) MarkOpened();
         }
 
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!PlayerLayers.IsPlayer(other.gameObject)) return;
-            if (target == null || target.IsOpen) return;
 
-            target.Open();
+            if (target != null)
+            {
+                if (target.IsOpen) return;
+                target.Open();
+                MarkOpened();
+                return;
+            }
+
+            // 숏컷이 다른 방 씬에 있어 지금 메모리에 없는 경우다. 진행 상태에만 열림을 남긴다
+            // (Rewindable.TryOpenLinkedShortcut과 같은 이유 — 효과음·봉인 연출은 로드되지
+            // 않은 씬에서 재생할 수 없으므로 일부러 생략한다).
+            if (string.IsNullOrEmpty(targetShortcutId) || GameManager.Instance == null) return;
+            if (GameManager.Instance.Progress.IsShortcutOpen(targetShortcutId)) return;
+
+            GameManager.Instance.Progress.MarkShortcutOpen(targetShortcutId);
             MarkOpened();
         }
+
+        bool IsLinkedShortcutOpen()
+            => !string.IsNullOrEmpty(targetShortcutId) && GameManager.Instance != null
+               && GameManager.Instance.Progress.IsShortcutOpen(targetShortcutId);
 
         void MarkOpened()
         {

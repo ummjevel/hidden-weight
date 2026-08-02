@@ -36,15 +36,24 @@ namespace HiddenWeight.UI
             if (IsVisible && CurrentSection == PauseSection.Controls) Rebuild(0);
         }
 
+        // 섹션 패널이 열리고 닫힐 때 알린다. 일시정지 메뉴의 탭·버튼은 이 패널과 같은
+        // 부모에 있고 패널이 화면 대부분을 덮으므로, 그대로 두면 지도 위에 글자가 겹쳐 찍힌다.
+        public event System.Action<bool> VisibilityChanged;
+
         public void Show(PauseSection section)
         {
             CurrentSection = section;
             _panel.SetActive(true);
             Rebuild();
             UIBuilder.Select(_actionButtons.Count > 0 ? _actionButtons[0] : _backButton);
+            VisibilityChanged?.Invoke(true);
         }
 
-        public void Hide() => _panel.SetActive(false);
+        public void Hide()
+        {
+            _panel.SetActive(false);
+            VisibilityChanged?.Invoke(false);
+        }
 
         void Rebuild(int preferredButton = -1)
         {
@@ -119,39 +128,136 @@ namespace HiddenWeight.UI
                 + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
         }
 
+        // 지역 지도. 세로 목록이 아니라 노드 그래프로 그린다.
+        //
+        // 예전 구현은 방을 위에서 아래로 늘어놓아 "긴 목록"이었고, 어느 방이 어느 방과
+        // 이어지는지, 비밀방이 어디서 갈라지는지, 지금 어디에 있는지가 글 속에 묻혔다.
+        // 주 동선은 가로축, 비밀방은 그 아래 가지, 숏컷은 별도 줄로 분리한다.
+        const int MainRooms = 12;
+        static readonly int[] SecretParents = { 4, 6, 11 };   // 비밀방이 갈라져 나오는 방 번호
+
         void BuildFullZoneMap(ProgressState progress, string currentRoom, ZoneId zone)
         {
             _body.text = string.Join("\n", progress.VisitedRooms);
             _body.enabled = false;
-            CreateSectionLabel(ZoneDisplayName(zone.ToString()) + "    R01 → R12");
+
+            string letter = ZoneLetter(zone);
+            CreateSectionLabel($"{ZoneDisplayName(zone.ToString())}    {letter}01 → {letter}{MainRooms}");
 
             var visited = new HashSet<string>(progress.VisitedRooms
                 .Where(id => id.StartsWith(zone + "/")));
             string prefix = zone == ZoneId.Residue ? string.Empty : zone.ToString();
 
-            for (int i = 1; i <= 12; i++)
+            var mainRow = CreateMapRow("MainRoute", 96f);
+            for (int i = 1; i <= MainRooms; i++)
             {
-                string room = prefix + "Room" + i.ToString("00");
-                string roomId = zone + "/" + room;
-                CreateMapNode(roomId, room == currentRoom, i > 1, visited.Contains(roomId));
-
-                if (i == 4) CreateSecretBranch(visited, zone, prefix + "Secret01", "R04 분기 · 비밀 1", currentRoom);
-                if (i == 6) CreateSecretBranch(visited, zone, prefix + "Secret02", "R06 분기 · 비밀 2", currentRoom);
-                if (i == 11) CreateSecretBranch(visited, zone, prefix + "Secret03", "R11 분기 · 비밀 3", currentRoom);
+                if (i > 1) CreateConnector(mainRow, 14f, 4f);
+                string roomId = zone + "/" + prefix + "Room" + i.ToString("00");
+                CreateMapChip(mainRow, roomId, roomId.EndsWith("/" + currentRoom),
+                              visited.Contains(roomId));
             }
 
-            CreateSectionLabel("지름길 A  R05↔R03    ·    B  R08↔R03    ·    C  R10↔R07");
+            // 비밀방 줄. 주 동선과 같은 칸 폭을 유지해 부모 방 바로 아래에 오게 한다.
+            var branchRow = CreateMapRow("SecretBranches", 84f);
+            for (int i = 1; i <= MainRooms; i++)
+            {
+                if (i > 1) CreateSpacer(branchRow, 14f);
+
+                int index = System.Array.IndexOf(SecretParents, i);
+                if (index < 0)
+                {
+                    CreateSpacer(branchRow, ChipWidth);
+                    continue;
+                }
+
+                string roomId = zone + "/" + prefix + "Secret" + (index + 1).ToString("00");
+                CreateMapChip(branchRow, roomId, roomId.EndsWith("/" + currentRoom),
+                              visited.Contains(roomId), branch: true);
+            }
+
+            // 숏컷은 세 지역이 같은 구조다(설계 8.2): A 05→03, B 08→03, C 10→07.
+            CreateSectionLabel(
+                $"지름길   A  {letter}05 ↔ {letter}03    ·    B  {letter}08 ↔ {letter}03"
+                + $"    ·    C  {letter}10 ↔ {letter}07");
             CreateSectionLabel("열린 지름길  " + progress.OpenedShortcutCount
                 + "    ·    최근 체크포인트  "
                 + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
         }
 
-        void CreateSecretBranch(HashSet<string> visited, ZoneId zone, string room,
-                                string label, string currentRoom)
+        const float ChipWidth = 96f;
+
+        RectTransform CreateMapRow(string name, float height)
         {
-            CreateSectionLabel("↳  " + label);
-            string roomId = zone + "/" + room;
-            CreateMapNode(roomId, room == currentRoom, false, visited.Contains(roomId));
+            var row = new GameObject(name, typeof(RectTransform));
+            row.transform.SetParent(_content, false);
+            row.AddComponent<LayoutElement>().preferredHeight = height;
+            var layout = row.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 0f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            _dynamicItems.Add(row);
+            return (RectTransform)row.transform;
+        }
+
+        void CreateConnector(RectTransform row, float width, float height)
+        {
+            var link = new GameObject("Link", typeof(RectTransform));
+            link.transform.SetParent(row, false);
+            link.AddComponent<Image>().color = new Color(
+                UIBuilder.AccentColor.r, UIBuilder.AccentColor.g, UIBuilder.AccentColor.b, 0.5f);
+            var element = link.AddComponent<LayoutElement>();
+            element.preferredWidth = width;
+            element.preferredHeight = height;
+            element.flexibleHeight = 0f;
+        }
+
+        void CreateSpacer(RectTransform row, float width)
+        {
+            var spacer = new GameObject("Spacer", typeof(RectTransform));
+            spacer.transform.SetParent(row, false);
+            spacer.AddComponent<LayoutElement>().preferredWidth = width;
+        }
+
+        // 방 하나. 기호(F03)를 크게, 이름을 작게 둔다 — 좁은 칸에서는 기호가 먼저 읽힌다.
+        void CreateMapChip(RectTransform row, string roomId, bool current, bool discovered,
+                           bool branch = false)
+        {
+            // 이름은 MapNode_ 를 유지한다 — 이 이름으로 방 표시 개수를 세는 검사가 있다.
+            var chip = new GameObject("MapNode_" + roomId, typeof(RectTransform));
+            chip.transform.SetParent(row, false);
+
+            chip.AddComponent<Image>().color = current
+                ? new Color(UIBuilder.AccentColor.r, UIBuilder.AccentColor.g, UIBuilder.AccentColor.b, 0.85f)
+                : discovered ? new Color(1f, 1f, 1f, 0.085f) : new Color(0.3f, 0.3f, 0.3f, 0.05f);
+
+            var element = chip.AddComponent<LayoutElement>();
+            element.preferredWidth = ChipWidth;
+            element.preferredHeight = branch ? 72f : 84f;
+            element.flexibleHeight = 0f;
+
+            var layout = chip.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(6, 6, 8, 8);
+            layout.spacing = 2f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandHeight = false;
+
+            var code = UIBuilder.CreateText(chip.transform, "Code", current ? 28 : 24,
+                                            TextAnchor.MiddleCenter);
+            code.text = (branch ? "↳ " : string.Empty) + RoomCode(roomId);
+            if (current) code.color = Color.white;
+            else if (!discovered) code.color = new Color(code.color.r, code.color.g, code.color.b, 0.4f);
+
+            var label = UIBuilder.CreateText(chip.transform, "Name", 13, TextAnchor.UpperCenter);
+            label.text = discovered ? RoomName(roomId) : "미탐사";
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.color = new Color(label.color.r, label.color.g, label.color.b,
+                                    current ? 0.95f : discovered ? 0.6f : 0.3f);
+
+            _dynamicItems.Add(chip);
         }
 
         void BuildJournal()
@@ -350,33 +456,82 @@ namespace HiddenWeight.UI
         }
 
         static string ZonePart(string room) => room.Contains("/") ? room.Split('/')[0] : string.Empty;
-        static string RoomDisplayName(string room)
+
+        // 방 이름은 지역마다 다르다. 예전에는 잔재 이름표만 있고 응시·균열은
+        // "R03 균열 구역" 같은 임시 문자열로 떨어져, 지도가 어느 지역인지도, 그 방이
+        // 무엇인지도 알려 주지 못했다. 지역 문서(LEVEL_20/30/40)의 이름을 그대로 쓴다.
+        static readonly string[] ResidueNames =
+        {
+            "입구 경계", "애도교", "손바닥 광장", "매몰된 하층 폐허", "되감기 성소",
+            "손가락 내부", "갈비 곡선교", "상층 승강축", "끊어진 상층 고가교",
+            "손목 감시탑", "후회의 회랑", "기억의 교수대",
+        };
+        static readonly string[] ResidueSecrets = { "납골당", "죄인의 심층", "감춰진 눈" };
+
+        static readonly string[] GazeNames =
+        {
+            "눈꺼풀 경계", "고정된 시선교", "관객 광장", "하층 새장원", "숨죽임 성소",
+            "속삭임 통로", "회전 홍채교", "시선 승강정", "상층 관객석",
+            "홍채 감시탑", "자기 초상의 회랑", "만인의 극장",
+        };
+        static readonly string[] GazeSecrets = { "무대 뒤편", "무언의 우리", "안쪽 눈" };
+
+        static readonly string[] FractureNames =
+        {
+            "유리 정원", "어긋난 산책로", "가능성 광장", "흔들리는 하층정원", "예지 성소",
+            "시차 온실", "부유 건축군", "역행 승강축", "거울 가능성실",
+            "초침 감시탑", "아직 오지 않은 폐허", "내일의 균열",
+        };
+        static readonly string[] FractureSecrets = { "버려진 가능성", "멈춘 오후", "선택되지 않은 문" };
+
+        // 지역을 한 글자로. 지도 노드는 좁아서 이름보다 이 기호가 먼저 읽힌다.
+        static string ZoneLetter(ZoneId zone) => zone switch
+        {
+            ZoneId.Gaze => "G",
+            ZoneId.Fracture => "F",
+            _ => "R",
+        };
+
+        static void SplitRoomId(string room, out ZoneId zone, out bool secret, out int number)
         {
             string id = room.Contains("/") ? room.Substring(room.IndexOf('/') + 1) : room;
-            switch (id)
+            zone = id.StartsWith("Gaze") ? ZoneId.Gaze
+                 : id.StartsWith("Fracture") ? ZoneId.Fracture
+                 : ZoneId.Residue;
+
+            string tail = id.StartsWith("Gaze") ? id.Substring(4)
+                        : id.StartsWith("Fracture") ? id.Substring(8)
+                        : id;
+            secret = tail.StartsWith("Secret");
+            string digits = tail.StartsWith("Secret") ? tail.Substring(6)
+                          : tail.StartsWith("Room") ? tail.Substring(4)
+                          : string.Empty;
+            number = int.TryParse(digits, out int parsed) ? parsed : 0;
+        }
+
+        static string RoomCode(string room)
+        {
+            SplitRoomId(room, out var zone, out bool secret, out int number);
+            if (number <= 0) return room;
+            return ZoneLetter(zone) + (secret ? "S" + number : number.ToString("00"));
+        }
+
+        static string RoomName(string room)
+        {
+            SplitRoomId(room, out var zone, out bool secret, out int number);
+            string[] table = zone switch
             {
-                case "Room01": return "R01  입구 경계";
-                case "Room02": return "R02  애도교";
-                case "Room03": return "R03  손바닥 광장";
-                case "Room04": return "R04  매몰된 하층 폐허";
-                case "Room05": return "R05  되감기 성소";
-                case "Room06": return "R06  손가락 내부";
-                case "Room07": return "R07  갈비 곡선교";
-                case "Room08": return "R08  상층 승강축";
-                case "Room09": return "R09  끊어진 상층 고가교";
-                case "Room10": return "R10  손목 감시탑";
-                case "Room11": return "R11  후회의 회랑";
-                case "Room12": return "R12  기억의 교수대";
-                case "Secret01": return "S1  납골당";
-                case "Secret02": return "S2  죄인의 심층";
-                case "Secret03": return "S3  감춰진 눈";
-                default:
-                    if (id.StartsWith("GazeRoom")) return "R" + id.Substring("GazeRoom".Length) + "  응시 구역";
-                    if (id.StartsWith("GazeSecret")) return "S" + int.Parse(id.Substring("GazeSecret".Length)) + "  응시 비밀 구역";
-                    if (id.StartsWith("FractureRoom")) return "R" + id.Substring("FractureRoom".Length) + "  균열 구역";
-                    if (id.StartsWith("FractureSecret")) return "S" + int.Parse(id.Substring("FractureSecret".Length)) + "  균열 비밀 구역";
-                    return id;
-            }
+                ZoneId.Gaze => secret ? GazeSecrets : GazeNames,
+                ZoneId.Fracture => secret ? FractureSecrets : FractureNames,
+                _ => secret ? ResidueSecrets : ResidueNames,
+            };
+            return number >= 1 && number <= table.Length ? table[number - 1] : string.Empty;
+        }
+
+        static string RoomDisplayName(string room)
+        {
+            string name = RoomName(room);
+            return string.IsNullOrEmpty(name) ? RoomCode(room) : RoomCode(room) + "  " + name;
         }
         static string RoomSortKey(string room) => ZonePart(room) + "/" + RoomDisplayName(room).PadLeft(16, '0');
         static string ZoneDisplayName(string zone)

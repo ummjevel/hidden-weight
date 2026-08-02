@@ -16,6 +16,9 @@ namespace HiddenWeight.UI
         GameObject _root;
         CanvasGroup _rootGroup;
         Coroutine _fadeRoutine;
+        readonly System.Collections.Generic.List<GameObject> _chrome =
+            new System.Collections.Generic.List<GameObject>();
+
         Button _resumeButton;
         Button _checkpointButton;
         Button _titleButton;
@@ -223,7 +226,10 @@ namespace HiddenWeight.UI
             _rootGroup = _root.AddComponent<CanvasGroup>();
             _rootGroup.alpha = 0f;
 
+            // 섹션 패널이 열리면 통째로 감출 메뉴 크롬. 패널이 화면 대부분을 덮는데
+            // 같은 부모에 있어, 그대로 두면 지도 위에 제목과 버튼이 겹쳐 찍힌다.
             var title = UIBuilder.CreateText(_root.transform, "일시정지", 36);
+            _chrome.Add(title.gameObject);
             var titleRt = title.rectTransform;
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.65f);
             titleRt.sizeDelta = new Vector2(400f, 60f);
@@ -234,6 +240,9 @@ namespace HiddenWeight.UI
             _checkpointButton = UIBuilder.CreateButton(
                 _root.transform, "체크포인트로 돌아가기", -60f, RequestReturnToCheckpoint);
             _titleButton = UIBuilder.CreateButton(_root.transform, "타이틀로", -130f, RequestGoToTitle);
+            _chrome.Add(_resumeButton.gameObject);
+            _chrome.Add(_checkpointButton.gameObject);
+            _chrome.Add(_titleButton.gameObject);
 
             CreateSectionButton("지도", -330f, PauseSection.Map);
             CreateSectionButton("기억 기록", -110f, PauseSection.Journal);
@@ -242,8 +251,16 @@ namespace HiddenWeight.UI
 
             _dialog = _root.AddComponent<ConfirmDialog>();
             _sections = _root.AddComponent<PauseSectionPanel>();
+            _sections.VisibilityChanged += ShowChrome;
 
             _root.SetActive(false);
+        }
+
+        // 섹션 패널이 열려 있는 동안 메뉴 크롬을 감춘다(sectionOpen=true면 숨김).
+        void ShowChrome(bool sectionOpen)
+        {
+            foreach (var go in _chrome)
+                if (go != null) go.SetActive(!sectionOpen);
         }
 
         void CreateSectionButton(string label, float x, PauseSection section)
@@ -252,6 +269,7 @@ namespace HiddenWeight.UI
             var rt = (RectTransform)button.transform;
             rt.anchoredPosition = new Vector2(x, 240f);
             rt.sizeDelta = new Vector2(190f, 48f);
+            _chrome.Add(button.gameObject);
         }
     }
 }

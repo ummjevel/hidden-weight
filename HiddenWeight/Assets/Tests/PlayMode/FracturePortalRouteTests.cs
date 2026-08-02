@@ -51,6 +51,15 @@ namespace HiddenWeight.Tests
             yield return RoomTestHarness.EnterRoom("Fracture", "F01");
             Time.timeScale = 1f;
 
+            // 정식 진입 경로가 통로판(_Full)으로 되돌아가면 방 씬 15개와 포탈 문이
+            // 다시 고아가 된다 — 걷기 시작 전에 그것부터 확인한다.
+            var zone = GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null;
+            Assert.IsNotNull(zone, "균열 지역 데이터가 잡히지 않았다.");
+            Assert.AreEqual("Zone_Fracture", zone.sceneName,
+                "균열의 정식 씬이 포탈 셸이 아니다.");
+            Assert.IsNotEmpty(Object.FindObjectsByType<RoomDoor>(FindObjectsInactive.Exclude),
+                "첫 방에 포탈 문이 없다.");
+
             var blocked = new List<string>();
             var report = new StringBuilder("===== 균열 포탈 경로 봇 주파 =====\n");
 

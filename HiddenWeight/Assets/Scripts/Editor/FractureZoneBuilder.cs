@@ -79,6 +79,20 @@ namespace HiddenWeight.EditorTools
 
         // 다가가기만 해도 스스로 갈라져 무너지는 발판. 위험이 아니라 교재라서 피해 판정이
         // 없고, 잠시 뒤 되살아나 다음에 지나가는 사람에게도 같은 장면을 보여 준다.
+        // 갈라진 자아의 발밑 그림자. 두 개체가 같은 규격을 써야 농도 차이만으로 읽힌다.
+        static SpriteRenderer BuildSplitSelfShadow(Transform parent)
+        {
+            var go = new GameObject("Shadow");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, -0.8f, 0f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = Art("FractureAmbientVFX_r1_c3") ?? LoadSprite("Tile");
+            sr.sortingOrder = 4;
+            FitSprite(sr, 1.4f, 0.5f);
+            return sr;
+        }
+
         static GameObject BuildFractureOmenPlatform(Transform parent, Vector2 pos)
         {
             var go = BuildSafePlatform(parent, pos);
@@ -436,21 +450,12 @@ namespace HiddenWeight.EditorTools
                     FractureEnemyClips("SplitSelf"), mirrorHeight);
             }
 
-            var mirrorShadow = new GameObject("Shadow");
-            mirrorShadow.transform.SetParent(mirror.transform, false);
-            mirrorShadow.transform.localPosition = new Vector3(0f, -0.8f, 0f);
-            mirrorShadow.transform.localScale = new Vector3(1.4f, 0.3f, 1f);
-            var mirrorShadowSr = mirrorShadow.AddComponent<SpriteRenderer>();
-            mirrorShadowSr.sprite = LoadSprite("Tile");
-            mirrorShadowSr.sortingOrder = 4;
+            // 이 그림자는 장식이 아니라 판별 근거다 — 어느 쪽이 진짜인지 그림자 농도로
+            // 구분하게 되어 있다(SplitSelfBehavior). 납작한 사각형이면 "농도"가 읽히지
+            // 않으므로 가장자리가 부드러운 그림을 쓴다.
+            var mirrorShadowSr = BuildSplitSelfShadow(mirror.transform);
 
-            var bodyShadow = new GameObject("Shadow");
-            bodyShadow.transform.SetParent(enemy.transform, false);
-            bodyShadow.transform.localPosition = new Vector3(0f, -0.8f, 0f);
-            bodyShadow.transform.localScale = new Vector3(1.4f, 0.3f, 1f);
-            var bodyShadowSr = bodyShadow.AddComponent<SpriteRenderer>();
-            bodyShadowSr.sprite = LoadSprite("Tile");
-            bodyShadowSr.sortingOrder = 4;
+            var bodyShadowSr = BuildSplitSelfShadow(enemy.transform);
 
             SetField(split, "mirror", p => p.objectReferenceValue = mirror.transform);
             SetField(split, "bodyShadow", p => p.objectReferenceValue = bodyShadowSr);

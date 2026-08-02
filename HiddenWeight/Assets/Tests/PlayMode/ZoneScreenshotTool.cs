@@ -142,6 +142,37 @@ namespace HiddenWeight.Tests
             Debug.Log(report.ToString());
         }
 
+        // 정식 포탈 경로로 들어가 방을 하나씩 열어 찍는다. 좌표 감사는 "이상한 높이에
+        // 뭐가 있나"만 보고, 화면이 실제로 어떻게 보이는지는 그림으로만 알 수 있다.
+        [UnityTest]
+        public IEnumerator 균열_모든_방을_찍는다()
+        {
+            yield return RoomTestHarness.EnterRoom("Fracture", "F01");
+            Time.timeScale = 1f;
+            Directory.CreateDirectory(OutputDirectory);
+
+            string[] rooms = { "F01", "F02", "F03", "F04", "F05", "F06",
+                               "F07", "F08", "F09", "F10", "F11", "F12" };
+            foreach (var room in rooms)
+            {
+                if (RoomLoader.Instance.CurrentRoom != room)
+                {
+                    yield return RoomLoader.Instance.LoadRoom(room, null);
+                    while (RoomLoader.Instance.IsTransitioning) yield return null;
+                }
+                for (int frame = 0; frame < 8; frame++) yield return null;
+
+                // 방 전체가 담기도록 카메라를 방 중심에 두고 넓힌다.
+                var anchor = Object.FindAnyObjectByType<Room>();
+                var camera = Camera.main;
+                if (anchor == null || camera == null) continue;
+                camera.orthographicSize = Mathf.Max(anchor.WorldBounds.extents.y,
+                                                    anchor.WorldBounds.extents.x / camera.aspect) * 1.05f;
+                yield return Shoot(anchor.WorldBounds.center, $"room_{room}");
+            }
+            Debug.Log($"[ZoneScreenshotTool] 방 {rooms.Length}개 저장 → {OutputDirectory}");
+        }
+
         [UnityTest]
         public IEnumerator 잔재_지역을_찍는다()
         {
@@ -153,30 +184,34 @@ namespace HiddenWeight.Tests
         [UnityTest]
         public IEnumerator 균열의_플레이스홀더_사각형을_찾는다()
         {
-            if (GameManager.Instance != null) GameManager.Instance.Progress.ResetAll();
-            yield return SceneManager.LoadSceneAsync("Zone_Fracture_Full", LoadSceneMode.Single);
-            yield return null;
-            yield return new WaitForFixedUpdate();
+            string[] rooms = { "F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08",
+                               "F09", "F10", "F11", "F12", "FS1", "FS2", "FS3" };
+            var report = new StringBuilder("[균열 방별 플레이스홀더 렌더러]\n");
 
-            var found = new System.Collections.Generic.SortedDictionary<string, int>();
-            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
-                         FindObjectsInactive.Exclude))
+            foreach (var room in rooms)
             {
-                if (!renderer.enabled) continue;
-                string sprite = renderer.sprite == null ? "<없음>" : renderer.sprite.name;
-                // 지역 아트는 전부 "Fracture" 접두사를 쓴다. 그 밖의 이름은 공용
-                // 플레이스홀더(Tile/Platform/Fragment …)라 화면에서 단색 사각형으로 보인다.
-                if (sprite.StartsWith("Fracture")) continue;
+                yield return SceneManager.LoadSceneAsync("Room_Fracture_" + room, LoadSceneMode.Single);
+                yield return null;
+                yield return new WaitForFixedUpdate();
+                for (int frame = 0; frame < 6; frame++) yield return null;
 
-                var path = renderer.name;
-                for (var t = renderer.transform.parent; t != null; t = t.parent)
-                    path = t.name + "/" + path;
-                string key = $"{sprite} :: {path}";
-                found[key] = found.TryGetValue(key, out int n) ? n + 1 : 1;
+                var found = new System.Collections.Generic.List<string>();
+                foreach (var sr in Object.FindObjectsByType<SpriteRenderer>(FindObjectsInactive.Exclude))
+                {
+                    if (!sr.enabled || sr.sprite == null) continue;
+                    // 지역 아트는 전부 Fracture 접두사를 쓴다. 그 밖의 이름은 공용
+                    // 플레이스홀더라 화면에서 단색 사각형으로 보인다.
+                    if (sr.sprite.name.StartsWith("Fracture")) continue;
+                    if (sr.sprite.name.Contains("Player")) continue;
+
+                    string path = sr.name;
+                    for (var t = sr.transform.parent; t != null; t = t.parent) path = t.name + "/" + path;
+                    found.Add($"    {sr.sprite.name} 크기{sr.bounds.size:F1} 정렬{sr.sortingOrder}  {path}");
+                }
+
+                report.AppendLine($"  {room}: {found.Count}개");
+                foreach (var line in found) report.AppendLine(line);
             }
-
-            var report = new StringBuilder("[남은 플레이스홀더]\n");
-            foreach (var pair in found) report.AppendLine($"  {pair.Value,4}개  {pair.Key}");
             Debug.Log(report.ToString());
         }
 

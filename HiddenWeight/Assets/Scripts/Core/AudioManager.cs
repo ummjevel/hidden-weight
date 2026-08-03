@@ -69,27 +69,27 @@ namespace HiddenWeight.Core
 
         void ApplySettings()
         {
-            AudioListener.volume = UISettings.MasterVolume;
+            AudioListener.volume = 0f;
             if (_bgmSource != null)
             {
-                _bgmSource.mute = false;
+                _bgmSource.mute = true;
                 _bgmSource.volume = UISettings.BgmVolume;
             }
             if (_sfxSources != null)
                 foreach (var source in _sfxSources)
                     if (source != null)
                     {
-                        source.mute = false;
+                        source.mute = true;
                         source.volume = UISettings.SfxVolume;
                     }
             else if (_sfxSource != null)
             {
-                _sfxSource.mute = false;
+                _sfxSource.mute = true;
                 _sfxSource.volume = UISettings.SfxVolume;
             }
             if (_loopSource != null)
             {
-                _loopSource.mute = false;
+                _loopSource.mute = true;
                 _loopSource.volume = UISettings.SfxVolume * _loopVolume;
             }
         }

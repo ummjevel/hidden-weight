@@ -11,27 +11,58 @@ namespace HiddenWeight.World
         // 원색으로 그리면 그림 속 계단/발판이 실제 길보다 선명해져 플레이어가 가짜 길을
         // 따라가게 된다. 검은 카메라 배경 위에 반투명으로 눌러 실제 지형이 전경으로 읽히게 한다.
         [SerializeField] Color backgroundTint = new Color(0.68f, 0.68f, 0.68f, 0.58f);
+        // 방 크기(SingleRoomBackgroundBuilder가 room.WorldBounds.size로 채운다). 0이면 예전처럼
+        // 카메라 뷰포트에 맞춰 매 프레임 다시 스케일한다 — 카메라가 방 안을 움직일 때마다
+        // 그림이 계속 다시 확대·축소·재배치되어, 실제 오브젝트 크기와의 관계가 프레임마다
+        // 달라지고("이상해 보인다") 정적으로 맞춰볼 기준점이 없었다. 방 크기로 한 번만
+        // 맞추면 그림이 방 안에 고정되어 최소한 같은 방 안에서는 크기·위치가 일정하다.
+        [SerializeField] Vector2 worldSize;
         static Sprite _visibilityPixel;
+
+        public void ConfigureWorldSize(Vector2 size) => worldSize = size;
+
+        bool UsesWorldSize => worldSize.x > 0f && worldSize.y > 0f;
 
         void Awake()
         {
             ApplyReadabilityTint();
             EnsureRoomVisualCuller();
             BuildTraversalEdges();
+            if (UsesWorldSize) ApplyWorldSize();
         }
 
         void OnValidate() => ApplyReadabilityTint();
 
         void LateUpdate()
         {
+            if (UsesWorldSize) return; // 방 크기에 이미 고정했으면 매 프레임 다시 맞출 필요가 없다.
+
             Camera camera = Camera.main;
             if (camera != null)
                 Refresh(camera);
         }
 
+        // 방 전체를 한 번만 덮도록 스케일한다(가로세로 비율은 유지하고 큰 쪽에 맞춰 방을
+        // 완전히 덮는다 — 방 폭·높이 비율이 그림과 다르면 한 축은 방보다 더 그려지지만,
+        // 비율을 억지로 늘려 그림이 찌그러지는 것보다는 낫다). 위치는 SingleRoomBackgroundBuilder가
+        // 이미 room.WorldBounds.center로 잡아 두므로 여기서는 스케일만 계산한다.
+        void ApplyWorldSize()
+        {
+            var renderer = GetComponent<SpriteRenderer>();
+            if (renderer == null || renderer.sprite == null) return;
+
+            renderer.color = backgroundTint;
+
+            Vector2 spriteSize = renderer.sprite.bounds.size;
+            if (spriteSize.x <= 0f || spriteSize.y <= 0f) return;
+
+            float scale = Mathf.Max(worldSize.x / spriteSize.x, worldSize.y / spriteSize.y);
+            transform.localScale = new Vector3(scale, scale, 1f);
+        }
+
         public void Refresh(Camera camera)
         {
-            if (camera == null || !camera.orthographic)
+            if (UsesWorldSize || camera == null || !camera.orthographic)
                 return;
 
             transform.position = new Vector3(

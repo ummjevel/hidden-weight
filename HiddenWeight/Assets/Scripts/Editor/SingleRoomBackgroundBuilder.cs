@@ -140,6 +140,10 @@ namespace HiddenWeight.EditorTools
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
             var locked = background.AddComponent<CameraLockedRoomBackground>();
+            // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
+            // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
+            var size = room.WorldBounds.size;
+            locked.ConfigureWorldSize(new Vector2(size.x, size.y));
             if (artRoot.EndsWith("/Prologue", StringComparison.Ordinal))
             {
                 var serialized = new SerializedObject(locked);

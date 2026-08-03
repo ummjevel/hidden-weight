@@ -834,7 +834,10 @@ namespace HiddenWeight.EditorTools
         {
             c.Floor(0, 26, 2);
 
-            BuildCheckpoint(c.Root.transform, c.P(5f, 3f));
+            // 바닥(2) 위 1.2 — 플레이어 콜라이더는 중심 피벗이라(높이 1.4, 즉 위아래 0.7) 예전
+            // 값(바닥+1)은 발밑 여유가 0.3뿐이었다. 리스폰마다 여기로 돌아오는데 그 정도
+            // 여유로는 가끔 바닥에 끼었다 — 0.5 이상 남도록 올렸다.
+            BuildCheckpoint(c.Root.transform, c.P(5f, 3.2f));
 
             // 눈꺼풀처럼 닫힌 곡선. 눈 자체는 아직 보여주지 않는다(4.1절).
             BuildDecor(c.Root.transform, "G01_LidUpper", c.P(13f, 11f), new Vector2(22f, 1.6f),
@@ -995,7 +998,8 @@ namespace HiddenWeight.EditorTools
         {
             c.Floor(0, 26, 2);
 
-            BuildCheckpoint(c.Root.transform, c.P(3f, 3f)); // 체크포인트 2 — 능력 획득 직전
+            // 바닥(2) 위 1.2 — G01과 같은 이유(중심 피벗 여유 확보).
+            BuildCheckpoint(c.Root.transform, c.P(3f, 3.2f)); // 체크포인트 2 — 능력 획득 직전
 
             BuildStoryFragment(c.Root.transform, c.P(6f, 3f), "gaze_skill",
                 "숨을 죽이면, 나를 보던 눈들도 조용해진다.", EmotionId.Hush, false);
@@ -1245,7 +1249,8 @@ namespace HiddenWeight.EditorTools
             c.Floor(22, 24, 7);   // 출구 (24,7)
 
             // 체크포인트는 전장 바깥이다 — 재도전 20초 목표를 지키려면 문 앞이어야 한다.
-            BuildCheckpoint(c.Root.transform, c.P(1.5f, 4f));
+            // 바닥(3) 위 1.2 — G01·G05와 같은 이유(중심 피벗 여유 확보).
+            BuildCheckpoint(c.Root.transform, c.P(1.5f, 4.2f));
 
             // 눈꺼풀 닫기에 쓰이는 좌우 벽. 천장에서 내려온 셔터라 바닥에 닿지 않는다.
             // 바닥까지 세우면 입구와 출구를 통째로 막아 방을 지나갈 수 없다(봇이 잡아냈다).

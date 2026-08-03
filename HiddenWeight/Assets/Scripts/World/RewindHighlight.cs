@@ -13,6 +13,7 @@ namespace HiddenWeight.World
 
         IRewindable _target;
         SpriteRenderer _source;
+        SpriteRenderer _placeholder;
         SpriteRenderer _outline;
         TextMesh _marker;
         MeshRenderer _markerRenderer;
@@ -22,22 +23,34 @@ namespace HiddenWeight.World
         void Start()
         {
             _target = GetComponent<IRewindable>();
-            _source = GetComponent<SpriteRenderer>();
+            _residueScene = gameObject.scene.name.Contains("Residue");
+            _placeholder = GetComponent<SpriteRenderer>();
+            _source = null;
             // 지역 아트를 씌운 오브젝트는 루트의 플레이스홀더 렌더러를 끄고 Art 자식만
             // 사용한다. 꺼진 루트를 복제하면 실제 기물과 다른 작은 네모만 빛나므로, 현재
             // 화면에 쓰이는 자식 렌더러를 강조 기준으로 삼는다.
-            if (_source == null || !_source.enabled || _source.sprite == null)
+            if (_residueScene)
             {
+                // 잔재에서는 루트 Tile의 enabled 상태와 무관하게 반드시 실제 자식 아트를
+                // 고른다. 여러 Start의 실행 순서에 따라 루트가 잠깐 켜져 있어도 선택하지 않는다.
                 foreach (var candidate in GetComponentsInChildren<SpriteRenderer>(true))
                 {
-                    if (!candidate.enabled || candidate.sprite == null) continue;
+                    if (candidate == _placeholder || candidate.sprite == null) continue;
+                    if (candidate.name == "RewindOutline") continue;
                     _source = candidate;
                     break;
                 }
             }
+            else
+            {
+                _source = _placeholder;
+            }
+
+            // 실제 아트가 없는 잘못된 잔재 오브젝트라면 루트 흰 Tile로 대체하지 않는다.
+            // 표시를 생략하는 편이 흰 사각형을 기능 아이콘처럼 노출하는 것보다 안전하다.
+            DisableResiduePlaceholder();
             if (_target == null || _source == null) { enabled = false; return; }
 
-            _residueScene = gameObject.scene.name.Contains("Residue");
             if (_residueScene)
             {
                 var playerObject = GameObject.FindGameObjectWithTag("Player");
@@ -56,24 +69,20 @@ namespace HiddenWeight.World
             var markerObject = new GameObject("RewindTargetMarker");
             markerObject.transform.SetParent(transform, false);
             markerObject.transform.localPosition = new Vector3(0f, 1.15f, 0f);
-            _marker = markerObject.AddComponent<TextMesh>();
-            // LegacyRuntime 폰트에는 ◇ 글리프가 없어 흰 네모로 보인다. ASCII 키 문자는
-            // 모든 기본 폰트에서 보장되므로 대상 표식과 실제 입력을 동시에 보여 준다.
-            _marker.text = _residueScene ? "K 길게" : "K";
-            _marker.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _marker.fontSize = 48;
-            _marker.characterSize = _residueScene ? 0.045f : 0.08f;
-            _marker.anchor = TextAnchor.MiddleCenter;
-            _marker.alignment = TextAlignment.Center;
-            _markerRenderer = markerObject.GetComponent<MeshRenderer>();
-            _markerRenderer.material = _marker.font.material;
-            _markerRenderer.sortingOrder = 39;
-            _markerRenderer.enabled = false;
+            // 일부 Unity 임포트 환경에서 런타임 Sprite 아이콘이 텍스처 없는 흰 사각형으로
+            // 렌더링됐다. 표식은 모든 기본 폰트가 보장하는 ASCII만 사용해 확실히 표시한다.
+            BuildTextMarker(markerObject, _residueScene ? "HOLD K" : "K",
+                _residueScene ? 0.045f : 0.08f);
         }
 
         void Update()
         {
             if (_outline == null) return;
+
+            // Rewindable 프리팹 루트에는 에디터 식별용 Tile(흰 사각형)이 남아 있다.
+            // 잔재에서는 실제 Art/복원 발판 자식만 화면에 쓰므로, 방 컬러링이나 복원 과정이
+            // 루트 렌더러를 다시 켜더라도 매 프레임 숨겨 흰 네모가 재등장하지 않게 한다.
+            DisableResiduePlaceholder();
 
             if (_residueScene && _player == null)
             {
@@ -107,6 +116,27 @@ namespace HiddenWeight.World
                     _marker.transform.rotation = Quaternion.identity;
                 }
             }
+        }
+
+        void DisableResiduePlaceholder()
+        {
+            if (!_residueScene || _placeholder == null) return;
+            _placeholder.enabled = false;
+        }
+
+        void BuildTextMarker(GameObject markerObject, string text, float characterSize)
+        {
+            _marker = markerObject.AddComponent<TextMesh>();
+            _marker.text = text;
+            _marker.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _marker.fontSize = 48;
+            _marker.characterSize = characterSize;
+            _marker.anchor = TextAnchor.MiddleCenter;
+            _marker.alignment = TextAlignment.Center;
+            _markerRenderer = markerObject.GetComponent<MeshRenderer>();
+            _markerRenderer.material = _marker.font.material;
+            _markerRenderer.sortingOrder = 39;
+            _markerRenderer.enabled = false;
         }
     }
 }

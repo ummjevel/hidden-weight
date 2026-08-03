@@ -26,12 +26,13 @@ namespace HiddenWeight.UI
             textObject.transform.SetParent(transform, false);
 
             _text = textObject.AddComponent<TextMesh>();
-            _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 48;
-            _text.characterSize = 0.048f;
+            _text.font = Resources.Load<Font>("Fonts/NanumMyeongjo-Regular")
+                ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _text.fontSize = 60;
+            _text.characterSize = 0.06f;
             _text.anchor = TextAnchor.MiddleCenter;
             _text.alignment = TextAlignment.Center;
-            _text.lineSpacing = 0.9f;
+            _text.lineSpacing = 1.05f;
             _text.text = message;
             _text.color = new Color(1f, 1f, 1f, 0f);
 
@@ -66,7 +67,7 @@ namespace HiddenWeight.UI
 
             _alpha = Mathf.MoveTowards(_alpha, show ? 1f : 0f,
                 fadeSpeed * Time.unscaledDeltaTime);
-            _text.color = new Color(0.9f, 0.92f, 1f, _alpha * 0.94f);
+            _text.color = new Color(0.94f, 0.93f, 1f, _alpha * 0.98f);
         }
     }
 }

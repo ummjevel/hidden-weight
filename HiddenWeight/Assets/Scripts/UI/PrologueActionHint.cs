@@ -43,9 +43,10 @@ namespace HiddenWeight.UI
             textObject.transform.SetParent(transform, false);
 
             _text = textObject.AddComponent<TextMesh>();
-            _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 48;
-            _text.characterSize = 0.055f;
+            _text.font = Resources.Load<Font>("Fonts/NanumMyeongjo-Bold")
+                ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _text.fontSize = 64;
+            _text.characterSize = 0.072f;
             _text.anchor = TextAnchor.MiddleCenter;
             _text.alignment = TextAlignment.Center;
             _text.color = new Color(1f, 1f, 1f, 0f);
@@ -125,7 +126,7 @@ namespace HiddenWeight.UI
                     transform.position.z);
 
             _alpha = Mathf.MoveTowards(_alpha, show ? 1f : 0f, fadeSpeed * Time.unscaledDeltaTime);
-            _text.color = new Color(0.88f, 0.92f, 1f, _alpha * 0.92f);
+            _text.color = new Color(0.94f, 0.95f, 1f, _alpha * 0.98f);
 
             // 씬 시작부터 모든 상태 변화를 듣고 있으면, 안내 지점에 오기 전에 같은 행동을
             // 한 것만으로 문구가 영영 사라진다. 실제로 문구를 읽을 수 있게 표시한 뒤에만
@@ -141,7 +142,7 @@ namespace HiddenWeight.UI
             _hideAt = Time.unscaledTime;
             _alpha = 0f;
             if (_text != null)
-                _text.color = new Color(0.88f, 0.92f, 1f, 0f);
+                _text.color = new Color(0.94f, 0.95f, 1f, 0f);
             if (_active == this) _active = null;
         }
     }

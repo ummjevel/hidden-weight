@@ -281,6 +281,33 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 안내_문구는_나눔명조와_확대된_크기를_사용한다()
+        {
+            yield return LoadPrologue();
+
+            var actionFont = Resources.Load<Font>("Fonts/NanumMyeongjo-Bold");
+            var conceptFont = Resources.Load<Font>("Fonts/NanumMyeongjo-Regular");
+            Assert.IsNotNull(actionFont, "조작 안내용 나눔명조 Bold가 Resources에 없다.");
+            Assert.IsNotNull(conceptFont, "세계 설명용 나눔명조 Regular가 Resources에 없다.");
+
+            foreach (var hint in Object.FindObjectsByType<PrologueActionHint>(FindObjectsSortMode.None))
+            {
+                var text = hint.GetComponentInChildren<TextMesh>();
+                Assert.AreSame(actionFont, text.font, hint.Action + " 안내가 나눔명조 Bold를 사용하지 않는다.");
+                Assert.GreaterOrEqual(text.fontSize, 64);
+                Assert.GreaterOrEqual(text.characterSize, 0.07f);
+            }
+
+            foreach (var hint in Object.FindObjectsByType<PrologueConceptHint>(FindObjectsSortMode.None))
+            {
+                var text = hint.GetComponentInChildren<TextMesh>();
+                Assert.AreSame(conceptFont, text.font, "세계 설명이 나눔명조 Regular를 사용하지 않는다.");
+                Assert.GreaterOrEqual(text.fontSize, 60);
+                Assert.GreaterOrEqual(text.characterSize, 0.06f);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator 시작과_출구_앞에_체크포인트가_있고_끝에서_잔재로_간다()
         {
             yield return LoadPrologue();

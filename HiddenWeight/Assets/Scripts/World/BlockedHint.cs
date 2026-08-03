@@ -110,7 +110,7 @@ namespace HiddenWeight.World
             if (_shortcut != null)
                 return _shortcut.IsOpen
                     ? null
-                    : (residue ? "반대편에서 열 수 있습니다." : "반대편에서만 열 수 있다");
+                    : (residue ? ResidueShortcutMessage(_shortcut.Id) : "반대편에서만 열 수 있다");
 
             // 지역 출구는 조건을 못 채웠을 때만 이유를 말한다. 열려 있으면 굳이 안내하지
             // 않는다 — 지나가면 되는 곳에 문구가 남아 있으면 읽을 것이 늘기만 한다.
@@ -131,6 +131,23 @@ namespace HiddenWeight.World
                     : null;
 
             return null;
+        }
+
+        static string ResidueShortcutMessage(string id)
+        {
+            switch (id)
+            {
+                case "residue_shortcut_a":
+                    return "R05의 무너진 구조물을 되감으면 열립니다.";
+                case "residue_shortcut_b":
+                    return "R08 상층의 도르래를 되감으면 열립니다.";
+                case "residue_shortcut_c":
+                    return "R10 중간 보스를 처치하면 열립니다.";
+                case "residue_secret_s2":
+                    return "R06의 선택 구조물을 되감으면 열립니다.";
+                default:
+                    return "다른 구간의 장치를 작동하면 열립니다.";
+            }
         }
 
         static string GateMessage(EmotionId skill, bool residue)

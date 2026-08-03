@@ -122,6 +122,16 @@ namespace HiddenWeight.Tests
                 "R10 중간보스 그림이 플레이 화면을 지나치게 가린다.");
             Assert.That(renderer.bounds.center.x, Is.EqualTo(boss.transform.position.x).Within(0.08f),
                 "R10 중간보스 실루엣 중심이 몸체 판정 중앙과 어긋난다.");
+            var presentation = boss.GetComponent<ResidueBossPresentationGuard>();
+            Assert.IsNotNull(presentation, "R10 중간보스의 잘린 공격 프레임 방지 보정이 없다.");
+            Assert.AreEqual("WatcherAnimIdle", presentation.SafeClip);
+            var bossAnimator = boss.GetComponentInChildren<SpriteAnimator>(true);
+            Assert.IsNotNull(bossAnimator);
+            yield return null;
+            Assert.IsNotNull(bossAnimator.CurrentClip,
+                "R10 중간보스 애니메이션이 정지되어 있다.");
+            yield return new WaitForFixedUpdate();
+            AssertBossGrounded(boss, "R10 중간보스");
 
             var low = FindInactive("R10_ExitStep_Low")?.GetComponent<BoxCollider2D>();
             var high = FindInactive("R10_ExitStep_High")?.GetComponent<BoxCollider2D>();
@@ -133,6 +143,79 @@ namespace HiddenWeight.Tests
                 "바닥에서 첫 출구 계단까지 일반 점프로 닿지 않는다.");
             Assert.That(high.bounds.max.y - low.bounds.max.y, Is.LessThanOrEqualTo(2.3f),
                 "첫 계단에서 두 번째 출구 계단까지 일반 점프로 닿지 않는다.");
+
+            Assert.That(high.bounds.min.x - low.bounds.max.x, Is.LessThanOrEqualTo(0.25f),
+                "R10 출구 계단 사이의 수평 간격이 끊겨 있다.");
+            Assert.That(FindRoom("Room10").WorldBounds.max.x - high.bounds.max.x,
+                Is.LessThanOrEqualTo(0.6f), "마지막 계단과 R11 출구 사이가 점프로 닿지 않는다.");
+
+            var connector = FindInactive("R10_R11_Connector")?.GetComponent<BoxCollider2D>();
+            var room11 = FindRoom("Room11");
+            Assert.IsNotNull(connector, "R10과 R11 사이의 이완 구간 연결 발판이 없다.");
+            Assert.That(connector.bounds.min.x, Is.EqualTo(FindRoom("Room10").WorldBounds.max.x).Within(0.05f),
+                "R10 마지막 계단 뒤에 보이지 않는 틈이 남아 있다.");
+            Assert.That(connector.bounds.max.x, Is.EqualTo(room11.WorldBounds.min.x).Within(0.05f),
+                "연결 발판과 R11 바닥 사이에 틈이 남아 있다.");
+            Assert.IsNotNull(connector.transform.Find("PlatformSurface_Runtime/Art")
+                    ?.GetComponent<SpriteRenderer>()?.sprite,
+                "R10-R11 연결 발판은 밟히지만 그림이 없어 허공처럼 보인다.");
+        }
+
+        [UnityTest]
+        public IEnumerator R12_최종보스_조우와_안전한_스프라이트_표시가_연결된다()
+        {
+            yield return LoadResidue();
+
+            var encounter = FindEncounter("residue_r12_boss");
+            Assert.IsNotNull(encounter, "R12 최종 보스 조우가 없다.");
+            var trigger = encounter.GetComponent<Collider2D>();
+            Assert.IsNotNull(trigger, "R12 최종 보스 조우 판정이 없다.");
+            Assert.IsTrue(trigger.isTrigger, "R12 조우 판정이 고체 벽이라 전장에 진입할 수 없다.");
+
+            var boss = encounter.BossEnemy;
+            Assert.IsNotNull(boss, "R12 최종 보스가 조우에 연결되지 않았다.");
+            var presentation = boss.GetComponent<ResidueBossPresentationGuard>();
+            Assert.IsNotNull(presentation, "R12 최종 보스의 잘린 공격 프레임 방지 보정이 없다.");
+            Assert.AreEqual("InstructorHalo", presentation.SafeClip);
+
+            var animator = boss.GetComponentInChildren<SpriteAnimator>(true);
+            Assert.IsNotNull(animator);
+            yield return null;
+            Assert.IsNotNull(animator.CurrentClip,
+                "R12 최종 보스 애니메이션이 정지되어 있다.");
+            yield return new WaitForFixedUpdate();
+            AssertBossGrounded(boss, "R12 최종 보스");
+        }
+
+        [UnityTest]
+        public IEnumerator R10_이후_R11_주동선은_점프가능하고_가짜장애물이_없다()
+        {
+            yield return LoadResidue();
+
+            var room = FindRoom("Room11");
+            Assert.IsNotNull(room);
+            var first = FindInactive("R11_MainStep_A")?.GetComponent<BoxCollider2D>();
+            var second = FindInactive("R11_MainStep_B")?.GetComponent<BoxCollider2D>();
+            Assert.IsNotNull(first, "R11 첫 진행 발판이 없다.");
+            Assert.IsNotNull(second, "R11 두 번째 진행 발판이 없다.");
+
+            float entrySurface = room.WorldBounds.min.y + 3f;
+            Assert.That(first.bounds.max.y - entrySurface, Is.LessThanOrEqualTo(1.3f),
+                "R11 진입 바닥에서 첫 발판까지 일반 점프로 닿지 않는다.");
+            Assert.That(first.bounds.min.x - (room.WorldBounds.min.x + 10f), Is.LessThanOrEqualTo(2.1f),
+                "R11 진입 턱과 첫 발판 사이의 수평 간격이 너무 넓다.");
+            Assert.That(second.bounds.min.x - first.bounds.max.x, Is.LessThanOrEqualTo(1.6f),
+                "R11 두 진행 발판 사이의 간격이 너무 넓다.");
+            Assert.That(room.WorldBounds.min.x + 22f - second.bounds.max.x, Is.LessThanOrEqualTo(2.6f),
+                "두 번째 발판과 R12 안전지대 사이의 간격이 너무 넓다.");
+
+            foreach (string name in new[] { "R11_GallowsSilhouette", "R11_S3_Hint" })
+            {
+                var decoration = FindInactive(name);
+                if (decoration == null) continue;
+                foreach (var renderer in decoration.GetComponentsInChildren<SpriteRenderer>(true))
+                    Assert.IsFalse(renderer.enabled, name + "가 통과 가능한 가짜 장애물로 남아 있다.");
+            }
         }
 
         [UnityTest]
@@ -246,6 +329,23 @@ namespace HiddenWeight.Tests
             foreach (var encounter in Object.FindObjectsByType<Encounter>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (encounter.Id == id) return encounter;
             return null;
+        }
+
+        static void AssertBossGrounded(Enemy boss, string label)
+        {
+            Physics2D.SyncTransforms();
+            var body = boss.GetComponent<Collider2D>();
+            var art = boss.GetComponentInChildren<SpriteAnimator>(true)?.Renderer;
+            Assert.IsNotNull(body, $"{label} 몸체 판정이 없다.");
+            Assert.IsNotNull(art, $"{label} 그림이 없다.");
+
+            var hit = Physics2D.Raycast(body.bounds.center, Vector2.down,
+                body.bounds.extents.y + 0.25f, LayerMask.GetMask("Ground", "Wall"));
+            Assert.IsNotNull(hit.collider, $"{label}가 바닥에서 떠 있다.");
+            Assert.That(body.bounds.min.y - hit.point.y, Is.LessThanOrEqualTo(0.03f),
+                $"{label}의 물리 몸체가 바닥에 닿지 않았다.");
+            Assert.That(Mathf.Abs(art.bounds.min.y - body.bounds.min.y), Is.LessThanOrEqualTo(0.05f),
+                $"{label} 그림의 발 기준과 몸체 바닥이 어긋났다.");
         }
 
         static GameObject FindInactive(string name)

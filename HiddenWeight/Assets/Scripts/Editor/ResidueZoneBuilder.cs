@@ -1201,8 +1201,8 @@ namespace HiddenWeight.EditorTools
             BuildResidueEnemy(c.Root.transform, c.P(5f, 4f), ResidueEnemyKind.Walker);  // 좁은 발판 전투
             BuildResidueEnemy(c.Root.transform, c.P(16f, 6f), ResidueEnemyKind.Carrier); // 넓은 직선교
 
-            // 돌진을 받아내는 낮은 벽. 여기에 박으면 1.5초 경직.
-            BuildResidueWall(c.Root.transform, "R07_CrashWall", c.P(20.5f, 6f), new Vector2(1f, 2f));
+            // 예전 돌진 충돌벽은 중간 발판과 겹쳐, 그림은 계단인데 실제로는 보이지 않는
+            // 세로벽에 걸리거나 허공에 서는 원인이 됐다. R07 출구는 SafePlatform 하나로 잇는다.
 
             // 숏컷 C는 R07 쪽에 놓인 사슬다리다. 여는 것은 R10의 중간 보스 승리다.
             _shortcutC = BuildShortcut(c.Root.transform, "residue_shortcut_c", c.P(25f, 12f),
@@ -1367,12 +1367,8 @@ namespace HiddenWeight.EditorTools
             BuildStoryFragment(c.Root.transform, c.P(6f, 4f), "residue_r11",
                 "벽의 홈마다 서로 다른 형상이 놓여 있다.", EmotionId.None, false);
 
-            // 보스 방향을 가리키는 교수대 실루엣.
-            BuildResidueProp(c.Root.transform, "R11_GallowsSilhouette", c.P(26f, 4f), new Vector2(4f, 7f), "Prop_r2_c1");
-
-            // S3 암시. 자각 + 균열 클리어 전에는 윤곽만 보인다.
-            BuildDecor(c.Root.transform, "R11_S3_Hint", c.P(14f, 10f), new Vector2(2f, 2f),
-                "Tile", new Color(0.32f, 0.3f, 0.4f));
+            // 충돌 없는 교수대 실루엣과 임시 Tile 표식은 주 동선의 벽·발판으로 오해되어
+            // 제거한다. S3는 조건을 갖춘 뒤 실제 입구와 안내로만 드러낸다.
 
             // S3로 오르는 서쪽 계단. R12로 가는 길(발판 13.5·18)에서 완전히 떨어진 서쪽 바닥
             // (x 0~10, 표면 y=3) 위에만 세운다 — 되감기 게이트를 R12 동선에 놓지 않으려면
@@ -1437,7 +1433,7 @@ namespace HiddenWeight.EditorTools
             // 기억침을 섞는다. 되감기로 복원한 발판 뒤에 숨어 피하는 것이 공략의 일부다.
             // 전용 시트(MemoryInstructor_*)를 쓴다 — 손목 감시자 그림을 재사용하던 것을
             // 교체했다. 행 의미는 residue-animation-sprites/PROMPTS.md 납품 표 그대로.
-            var boss = BuildBoss(c.Root.transform, c.P(15f, 5f), "Enemy_Residue_Professor", 18,
+            var boss = BuildBoss(c.Root.transform, c.P(15f, 5f), "Enemy_Residue_Professor", 12,
                 new[]
                 {
                     BossController.Move.GroundSweep, BossController.Move.Projectile,
@@ -1463,6 +1459,11 @@ namespace HiddenWeight.EditorTools
                                    "InstructorSlam", "InstructorHook" },
                 phaseClip: "InstructorPhase");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
+            boss.AddComponent<ResidueFinalBossDeathCleanup>();
+            // 첫 지역 최종 보스는 패턴을 읽는 시험에 집중한다. 체력과 압박 속도를 함께
+            // 낮춰 한 번의 실수로 연속 피격되는 구간을 줄이고, 공격 전 예고를 충분히 준다.
+            boss.GetComponent<BossController>().ConfigureDifficulty(
+                2.2f, 6.5f, 1.1f, 1.4f, 1.6f, 1.45f, 3.8f);
 
             // 3단계에서 보스가 다시 부수는 전장 발판. 예전에는 Full 씬 전용 런타임 보정
             // (ResidueLoopRuntime)이 방 경계로 찾아 넣어 줬는데, 그 보정은 방 씬에서 돌지

@@ -163,12 +163,19 @@ namespace HiddenWeight.World
         {
             var stair = GameObject.Find("R07_StairVisual");
             var room = GameObject.Find("Room07")?.GetComponent<Room>();
-            if (stair == null || room == null || !IsResidue(stair.scene.name)) return;
+            if (room == null || !IsResidue(room.gameObject.scene.name)) return;
 
             // 이 스프라이트는 계단과 거대한 아치 벽이 한 장이다. 실제 충돌은 중간의
-            // SafePlatform에만 있어 아치 부분을 그대로 통과하므로 가짜 벽 전체를 숨긴다.
-            foreach (var renderer in stair.GetComponentsInChildren<SpriteRenderer>(true))
-                renderer.enabled = false;
+            // SafePlatform에만 있어 아치 부분을 그대로 통과하므로 가짜 벽 오브젝트 자체를
+            // 끈다. 렌더러만 끄면 방 컬러가 다시 적용되는 순서에 따라 잠깐 재활성화될 수 있다.
+            if (stair != null) stair.SetActive(false);
+
+            // 이미 생성된 Full 씬에는 이전 빌더의 돌진 충돌벽이 남아 있다. 이 벽은
+            // SafePlatform과 겹쳐 출구 계단 위에서 캐릭터를 허공에 세우므로 판정과 그림을
+            // 함께 끈다. 새로 빌드되는 씬에서는 아예 만들지 않는다.
+            var crashWall = GameObject.Find("R07_CrashWall");
+            if (crashWall != null && IsResidue(crashWall.scene.name))
+                crashWall.SetActive(false);
         }
 
         static void ConfigureR04ChimneyEntry()
@@ -387,7 +394,10 @@ namespace HiddenWeight.World
 
             foreach (var rewindable in FindObjectsByType<Rewindable>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (rewindable.GetComponent<BlockedHint>() == null)
+                // 잔재는 RewindHighlight가 전용 아이콘과 HOLD K를 표시한다. 같은 대상에
+                // BlockedHint까지 붙이면 사진처럼 흰/금색 안내가 겹쳐 보인다.
+                if (!rewindable.gameObject.scene.name.Contains("Residue")
+                    && rewindable.GetComponent<BlockedHint>() == null)
                     BlockedHint.AttachTo(rewindable.gameObject, rewindable: rewindable);
         }
 
@@ -408,6 +418,16 @@ namespace HiddenWeight.World
                 if (platform.transform.Find("PlatformSurface_Runtime") != null) continue;
 
                 string sceneName = platform.gameObject.scene.name;
+                // 빌더가 이미 충돌 윗면에 맞춘 정식 V3 발판을 가진 오브젝트에 런타임 표면을
+                // 한 겹 더 만들면 R07 계단처럼 두 개의 발판이 포개져 공중 디딤돌로 보인다.
+                // 잔재의 기존 V3 한 장만 사용하고 다른 지역 표면 생성에는 관여하지 않는다.
+                var bakedResidueArt = platform.transform.Find("ResiduePlatformV3")
+                    ?.GetComponent<SpriteRenderer>();
+                if (IsResidue(sceneName) && bakedResidueArt != null && bakedResidueArt.sprite != null)
+                {
+                    bakedResidueArt.enabled = true;
+                    continue;
+                }
                 Sprite sprite = palette == null ? null : palette.SurfaceFor(sceneName);
                 if (sprite == null || sprite.bounds.size.x <= 0f || sprite.bounds.size.y <= 0f) continue;
 
@@ -422,36 +442,8 @@ namespace HiddenWeight.World
                         new Vector3(world.max.x, world.max.y, platform.transform.position.z),
                         true, 4);
 
-                    // 잔재 모듈은 어두운 석재라 아래에서 올려다보면 배경과 섞였다. 특히 R02의
-                    // 끊어진 다리는 충돌은 있는데 밑면이 안 보여 투명 천장처럼 느껴졌으므로,
-                    // 실제 BoxCollider 네 면을 푸른 윤곽으로 정확히 감싼다.
-                    // 네 면 윤곽은 R02의 끊어진 다리처럼 실제로 아래에서 부딪히는 얇은
-                    // 천장에만 필요하다. 모든 Ground 블록에 두르면 비밀방 덮개처럼 큰 블록의
-                    // 좌우선이 화면 전체를 가르는 밝은 기둥으로 보인다.
-                    if (!platform.name.StartsWith("R02_Bridge", System.StringComparison.Ordinal))
-                        continue;
-
-                    float residueScaleX = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.x));
-                    float residueScaleY = Mathf.Max(0.0001f, Mathf.Abs(platform.transform.lossyScale.y));
-                    float residueThickX = 0.14f / residueScaleX;
-                    float residueThickY = 0.14f / residueScaleY;
-                    float residueLeft = platform.offset.x - platform.size.x * 0.5f;
-                    float residueRight = platform.offset.x + platform.size.x * 0.5f;
-                    float residueBottom = platform.offset.y - platform.size.y * 0.5f;
-                    float residueTop = platform.offset.y + platform.size.y * 0.5f;
-                    Color residueEdgeColor = TraversalEdgeColor(sceneName);
-                    AddPlatformEdge(root.transform, "PlatformEdgeTop", residueEdgeColor,
-                        new Vector2(platform.offset.x, residueTop - residueThickY * 0.5f),
-                        new Vector2(platform.size.x, residueThickY));
-                    AddPlatformEdge(root.transform, "PlatformEdgeBottom", residueEdgeColor,
-                        new Vector2(platform.offset.x, residueBottom + residueThickY * 0.5f),
-                        new Vector2(platform.size.x, residueThickY));
-                    AddPlatformEdge(root.transform, "PlatformEdgeLeft", residueEdgeColor,
-                        new Vector2(residueLeft + residueThickX * 0.5f, platform.offset.y),
-                        new Vector2(residueThickX, platform.size.y));
-                    AddPlatformEdge(root.transform, "PlatformEdgeRight", residueEdgeColor,
-                        new Vector2(residueRight - residueThickX * 0.5f, platform.offset.y),
-                        new Vector2(residueThickX, platform.size.y));
+                    // V3 모듈 자체가 충돌면과 밑면을 충분히 보여 준다. R02에만 덧그리던 네 면
+                    // 윤곽은 두 몬스터 사이를 가르는 굵은 선으로 보였으므로 더 만들지 않는다.
                     continue;
                 }
 

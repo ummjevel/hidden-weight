@@ -52,6 +52,10 @@ namespace HiddenWeight.Tests
                     $"{bridgeName} 그림 윗면이 충돌면과 어긋났다.");
                 Assert.LessOrEqual(art.bounds.min.y, collider.bounds.min.y + 0.05f,
                     $"{bridgeName} 그림이 밑면까지 덮지 못한다.");
+
+                foreach (var renderer in bridge.GetComponentsInChildren<SpriteRenderer>(true))
+                    Assert.That(renderer.name, Does.Not.StartWith("PlatformEdge"),
+                        $"{bridgeName}에 두 몬스터 사이를 가르는 굵은 외곽선이 남아 있다.");
             }
         }
 
@@ -75,6 +79,47 @@ namespace HiddenWeight.Tests
                 flatFaces++;
             }
             Assert.Greater(flatFaces, 0, "R01 계단의 평평한 측면 이미지가 없다.");
+        }
+
+        [UnityTest]
+        public IEnumerator R07_중간계단은_충돌보다_높은_가짜벽을_보이지_않는다()
+        {
+            ResetProgress();
+            yield return SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
+            yield return null;
+
+            GameObject fakeStair = null;
+            foreach (var transform in Object.FindObjectsByType<Transform>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (transform.name == "R07_StairVisual") { fakeStair = transform.gameObject; break; }
+            if (fakeStair != null)
+                Assert.IsFalse(fakeStair.activeSelf,
+                    "R07 계단 옆에 통과 가능한 높은 아치 벽 이미지가 남아 있다.");
+
+            var crashWall = GameObject.Find("R07_CrashWall");
+            Assert.IsTrue(crashWall == null || !crashWall.activeSelf,
+                "R07 중간 계단과 겹치는 보이지 않는 돌진 충돌벽이 남아 있다.");
+
+            var room = GameObject.Find("Room07").GetComponent<Room>();
+            Vector2 expected = (Vector2)room.WorldBounds.min + new Vector2(21.5f, 6.5f);
+            BoxCollider2D step = null;
+            float best = float.MaxValue;
+            foreach (var candidate in Object.FindObjectsByType<BoxCollider2D>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.name != "SafePlatform" || !room.WorldBounds.Contains(candidate.bounds.center))
+                    continue;
+                float distance = Vector2.Distance(candidate.bounds.center, expected);
+                if (distance >= best) continue;
+                best = distance;
+                step = candidate;
+            }
+            Assert.IsNotNull(step, "R07 출구로 오르는 실제 중간 계단이 없다.");
+
+            foreach (var renderer in step.GetComponentsInChildren<SpriteRenderer>(true))
+                if (renderer.enabled)
+                    Assert.LessOrEqual(renderer.bounds.max.y, step.bounds.max.y + 0.05f,
+                        "R07 중간 계단 그림이 실제로 밟는 높이보다 위로 솟아 있다.");
         }
 
         [UnityTest]

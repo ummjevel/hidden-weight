@@ -356,6 +356,58 @@ def make_calm_wall_strip(wall_tiles, size=(256, 768)):
         draw.line((0, y, size[0], y), fill=dark, width=2)
         draw.line((0, y + 2, size[0], y + 2), fill=light, width=1)
     opaque.alpha_composite(joints)
+
+    # 결정 강조형 세로벽: 단색 충돌 기둥처럼 보이지 않도록 하나의 긴 청록 코어를 세우고
+    # 바깥에 금속 프레임을 두른다. 가로 칸막이는 만들지 않아 세로 흐름이 끊기지 않는다.
+    crystal = Image.new("RGBA", size, (0, 0, 0, 0))
+    crystal_draw = ImageDraw.Draw(crystal)
+    for x in range(76, 181):
+        edge = abs(x - 128) / 52
+        color = (
+            round(64 + 30 * edge),
+            round(190 + 22 * (1 - edge)),
+            round(228 + 24 * (1 - edge)),
+            round(176 + 50 * (1 - edge)),
+        )
+        crystal_draw.line((x, 0, x, size[1]), fill=color, width=1)
+
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.rectangle((96, 0, 160, size[1]), fill=(45, 194, 255, 104))
+    glow = glow.filter(ImageFilter.GaussianBlur(18))
+    opaque.alpha_composite(glow)
+    opaque.alpha_composite(crystal)
+
+    frame = Image.new("RGBA", size, (0, 0, 0, 0))
+    frame_draw = ImageDraw.Draw(frame)
+    metal_shadow = (64, 70, 102, 168)
+    metal = (190, 170, 126, 226)
+    metal_light = (232, 220, 182, 172)
+    for x in (70, 185):
+        frame_draw.line((x, 0, x, size[1]), fill=metal_shadow, width=11)
+        frame_draw.line((x, 0, x, size[1]), fill=metal, width=6)
+        frame_draw.line((x - 1, 0, x - 1, size[1]), fill=metal_light, width=1)
+
+    # 폭이 다른 길쭉한 마름모를 이어 고딕 창살을 만든다. 핵심 결정 세 개만 밝게 하여
+    # 타일 장식보다 하나의 건축 기둥으로 읽히게 한다.
+    anchors = (0, 126, 294, 455, 628, 768)
+    for index in range(len(anchors) - 1):
+        top_y, bottom_y = anchors[index], anchors[index + 1]
+        mid_y = (top_y + bottom_y) // 2
+        left = 81 + (index % 2) * 7
+        right = 175 - (index % 2) * 7
+        diamond = ((128, top_y), (right, mid_y), (128, bottom_y), (left, mid_y), (128, top_y))
+        frame_draw.line(diamond, fill=metal_shadow, width=8)
+        frame_draw.line(diamond, fill=metal, width=4)
+        frame_draw.line(diamond, fill=metal_light, width=1)
+
+    for cy, half_height in ((145, 34), (382, 43), (624, 36)):
+        frame_draw.polygon(
+            ((128, cy - half_height), (148, cy), (128, cy + half_height), (108, cy)),
+            fill=(58, 184, 240, 250), outline=metal)
+        frame_draw.line((128, cy - half_height + 4, 128, cy + half_height - 4),
+                        fill=(152, 236, 255, 228), width=4)
+    opaque.alpha_composite(frame)
     return feather_repeat_edges(opaque, 8)
 
 

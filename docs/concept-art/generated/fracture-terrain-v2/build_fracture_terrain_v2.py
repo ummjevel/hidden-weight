@@ -374,7 +374,7 @@ def opaque_mean(im, box):
 
 
 def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
-    """끝단 사이를 잇는 장식 없는 대리석·유리 장경간."""
+    """끝단 사이를 잇는 결정 강조형 대리석·유리 장경간."""
     source = Image.new("RGBA", size, (0, 0, 0, 0))
     for index, tile in enumerate(surface_tiles):
         source.alpha_composite(tile, (index * CELL_W, 0))
@@ -394,9 +394,9 @@ def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
     for y in range(142, 205):
         t = (y - 142) / 62
         target = (
-            min(255, round(glass[0] * 0.86)),
-            min(255, round(glass[1] * 1.08)),
-            min(255, round(glass[2] * 1.12)),
+            max(54, round(glass[0] * 0.72)),
+            min(255, max(184, round(glass[1] * 1.22))),
+            min(255, max(224, round(glass[2] * 1.28))),
         )
         color = tuple(round(a + (b - a) * t) for a, b in zip(stone_side, target))
         draw.line((0, y, size[0], y), fill=color + (255,))
@@ -419,11 +419,64 @@ def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
     for x in range(256, size[0], 256):
         detail_draw.line((x, 68, x, 137), fill=(104, 101, 144, 24), width=2)
 
-    # 유리 면의 큰 패싯은 구조를 이어 주되, 고딕 메달 문양처럼 시선을 빼앗지 않는다.
+    # 유리 안쪽의 청록 발광. 넓은 번짐 위에 밝은 코어를 겹쳐, 배경의 물빛과 같은
+    # 광원으로 읽히게 한다. 긴 한 줄이라 짧은 블록 반복으로 보이지 않는다.
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.line((0, 176, size[0], 176), fill=(38, 190, 255, 104), width=24)
+    glow = glow.filter(ImageFilter.GaussianBlur(13))
+    out.alpha_composite(glow)
+    detail_draw.line((0, 176, size[0], 176), fill=(92, 214, 248, 132), width=3)
+
+    # 유리 면의 큰 패싯. 밝은 코어를 충분히 남겨 결정 강조형의 청록광이 실제 플레이
+    # 화면에서도 죽지 않게 한다.
     for x in range(-64, size[0] + 128, 128):
-        detail_draw.line((x, 204, x + 64, 146), fill=(225, 247, 255, 48), width=2)
-        detail_draw.line((x + 64, 146, x + 128, 204), fill=(70, 143, 190, 46), width=2)
+        detail_draw.line((x, 204, x + 64, 146), fill=(112, 220, 252, 176), width=3)
+        detail_draw.line((x + 64, 146, x + 128, 204), fill=(68, 190, 238, 154), width=3)
     out.alpha_composite(detail)
+
+    # 폐허 온실을 연상시키는 금빛 고딕 아케이드. 균등한 타일 칸 대신 폭이 다른 아치를
+    # 한 장경간 안에 배치하고, 중간 기둥은 성기게 남긴다.
+    arcade = Image.new("RGBA", size, (0, 0, 0, 0))
+    arcade_draw = ImageDraw.Draw(arcade)
+    metal_shadow = (65, 72, 104, 152)
+    metal = (190, 170, 126, 222)
+    metal_light = (230, 218, 180, 166)
+    x = -18
+    bay_index = 0
+    while x < size[0] + 20:
+        bay = (132, 157, 119, 146, 128, 163, 121)[bay_index % 7]
+        right = x + bay
+        crown_y = 151 + (bay_index % 3) * 3
+        points = []
+        for step in range(17):
+            t = step / 16
+            px = x + bay * t
+            py = 202 - (202 - crown_y) * (4 * t * (1 - t))
+            points.append((round(px), round(py)))
+        arcade_draw.line(points, fill=metal_shadow, width=7)
+        arcade_draw.line(points, fill=metal, width=4)
+        arcade_draw.line(points, fill=metal_light, width=1)
+        if bay_index % 2 == 0:
+            arcade_draw.line((right, 149, right, 204), fill=metal_shadow, width=7)
+            arcade_draw.line((right, 149, right, 204), fill=metal, width=4)
+            arcade_draw.line((right - 1, 150, right - 1, 203), fill=metal_light, width=1)
+        x = right
+        bay_index += 1
+    out.alpha_composite(arcade)
+
+    # 세 개뿐인 결정형 버팀대가 긴 바닥에 불규칙한 초점을 만든다. 캡 장식과 경쟁하지
+    # 않도록 상판 위로는 올라오지 않고 유리 띠와 하단 실루엣만 끊는다.
+    crystal_posts = Image.new("RGBA", size, (0, 0, 0, 0))
+    post_draw = ImageDraw.Draw(crystal_posts)
+    for cx, depth in ((184, 34), (523, 46), (842, 38)):
+        post_draw.polygon(
+            ((cx, 147), (cx + 15, 169), (cx + 8, 205 + depth),
+             (cx, 217 + depth), (cx - 8, 205 + depth), (cx - 15, 169)),
+            fill=(62, 184, 238, 246), outline=metal)
+        post_draw.line((cx, 151, cx, 216 + depth), fill=(145, 232, 255, 226), width=3)
+        post_draw.line((cx - 13, 169, cx + 13, 169), fill=metal_light, width=2)
+    out.alpha_composite(crystal_posts)
 
     # 성긴 크리스탈 하단. 동일한 삼각형을 매 칸 붙이지 않고 길이와 간격을 결정적으로 바꾼다.
     fringe = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -433,15 +486,10 @@ def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
         width = rng.randrange(52, 88)
         depth = rng.randrange(18, 39)
         mid = x + width // 2
-        color = (
-            min(255, round(glass[0] * 0.92)),
-            min(255, round(glass[1] * 1.12)),
-            min(255, round(glass[2] * 1.18)),
-            238,
-        )
+        color = (70, 190 + rng.randrange(0, 25), 232 + rng.randrange(0, 23), 246)
         fringe_draw.polygon(((x, 203), (x + width, 203), (mid, 203 + depth)), fill=color)
         fringe_draw.line(((x, 203), (mid, 203 + depth), (x + width, 203)),
-                         fill=(224, 244, 255, 92), width=2)
+                         fill=(160, 235, 255, 182), width=2)
         x += width + rng.randrange(18, 42)
     out.alpha_composite(fringe)
     return feather_repeat_edges(out, 12)

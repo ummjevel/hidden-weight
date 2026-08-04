@@ -57,6 +57,34 @@ namespace HiddenWeight.Tests
         }
 
         [Test]
+        public void Fracture_SurfaceMiddle은_결정강조형의_청록광과_금속아치가_있다()
+        {
+            const string assetPath =
+                TerrainRoot + "/Fracture_TraversalSurfaceMiddle_v3.png";
+            string fullPath = Path.Combine(Application.dataPath, "..", assetPath);
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            Assert.IsTrue(ImageConversion.LoadImage(
+                texture, File.ReadAllBytes(fullPath)), assetPath);
+
+            Color32[] pixels = texture.GetPixels32();
+            int brightCyan = pixels.Count(pixel => pixel.a > 0
+                && pixel.b - pixel.r >= 50
+                && pixel.g - pixel.r >= 25
+                && pixel.g >= 175
+                && pixel.b >= 200);
+            int warmMetal = pixels.Count(pixel => pixel.a > 0
+                && pixel.r >= 130
+                && pixel.r - pixel.g <= 35
+                && pixel.g - pixel.b >= 18);
+
+            Assert.Greater(brightCyan, 1500,
+                assetPath + " has too little cyan crystal glow");
+            Assert.Greater(warmMetal, 1000,
+                assetPath + " has no readable ruined-gothic metal arcade");
+            Object.DestroyImmediate(texture);
+        }
+
+        [Test]
         public void Fracture_생성씬_배경은_카메라추적_모드다()
         {
             string[] rooms =

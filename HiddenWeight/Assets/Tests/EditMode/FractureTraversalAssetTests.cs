@@ -4,6 +4,7 @@ using System.Linq;
 using HiddenWeight.World;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace HiddenWeight.Tests
@@ -53,6 +54,43 @@ namespace HiddenWeight.Tests
                 palette.ContinuousSetFor("Room_Fracture_F01"));
             Assert.IsNull(palette.ContinuousSetFor("Room_Gaze_G01"));
             Assert.IsNull(palette.ContinuousSetFor("Zone_Prologue"));
+        }
+
+        [Test]
+        public void Fracture_생성씬_배경은_카메라추적_모드다()
+        {
+            string[] rooms =
+            {
+                "F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08",
+                "F09", "F10", "F11", "F12", "FS1", "FS2", "FS3"
+            };
+
+            foreach (string room in rooms)
+            {
+                string scenePath = $"Assets/Scenes/Room_Fracture_{room}.unity";
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                var background = Object.FindFirstObjectByType<CameraLockedRoomBackground>();
+                Assert.IsNotNull(background, scenePath);
+
+                Vector2 worldSize = new SerializedObject(background)
+                    .FindProperty("worldSize").vector2Value;
+                Assert.AreEqual(Vector2.zero, worldSize,
+                    scenePath + " should follow and cover the active camera");
+            }
+        }
+
+        [Test]
+        public void Gaze_생성씬_배경은_방고정_모드를_유지한다()
+        {
+            const string scenePath = "Assets/Scenes/Room_Gaze_G01.unity";
+            EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            var background = Object.FindFirstObjectByType<CameraLockedRoomBackground>();
+            Assert.IsNotNull(background, scenePath);
+
+            Vector2 worldSize = new SerializedObject(background)
+                .FindProperty("worldSize").vector2Value;
+            Assert.Greater(worldSize.x, 0f, scenePath);
+            Assert.Greater(worldSize.y, 0f, scenePath);
         }
     }
 }

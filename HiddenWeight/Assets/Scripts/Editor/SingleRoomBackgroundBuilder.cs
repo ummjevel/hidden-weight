@@ -7,6 +7,12 @@ namespace HiddenWeight.EditorTools
 {
     public static class SingleRoomBackgroundBuilder
     {
+        public enum BackgroundSizing
+        {
+            RoomFixed,
+            CameraFollow,
+        }
+
         const string TraversalPalettePath = "Assets/Resources/TraversalArtPalette.asset";
 
         [MenuItem("Hidden Weight/Art/Build Traversal Art Palette")]
@@ -176,7 +182,8 @@ namespace HiddenWeight.EditorTools
             importer.SaveAndReimport();
         }
 
-        public static void Build(Room room, string artRoot)
+        public static void Build(Room room, string artRoot,
+            BackgroundSizing sizing = BackgroundSizing.RoomFixed)
         {
             if (room == null)
                 throw new ArgumentNullException(nameof(room));
@@ -208,10 +215,13 @@ namespace HiddenWeight.EditorTools
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
             var locked = background.AddComponent<CameraLockedRoomBackground>();
-            // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
-            // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
-            var size = room.WorldBounds.size;
-            locked.ConfigureWorldSize(new Vector2(size.x, size.y));
+            if (sizing == BackgroundSizing.RoomFixed)
+            {
+                // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
+                // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
+                var size = room.WorldBounds.size;
+                locked.ConfigureWorldSize(new Vector2(size.x, size.y));
+            }
             if (artRoot.EndsWith("/Prologue", StringComparison.Ordinal))
             {
                 var serialized = new SerializedObject(locked);

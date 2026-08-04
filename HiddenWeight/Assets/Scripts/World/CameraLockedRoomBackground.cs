@@ -505,8 +505,12 @@ namespace HiddenWeight.World
                 if (platform.name.Contains("Boundary")) continue;
 
                 string sceneName = platform.gameObject.scene.name;
+                ContinuousTerrainSet continuous = palette == null
+                    ? null : palette.ContinuousSetFor(sceneName);
                 TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
-                if (tiles != null)
+                if (continuous != null && HasDedicatedFracturePlatformArt(platform))
+                    continue;
+                if (continuous != null || tiles != null)
                 {
                     BuildTiledPlatformSurface(platform, palette, tiles, sceneName);
                     continue;
@@ -635,10 +639,24 @@ namespace HiddenWeight.World
             var root = new GameObject("PlatformSurface_Runtime");
             root.transform.SetParent(platform.transform, false);
 
-            int moduleCount = ModuleCount(widthWorld, bandWorld, tiles.topMid[0]);
-            float moduleLocal = platform.size.x / moduleCount;
+            ContinuousTerrainSet continuous = palette.ContinuousSetFor(sceneName);
             float left = platform.offset.x - platform.size.x * 0.5f;
             float topY = platform.offset.y + platform.size.y * 0.5f;
+            if (continuous != null)
+            {
+                foreach (var oldRenderer in platform.GetComponentsInChildren<SpriteRenderer>(true))
+                    if (oldRenderer.sprite != null
+                        && oldRenderer.sprite.name.StartsWith("FractureTerrain"))
+                        oldRenderer.enabled = false;
+
+                if (AddContinuousHorizontalRun(root.transform, continuous,
+                    left, left + platform.size.x, topY, bandLocal,
+                    palette.SurfaceTintFor(sceneName), 4))
+                    return;
+            }
+
+            int moduleCount = ModuleCount(widthWorld, bandWorld, tiles.topMid[0]);
+            float moduleLocal = platform.size.x / moduleCount;
             int seed = Mathf.RoundToInt(platform.transform.position.x);
 
             for (int i = 0; i < moduleCount; i++)
@@ -664,6 +682,15 @@ namespace HiddenWeight.World
             }
         }
 
+        static bool HasDedicatedFracturePlatformArt(BoxCollider2D platform)
+        {
+            foreach (var renderer in platform.GetComponentsInChildren<SpriteRenderer>(true))
+                if (renderer.enabled && renderer.sprite != null
+                    && renderer.sprite.name.StartsWith("FracturePlatform"))
+                    return true;
+            return false;
+        }
+
         static void AddPlatformEdge(Transform parent, string name, Color color,
                                     Vector2 localCenter, Vector2 localSize)
         {
@@ -681,6 +708,160 @@ namespace HiddenWeight.World
             renderer.sprite = pixel;
             renderer.color = color;
             renderer.sortingOrder = 6;
+        }
+
+        const float ContinuousJoinOverlap = 0.02f;
+
+        static bool ValidSprite(Sprite sprite) => sprite != null
+            && sprite.bounds.size.x > 0f && sprite.bounds.size.y > 0f;
+
+        static SpriteRenderer AddContinuousPiece(
+            Transform parent, string name, Sprite sprite,
+            float left, float right, float bottom, float top,
+            Color tint, int sortingOrder, Tilemap tilemap)
+        {
+            if (!ValidSprite(sprite) || right <= left || top <= bottom) return null;
+
+            var piece = new GameObject(name);
+            piece.transform.SetParent(parent, false);
+            Vector2 bounds = sprite.bounds.size;
+            float scaleX = (right - left) / bounds.x;
+            float scaleY = (top - bottom) / bounds.y;
+            piece.transform.localScale = new Vector3(scaleX, scaleY, 1f);
+            piece.transform.localPosition = new Vector3(
+                (left + right) * 0.5f - sprite.bounds.center.x * scaleX,
+                bottom - sprite.bounds.min.y * scaleY,
+                0f);
+
+            var renderer = piece.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = tint;
+            if (tilemap != null) ApplySorting(tilemap, renderer, sortingOrder);
+            else renderer.sortingOrder = sortingOrder;
+            return renderer;
+        }
+
+        // 짧은 정사각 타일을 매 칸 놓지 않고, 실제 구간의 양 끝에만 캡을 두고 가운데는
+        // 4:1짜리 긴 모듈로 채운다. 좌표는 parent의 로컬 공간이다.
+        static bool AddContinuousHorizontalRun(
+            Transform parent, ContinuousTerrainSet set,
+            float left, float right, float top, float height,
+            Color tint, int sortingOrder, Tilemap tilemap = null)
+        {
+            if (set == null || !set.IsComplete
+                || !ValidSprite(set.surfaceLeft)
+                || !ValidSprite(set.surfaceMiddle)
+                || !ValidSprite(set.surfaceRight))
+                return false;
+
+            float width = right - left;
+            if (width <= 0f || height <= 0f) return false;
+
+            var run = new GameObject("FractureSurfaceRun");
+            run.transform.SetParent(parent, false);
+            float bottom = top - height;
+
+            float naturalCap = height * set.surfaceLeft.bounds.size.x
+                / set.surfaceLeft.bounds.size.y;
+            bool useCaps = width >= naturalCap * 2.5f;
+            float capWidth = useCaps ? naturalCap : 0f;
+            float middleLeft = left + capWidth;
+            float middleRight = right - capWidth;
+
+            if (useCaps)
+            {
+                AddContinuousPiece(run.transform, "FractureSurfaceCapLeft",
+                    set.surfaceLeft, left, middleLeft + ContinuousJoinOverlap,
+                    bottom, top, tint, sortingOrder, tilemap);
+                AddContinuousPiece(run.transform, "FractureSurfaceCapRight",
+                    set.surfaceRight, middleRight - ContinuousJoinOverlap, right,
+                    bottom, top, tint, sortingOrder, tilemap);
+            }
+
+            float middleWidth = middleRight - middleLeft;
+            if (middleWidth <= 0f)
+            {
+                Object.Destroy(run);
+                return false;
+            }
+
+            float naturalMiddle = height * set.surfaceMiddle.bounds.size.x
+                / set.surfaceMiddle.bounds.size.y;
+            int count = Mathf.Max(1, Mathf.CeilToInt(middleWidth / naturalMiddle));
+            float step = middleWidth / count;
+            for (int i = 0; i < count; i++)
+            {
+                float segmentLeft = middleLeft + i * step
+                    - (i > 0 ? ContinuousJoinOverlap : 0f);
+                float segmentRight = middleLeft + (i + 1) * step
+                    + (i + 1 < count ? ContinuousJoinOverlap : 0f);
+                AddContinuousPiece(run.transform, "FractureSurfaceMiddle",
+                    set.surfaceMiddle, segmentLeft, segmentRight,
+                    bottom, top, tint, sortingOrder, tilemap);
+            }
+            return true;
+        }
+
+        // 세로 노출면도 전체 높이를 하나의 run으로 본다. 장식은 위·아래에 한 번만 두고
+        // 중앙은 저대비 대리석 결을 길게 이어, 블록을 쌓은 체크무늬를 없앤다.
+        static bool AddContinuousVerticalRun(
+            Transform parent, ContinuousTerrainSet set,
+            float left, float right, float bottom, float top,
+            Color tint, int sortingOrder, Tilemap tilemap = null)
+        {
+            if (set == null || !set.IsComplete
+                || !ValidSprite(set.wallTop)
+                || !ValidSprite(set.wallMiddle)
+                || !ValidSprite(set.wallBottom))
+                return false;
+
+            float width = right - left;
+            float height = top - bottom;
+            if (width <= 0f || height <= 0f) return false;
+
+            var run = new GameObject("FractureWallRun");
+            run.transform.SetParent(parent, false);
+            float naturalCap = width * set.wallTop.bounds.size.y
+                / set.wallTop.bounds.size.x;
+            bool useCaps = height >= naturalCap * 2.5f;
+            float capHeight = useCaps ? naturalCap : 0f;
+            float middleBottom = bottom + capHeight;
+            float middleTop = top - capHeight;
+
+            if (useCaps)
+            {
+                AddContinuousPiece(run.transform, "FractureWallCapBottom",
+                    set.wallBottom, left, right,
+                    bottom, middleBottom + ContinuousJoinOverlap,
+                    tint, sortingOrder, tilemap);
+                AddContinuousPiece(run.transform, "FractureWallCapTop",
+                    set.wallTop, left, right,
+                    middleTop - ContinuousJoinOverlap, top,
+                    tint, sortingOrder, tilemap);
+            }
+
+            float middleHeight = middleTop - middleBottom;
+            if (middleHeight <= 0f)
+            {
+                Object.Destroy(run);
+                return false;
+            }
+
+            float naturalMiddle = width * set.wallMiddle.bounds.size.y
+                / set.wallMiddle.bounds.size.x;
+            int count = Mathf.Max(1, Mathf.CeilToInt(middleHeight / naturalMiddle));
+            float step = middleHeight / count;
+            for (int i = 0; i < count; i++)
+            {
+                float segmentBottom = middleBottom + i * step
+                    - (i > 0 ? ContinuousJoinOverlap : 0f);
+                float segmentTop = middleBottom + (i + 1) * step
+                    + (i + 1 < count ? ContinuousJoinOverlap : 0f);
+                AddContinuousPiece(run.transform, "FractureWallMiddle",
+                    set.wallMiddle, left, right, segmentBottom, segmentTop,
+                    tint, sortingOrder, tilemap);
+            }
+            return true;
         }
 
         // 높이가 달라지는 바닥 턱과 구덩이 옆면도 실제로는 벽잡기가 가능한 TilemapCollider다.
@@ -732,8 +913,10 @@ namespace HiddenWeight.World
             if (height <= 0f) return;
 
             string sceneName = tilemap.gameObject.scene.name;
+            ContinuousTerrainSet continuous = palette == null
+                ? null : palette.ContinuousSetFor(sceneName);
             TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
-            if (tiles != null)
+            if (continuous != null || tiles != null)
             {
                 // 깊은 슬래브의 노출 옆면을 끝까지 그리면 물 위로 이어지는 기둥이 된다
                 // (방 바깥 끝에서 실제로 그렇게 보였다). 보이는 것은 밟는 면 바로 아래의
@@ -745,6 +928,20 @@ namespace HiddenWeight.World
                 {
                     start = end - Vector3.up * MaxWallFaceDrop;
                     height = MaxWallFaceDrop;
+                }
+
+                if (continuous != null)
+                {
+                    Vector3 localStart = parent.InverseTransformPoint(start);
+                    Vector3 localEnd = parent.InverseTransformPoint(end);
+                    const float continuousFaceWidth = 1.1f;
+                    float centerX = localStart.x - side * continuousFaceWidth * 0.5f;
+                    if (AddContinuousVerticalRun(parent, continuous,
+                        centerX - continuousFaceWidth * 0.5f,
+                        centerX + continuousFaceWidth * 0.5f,
+                        localStart.y, localEnd.y,
+                        WallTint(palette.SurfaceTintFor(sceneName)), 2, tilemap))
+                        return;
                 }
 
                 // 벽면은 가로 켜를 세로로 쌓아 만든다. 한 장을 벽 높이만큼 늘이면 대리석
@@ -884,6 +1081,16 @@ namespace HiddenWeight.World
                 if (IsInvisibleBarrier(wall)) continue;
 
                 TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
+                ContinuousTerrainSet continuous = palette == null
+                    ? null : palette.ContinuousSetFor(sceneName);
+                if (continuous != null)
+                {
+                    // 씬에 구워진 v2 벽 켜는 새 연속형 면과 겹치므로 균열에서만 끈다.
+                    foreach (var oldRenderer in wall.GetComponentsInChildren<SpriteRenderer>(true))
+                        oldRenderer.enabled = false;
+                    BuildTiledWallClimbSurface(wall, palette, tiles, sceneName);
+                    continue;
+                }
                 if (tiles != null)
                 {
                     BuildTiledWallClimbSurface(wall, palette, tiles, sceneName);
@@ -953,6 +1160,16 @@ namespace HiddenWeight.World
             var root = new GameObject("WallClimbSurfaces_Runtime");
             root.transform.SetParent(wall.transform, false);
 
+            ContinuousTerrainSet continuous = palette.ContinuousSetFor(sceneName);
+            if (continuous != null && AddContinuousVerticalRun(
+                root.transform, continuous,
+                wall.offset.x - wall.size.x * 0.5f,
+                wall.offset.x + wall.size.x * 0.5f,
+                wall.offset.y - wall.size.y * 0.5f,
+                wall.offset.y + wall.size.y * 0.5f,
+                WallTint(palette.SurfaceTintFor(sceneName)), 4))
+                return;
+
             int courses = Mathf.Max(1, Mathf.RoundToInt(
                 heightWorld / (widthWorld / Aspect(tiles.wallCourse[0]))));
             float courseLocal = wall.size.y / courses;
@@ -1014,7 +1231,19 @@ namespace HiddenWeight.World
             Vector3 end = tilemap.CellToWorld(new Vector3Int(xMax, y + 1, 0));
             float width = Vector3.Distance(start, end);
             string sceneName = tilemap.gameObject.scene.name;
+            ContinuousTerrainSet continuous = palette == null
+                ? null : palette.ContinuousSetFor(sceneName);
             TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
+
+            if (continuous != null && width > 0f)
+            {
+                Vector3 localStart = parent.InverseTransformPoint(start);
+                Vector3 localEnd = parent.InverseTransformPoint(end);
+                if (AddContinuousHorizontalRun(parent, continuous,
+                    localStart.x, localEnd.x, localStart.y, SurfaceHeight,
+                    palette.SurfaceTintFor(sceneName), 1, tilemap))
+                    return;
+            }
 
             if (tiles != null && width > 0f)
             {

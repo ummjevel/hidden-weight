@@ -31,6 +31,10 @@ namespace HiddenWeight.World
         bool _finished;
 
         public bool IsRunning => _leg >= 0 && !_finished;
+
+        // 승강기가 지나갈 자리(시작 위치 기준 상대 좌표). PredictPosition은 출발한 뒤에만
+        // 답을 주므로, 아직 아무도 올라타지 않은 방을 검사하는 쪽은 경로 자체를 봐야 한다.
+        public Vector2[] Waypoints => waypoints;
         public bool IsFinished => _finished;
 
         public Transform Transform => transform;

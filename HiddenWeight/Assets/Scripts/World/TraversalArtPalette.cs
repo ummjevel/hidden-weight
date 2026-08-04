@@ -42,12 +42,20 @@ namespace HiddenWeight.World
             return Color.white;
         }
 
+        // 충돌 타일맵 자체의 색. 이건 "밟히는 곳이 아예 안 보이는 것"을 막는 최후의 보루라
+        // 아트가 없는 지역에서는 진하게 남긴다.
+        //
+        // 균열은 예외다. 역할별 타일셋이 들어온 뒤로 이 지역의 지형은 윗면(TraversalSurface)과
+        // 노출된 옆면(TraversalWallCourse)이 전부 실제 그림으로 덮인다. 그런데도 진한 틴트를
+        // 그대로 두니, 대리석 난간 옆과 아래로 **반투명한 잿빛 직사각형**이 삐져나와 물 위에
+        // 유리 상자가 놓인 것처럼 보였다. 그림이 이미 형태를 말하고 있으므로 여기서는
+        // 두께를 느끼게 하는 옅은 그림자만 남긴다.
         public Color CollisionTintFor(string sceneName)
         {
             if (sceneName.Contains("Gaze"))
                 return new Color(0.16f, 0.13f, 0.24f, 0.42f);
             if (sceneName.Contains("Fracture"))
-                return new Color(0.16f, 0.22f, 0.25f, 0.34f);
+                return new Color(0.20f, 0.26f, 0.34f, 0.14f);
             return new Color(0.18f, 0.13f, 0.08f, 0.46f);
         }
     }

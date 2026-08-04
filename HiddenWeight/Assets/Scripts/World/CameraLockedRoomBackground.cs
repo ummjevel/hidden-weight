@@ -452,14 +452,16 @@ namespace HiddenWeight.World
             TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
             if (tiles != null)
             {
-                // 바닥 슬래브는 8유닛 깊이라 노출된 옆면을 끝까지 그리면 물 위로 이어지는
-                // 기둥이 된다(방 바깥 끝에서 실제로 그렇게 보였다). 보이는 것은 밟는 면
-                // 바로 아래의 단면뿐이면 충분하다 — 윗부분만 남기고 잘라 낸다.
-                const float maxFaceDrop = 2.6f;
-                if (height > maxFaceDrop)
+                // 깊은 슬래브의 노출 옆면을 끝까지 그리면 물 위로 이어지는 기둥이 된다
+                // (방 바깥 끝에서 실제로 그렇게 보였다). 보이는 것은 밟는 면 바로 아래의
+                // 단면뿐이면 충분하다 — 윗부분만 남기고 잘라 낸다.
+                //
+                // 이 값은 씬 빌더의 바닥 두께와 짝이다. 빌더가 이보다 깊게 채우면 남는
+                // 깊이가 아무 그림도 못 받아 충돌 타일맵의 회색만 남는다.
+                if (height > MaxWallFaceDrop)
                 {
-                    start = end - Vector3.up * maxFaceDrop;
-                    height = maxFaceDrop;
+                    start = end - Vector3.up * MaxWallFaceDrop;
+                    height = MaxWallFaceDrop;
                 }
 
                 // 벽면은 가로 켜를 세로로 쌓아 만든다. 한 장을 벽 높이만큼 늘이면 대리석
@@ -551,7 +553,15 @@ namespace HiddenWeight.World
                 // 방 경계벽도 Wall 레이어다. 하지만 그건 "여기서 더 못 간다"는 보이지 않는
                 // 장벽이지 건축물이 아니다 — 대리석을 입히면 바닥 아래 허공까지 이어지는
                 // 기둥이 되어, 물 위에 타일이 쌓인 것처럼 보인다(실제로 그렇게 나왔다).
-                if (wall.name.Contains("Boundary")) continue;
+                //
+                // 이름만 보던 예전 가드는 "Boundary"만 걸렀다. 균열의 방 경계는
+                // Fracture_RoomEdge_W/E라 하나도 걸리지 않았고, 12개 방 전부에서 좌우
+                // 끝에 방 높이 28유닛짜리 대리석 기둥이 섰다 — 화면 왼쪽에 세로로
+                // 반복되는 띠가 바로 이것이었다.
+                //
+                // 이름 대신 의도를 본다: 빌더가 렌더러를 꺼 둔 벽은 "보이지 않게 하려고
+                // 세운 것"이다. 이름 검사는 렌더러가 아예 없는 경우를 위해 남긴다.
+                if (IsInvisibleBarrier(wall)) continue;
 
                 string sceneName = wall.gameObject.scene.name;
                 TerrainTileSet tiles = palette == null ? null : palette.TileSetFor(sceneName);
@@ -584,6 +594,17 @@ namespace HiddenWeight.World
                     edgeWidth, edge, 6);
             }
         }
+
+        // 지나가지 못하게만 세운 보이지 않는 벽인가. 이 벽에는 아트를 입히지 않는다.
+        //
+        // "렌더러가 꺼져 있으면 보이지 않기를 의도한 벽"이라는 판정을 한 번 넣었다가
+        // 되돌렸다 — 정반대였다. 빌더는 굴뚝·전장 벽의 **플레이스홀더** 렌더러를 끄고
+        // 여기서 진짜 지형 아트를 입히기를 기대한다. 그 판정을 넣자 잔재 R04 굴뚝의
+        // 벽타기 면이 통째로 사라졌다(ResiduePlacementTests.벽타기_굴뚝의_충돌면이_눈에_보인다).
+        //
+        // 그래서 이름만 본다. 목록에 균열의 RoomEdge를 더한 것이 이번 수정의 전부다.
+        static bool IsInvisibleBarrier(BoxCollider2D wall)
+            => wall.name.Contains("Boundary") || wall.name.Contains("RoomEdge");
 
         // 굴뚝·전장 벽처럼 타일맵 밖에 선 Wall 블록. 켜를 세로로 쌓아 전체 면을 덮는다.
         static void BuildTiledWallClimbSurface(BoxCollider2D wall, TraversalArtPalette palette,
@@ -646,6 +667,10 @@ namespace HiddenWeight.World
 
         // 바닥 윗면 한 구간. 구간의 시작과 끝은 실제 지형이 끊기는 자리이므로 끝단 타일을 쓴다.
         const float SurfaceHeight = 1.65f;
+
+        // 밟는 면 아래로 옆면 그림을 그리는 높이. 씬 빌더의 바닥 슬래브 두께와 같은 값이다
+        // (ZoneSceneBuilder의 FractureFloorDepth).
+        public const float MaxWallFaceDrop = 3f;
 
         static void AddTraversalSurface(Tilemap tilemap, Transform parent,
                                         TraversalArtPalette palette,

@@ -190,8 +190,17 @@ namespace HiddenWeight.EditorTools
             // 잔재 아트를 그대로 씌우면 세 지역이 같은 폐허로 보인다.
             public bool FloorArt;
 
-            public void Floor(int x0, int x1, int top, int depth = 8)
+            // 바닥 슬래브를 몇 칸 두께로 채울지. 깊이는 눈에 보이는 두께여야 한다 —
+            // 런타임 지형 아트(CameraLockedRoomBackground)는 밟는 면 아래 3유닛까지만
+            // 옆면을 그리므로, 그보다 깊게 채운 부분은 아무 그림도 받지 못한 채
+            // 충돌 타일맵의 회색 틴트만 남는다. 균열에서 실제로 그랬다: 밝은 대리석
+            // 난간 아래로 8유닛짜리 잿빛 덩어리가 물 위에 깔려 있었고, 그것이
+            // "바닥이 이상하다"의 정체였다. 지역 빌더가 이 값을 아트가 덮는 깊이로 맞춘다.
+            public int Depth = 8;
+
+            public void Floor(int x0, int x1, int top, int depth = 0)
             {
+                if (depth <= 0) depth = Depth;
                 ZoneSceneBuilder.Floor(Map, O.x + x0, O.x + x1, O.y + top, depth);
                 // 충돌은 타일맵이 그대로 맡고, 보이는 표면만 잔재 지형 아트로 덮는다
                 // (Environment/README.md: 지형 시트는 "충돌 Tilemap을 대체하지 않는 장식형 전경 모듈").
@@ -369,6 +378,18 @@ namespace HiddenWeight.EditorTools
                 (scale.x == 0f ? 1f : 1f / scale.x) * (size.x <= 0f ? 1f : worldSize.x / size.x),
                 (scale.y == 0f ? 1f : 1f / scale.y) * (size.y <= 0f ? 1f : worldSize.y / size.y),
                 1f);
+
+            // 그림 윗면을 밟는 면에 맞춘다(ApplyPlatformArt와 같은 이유).
+            // 발판 시트의 피벗은 아래쪽인데 자식을 원점에 두면 그림이 판정보다 0.55 위로
+            // 떠서, 플레이어가 발판 그림 속에 반쯤 파묻힌 채 서 있게 된다.
+            var body = target.GetComponent<Collider2D>();
+            if (body != null)
+            {
+                Physics2D.SyncTransforms();
+                float delta = body.bounds.max.y - renderer.bounds.max.y;
+                if (Mathf.Abs(delta) > 0.001f)
+                    art.transform.position += new Vector3(0f, delta, 0f);
+            }
         }
 
         // 충돌 없는 잔재 환경 장식. 피벗이 Bottom Center라 바닥 y에 그대로 세운다.
@@ -418,6 +439,10 @@ namespace HiddenWeight.EditorTools
                 ("PlatformCollapse", 12f, false),
                 ("PlatformBroken", 8f, false),
                 ("PlatformRestore", 14f, false),
+                // 되살아날 때 되돌아갈 "멀쩡한 발판" 그림. 이게 없으면 OmenPlatform이
+                // 부활하면서 Play("FracturePlatformSafe")를 불러도 아무 일도 일어나지
+                // 않아, 무너진 마지막 프레임이 그대로 남는다.
+                ("FracturePlatformSafe", 8f, true),
             }, 1f);
 
             // 밟기 전에는 멀쩡한 그림 그대로 있어야 한다. 자동 재생을 켜 두면 금 간 1행이
@@ -528,15 +553,36 @@ namespace HiddenWeight.EditorTools
             renderer.sortingOrder = 2;
             if (tint.HasValue) renderer.color = tint.Value;
             FitSprite(renderer, 3f, 0.8f);
+
+            // 그림 윗면을 **밟는 면**에 맞춘다.
+            //
+            // 발판 판정은 3x0.5인데 그림은 3x0.8이고, 지역 발판 시트의 피벗은 아래쪽이다.
+            // 자식을 원점에 그대로 두면 그림이 판정보다 0.55 위로 떠서, 플레이어가 발판
+            // **그림 속에 반쯤 파묻힌 채** 서 있게 된다 — 균열 발판 44개가 전부 그랬다
+            // (FractureStructureAuditTool). 피벗이 아래든 가운데든 상관없이 맞도록
+            // 실제 경계로 계산한다.
+            var body = platform.GetComponent<Collider2D>();
+            if (body != null)
+            {
+                Physics2D.SyncTransforms();
+                float delta = body.bounds.max.y - renderer.bounds.max.y;
+                if (Mathf.Abs(delta) > 0.001f)
+                    art.transform.position += new Vector3(0f, delta, 0f);
+            }
         }
 
         // 회색 블록(벽·천장)에 지역 지형 셀을 이어 붙인다. 블록 하나에 셀 하나를 늘리면
         // 긴 벽에서 그림이 죽처럼 번지므로, 정사각형에 가까운 조각을 긴 축 방향으로 쌓는다.
         // 지역 시트가 없으면(플레이스홀더 단계) 아무것도 하지 않는다 — 회색 블록이 그대로
         // 남아 눈에 띈다.
-        static void ApplyBlockArt(GameObject block, Vector2 worldSize, int sortingOrder = 1)
+        //
+        // spriteName은 기본이 지형 시트 1행 1열, 즉 **바닥 윗면** 셀이다. 가로로 긴 천장에는
+        // 맞지만 세로로 긴 벽에 쓰면 난간과 고드름이 세로로 여덟 번 되풀이돼 파랑·흰색
+        // 체크무늬 막대가 된다(F12 전장 벽 두 개가 그랬다). 세로 구조물은 벽 켜 셀을 넘긴다.
+        static void ApplyBlockArt(GameObject block, Vector2 worldSize, int sortingOrder = 1,
+                                  string spriteName = "Terrain_r1_c1")
         {
-            var sprite = ZoneArt("Terrain_r1_c1");
+            var sprite = ZoneArt(spriteName);
             if (sprite == null) return;
 
             var blockRenderer = block.GetComponent<SpriteRenderer>();

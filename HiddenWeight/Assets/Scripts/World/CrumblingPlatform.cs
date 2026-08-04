@@ -47,7 +47,11 @@ namespace HiddenWeight.World
             // 지역 아트는 루트 렌더러를 끄고 "Art" 자식에 그린다(ReplaceArt). 루트만 잡으면
             // 무너질 때 이미 꺼진 렌더러를 다시 끄는 셈이라, 아트가 그려진 발판은 사라지지
             // 않은 채 충돌만 없어진다 — 보이는 렌더러를 잡아야 한다.
-            _sprite = GetComponent<SpriteRenderer>();
+            // 겉모습은 자식 Art에 있다(OmenPlatform과 같은 이유). 루트 렌더러는
+            // 빌더가 꺼 두므로, 그걸 잡으면 피격 점멸·페이드가 화면에 안 나타난다.
+            _sprite = GetComponentInChildren<SpriteAnimator>() is { Renderer: not null } a
+                ? a.Renderer
+                : GetComponent<SpriteRenderer>();
             if (_sprite == null || !_sprite.enabled)
                 foreach (var renderer in GetComponentsInChildren<SpriteRenderer>())
                     if (renderer.enabled) { _sprite = renderer; break; }
@@ -91,6 +95,7 @@ namespace HiddenWeight.World
 
             transform.localPosition = originalLocalPos;
             _collider.enabled = false;
+            HideSurfaceTiles();
             HasCrumbled = true;
             Core.AudioManager.Instance?.PlaySfx(Core.SfxCue.PlatformCollapse, 0.55f);
 
@@ -114,6 +119,31 @@ namespace HiddenWeight.World
             if (respawnDelay > 0f) StartCoroutine(RespawnRoutine());
         }
 
+
+        // 발판 위에는 런타임 지형 입히기(CameraLockedRoomBackground)가 PlatformSurface
+        // 타일을 **더 앞에**(정렬 4 > Art의 2) 얹는다. 무너지고 나서도 그 타일이 남으면
+        // 파손 그림이 가려져 멀쩡한 발판으로 보이고, 플레이어는 그대로 통과해 떨어진다.
+        // 타일은 Awake 뒤에 붙으므로 감출 때마다 다시 찾는다.
+        readonly System.Collections.Generic.List<SpriteRenderer> _hiddenSurface =
+            new System.Collections.Generic.List<SpriteRenderer>();
+
+        void HideSurfaceTiles()
+        {
+            foreach (var renderer in GetComponentsInChildren<SpriteRenderer>(false))
+            {
+                if (!renderer.enabled || renderer == _sprite) continue;
+                renderer.enabled = false;
+                _hiddenSurface.Add(renderer);
+            }
+        }
+
+        void RestoreSurfaceTiles()
+        {
+            foreach (var renderer in _hiddenSurface)
+                if (renderer != null) renderer.enabled = true;
+            _hiddenSurface.Clear();
+        }
+
         IEnumerator RespawnRoutine()
         {
             yield return new WaitForSeconds(respawnDelay);
@@ -131,6 +161,7 @@ namespace HiddenWeight.World
             _crumbleTimer = 0f;
             _collider.enabled = true;
             _sprite.enabled = true;
+            RestoreSurfaceTiles();
             HasCrumbled = false;
 
             // 4행: 되감기 복구. 붕괴의 역순으로 다시 쌓인다(명세의 "reverse visual order").

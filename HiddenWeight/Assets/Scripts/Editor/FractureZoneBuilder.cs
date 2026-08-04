@@ -47,6 +47,12 @@ namespace HiddenWeight.EditorTools
         // "발판 위상은 사망 후 항상 같은 시작값으로 돌아간다"가 성립하지 않는다.
         const float FractureRespawn = 3f;
 
+        // 바닥 슬래브 두께. 런타임 지형 아트가 밟는 면 아래로 그려 주는 옆면 높이
+        // (CameraLockedRoomBackground.MaxWallFaceDrop)와 같은 값이어야 한다 —
+        // 그보다 깊으면 아무 그림도 받지 못한 충돌 타일맵이 잿빛 덩어리로 남고,
+        // 얕으면 옆면 그림이 슬래브 아래 허공까지 내려간다.
+        const int FractureFloorDepth = 3;
+
         static Shortcut _fractureShortcutA;
         static Shortcut _fractureShortcutB;
         static Shortcut _fractureShortcutC;
@@ -87,20 +93,11 @@ namespace HiddenWeight.EditorTools
             go.transform.SetParent(parent, false);
             go.transform.position = new Vector3(pos.x, pos.y, 0f);
 
-            const float postWidth = 0.5f;
-            const float openingHalf = 0.9f;
-            const float postHeight = 3.1f;
-            var stone = new Color(FractureStone.r, FractureStone.g, FractureStone.b, 0.9f);
-
-            DoorPiece(go.transform, "FramePostLeft", "FractureTerrain_r2_c3",
-                new Vector2(-openingHalf - postWidth * 0.5f, 0f),
-                new Vector2(postWidth, postHeight), stone, 3);
-            DoorPiece(go.transform, "FramePostRight", "FractureTerrain_r2_c3",
-                new Vector2(openingHalf + postWidth * 0.5f, 0f),
-                new Vector2(postWidth, postHeight), stone, 3);
-            DoorPiece(go.transform, "FrameLintel", "FractureTerrain_r1_c3",
-                new Vector2(0f, postHeight),
-                new Vector2(openingHalf * 2f + postWidth * 2f, 0.65f), stone, 3);
+            // 방 문과 같은 아치를 쓰되 한 뼘 작고 옅게 둔다 — 지나갈 수 있는 문과 같은
+            // 재료지만 아직 문짝이 없는 자리라는 것이 재료가 아니라 밀도로 읽혀야 한다.
+            // (기둥을 지형 조각으로 쌓던 옛 방식은 BuildFractureDoorVisual 주석 참고.)
+            BuildFractureArch(go.transform, "FrameArch", Vector2.zero, 3.2f,
+                new Color(FractureStone.r, FractureStone.g, FractureStone.b, 0.82f), 3);
         }
 
         // 갈라진 자아의 발밑 그림자. 두 개체가 같은 규격을 써야 농도 차이만으로 읽힌다.
@@ -350,7 +347,53 @@ namespace HiddenWeight.EditorTools
             ($"{prefix}Idle",   8f,  true),
             ($"{prefix}Walk",   10f, true),
             ($"{prefix}Attack", 14f, false),
-            ($"{prefix}Hit",    12f, false),
+            // 피격은 두 장짜리 짧은 움찔. 예전에는 시트 4행 전체(8장)를 여기에 물려
+            // 한 대 맞을 때마다 적이 흩어져 사라졌다가 되돌아왔다.
+            //
+            // fps는 14가 아니라 8이다. 두 장을 14fps로 넘기면 0.14초 — 60fps 화면에서
+            // 여덟 프레임이라 눈에 남지 않는다. 8fps면 0.25초로, 번쩍임(0.14초)과 겹쳐
+            // "맞았다"가 읽힌다.
+            ($"{prefix}Hit",    8f,  false),
+            // 사망은 흩어져 사라지는 여섯 장. Enemy가 {접두사}Death를 찾지 못하면
+            // 판정만 죽고 그림은 그냥 없어진다 — 균열의 적 전부가 그랬다.
+            ($"{prefix}Death",  10f, false),
+        };
+
+        // 적 한 종의 화면 규격.
+        //
+        // 시트 한 칸은 캔버스이지 몸이 아니다. 칸 높이에 맞춰 크기를 정하면 여백까지 세어
+        // 몸이 그만큼 작아진다 — 불안 새싹은 칸의 68%만 차지해서, 1.3유닛으로 맞춰 놓고도
+        // 실제로는 0.88유닛(키 1.4인 플레이어의 반)으로 그려졌다. 화면에서 "몬스터가
+        // 너무 작고 뭉개진다"로 보이던 것이 이것이다.
+        //
+        // bodyHeight는 **몸의** 높이다. contentRatio·bottomGap은 시트의 알파 경계를 재서
+        // 얻은 값이고(1행 기준), 이 값으로 칸 높이를 되돌려 계산한다.
+        readonly struct FractureEnemyArt
+        {
+            public readonly float BodyHeight;      // 화면에 보이는 몸 높이(유닛)
+            public readonly float ContentRatio;    // 칸 높이 대비 몸 높이
+            public readonly float BottomGap;       // 칸 높이 대비 몸 아래 여백
+
+            public FractureEnemyArt(float bodyHeight, float contentRatio, float bottomGap)
+            {
+                BodyHeight = bodyHeight; ContentRatio = contentRatio; BottomGap = bottomGap;
+            }
+
+            // 스프라이트 칸 전체를 얼마로 그려야 몸이 BodyHeight가 되는가.
+            public float CellHeight => BodyHeight / ContentRatio;
+
+            // 발이 콜라이더 밑면(로컬 -0.5)에 닿도록 그림을 올리는 높이.
+            public float FootOffset => -0.5f + CellHeight * (0.5f - BottomGap);
+        }
+
+        static FractureEnemyArt FractureEnemyArtOf(FractureEnemyKind kind) => kind switch
+        {
+            // 새싹은 작고 둥글게, 선행 그림자는 키만 크게, 수집자는 플레이어와 같은 눈높이,
+            // 갈라진 자아는 정예라 한 뼘 위로 올려다보게 둔다.
+            FractureEnemyKind.Sprout    => new FractureEnemyArt(1.15f, 0.68f, 0.04f),
+            FractureEnemyKind.Precursor => new FractureEnemyArt(1.55f, 0.86f, 0.06f),
+            FractureEnemyKind.Collector => new FractureEnemyArt(1.40f, 0.81f, 0.05f),
+            _                           => new FractureEnemyArt(2.00f, 0.78f, 0.07f),
         };
 
         // 겉모습을 균열 전용 스프라이트로 바꾼다. 루트 스케일은 건드리지 않는다 —
@@ -378,17 +421,26 @@ namespace HiddenWeight.EditorTools
             artRenderer.color = Color.white;
             artRenderer.sortingOrder = 8;
 
-            // 갈라진 자아만 정예라 한 뼘 크게 보인다.
-            float displayHeight = kind == FractureEnemyKind.SplitSelf ? 1.8f : 1.3f;
+            var spec = FractureEnemyArtOf(kind);
+            ApplyFractureEnemyArtScale(artObject, artRenderer, idle, spec);
+            AttachAnimator(artObject, artRenderer, FractureEnemyClips(prefix), spec.CellHeight);
+            SetField(enemy.GetComponent<Enemy>(), "clipPrefix", p => p.stringValue = prefix);
+        }
+
+        // 그림의 크기와 발 높이를 한자리에서 맞춘다. SpriteAnimator가 매 프레임 스케일을
+        // 다시 잡으므로(normalizedHeight) 여기서 넣는 배율은 에디터에서 보이는 값이고,
+        // 위치 보정만 계속 남는다 — 애니메이터는 localPosition을 건드리지 않는다.
+        static void ApplyFractureEnemyArtScale(GameObject artObject, SpriteRenderer renderer,
+                                               Sprite idle, FractureEnemyArt spec)
+        {
             var size = idle.bounds.size;
             if (size.y > 0f)
             {
-                float scale = displayHeight / size.y;
+                float scale = spec.CellHeight / size.y;
                 artObject.transform.localScale = new Vector3(scale, scale, 1f);
             }
-
-            AttachAnimator(artObject, artRenderer, FractureEnemyClips(prefix), displayHeight);
-            SetField(enemy.GetComponent<Enemy>(), "clipPrefix", p => p.stringValue = prefix);
+            artObject.transform.localPosition = new Vector3(0f, spec.FootOffset, 0f);
+            renderer.color = Color.white;
         }
 
         static GameObject BuildFractureEnemy(Transform parent, Vector2 pos, FractureEnemyKind kind)
@@ -462,16 +514,12 @@ namespace HiddenWeight.EditorTools
                 mirrorArtRenderer.color = Color.white;
                 mirrorArtRenderer.sortingOrder = 7;
 
-                const float mirrorHeight = 1.8f;   // ApplyFractureEnemyArt의 정예 높이와 같다
-                var size = mirrorArt.bounds.size;
-                if (size.y > 0f)
-                {
-                    float scale = mirrorHeight / size.y;
-                    mirrorArtObject.transform.localScale = new Vector3(scale, scale, 1f);
-                }
-
+                // 규격은 본체와 같은 표에서 가져온다. 여기에만 숫자를 따로 적어 두면
+                // 한쪽만 바뀌었을 때 실루엣 차이로 실체가 드러나 이 전투가 사라진다.
+                var mirrorSpec = FractureEnemyArtOf(FractureEnemyKind.SplitSelf);
+                ApplyFractureEnemyArtScale(mirrorArtObject, mirrorArtRenderer, mirrorArt, mirrorSpec);
                 AttachAnimator(mirrorArtObject, mirrorArtRenderer,
-                    FractureEnemyClips("SplitSelf"), mirrorHeight);
+                    FractureEnemyClips("SplitSelf"), mirrorSpec.CellHeight);
             }
 
             // 이 그림자는 장식이 아니라 판별 근거다 — 어느 쪽이 진짜인지 그림자 농도로
@@ -501,7 +549,7 @@ namespace HiddenWeight.EditorTools
                 (F01, new Vector2(26, 2), F02, new Vector2(0, 2), "FC_F01_F02"),
                 (F02, new Vector2(28, 3), F03, new Vector2(0, 3), "FC_F02_F03"),
                 (F03, new Vector2(28, 2), F04, new Vector2(2, 18), "FC_F03_F04"),
-                (F04, new Vector2(22, 2), F05, new Vector2(0, 2), "FC_F04_F05"),
+                (F04, new Vector2(24, 2), F05, new Vector2(0, 2), "FC_F04_F05"),
                 (F05, new Vector2(26, 2), F06, new Vector2(0, 2), "FC_F05_F06"),
                 (F06, new Vector2(32, 4), F07, new Vector2(0, 4), "FC_F06_F07"),
                 (F07, new Vector2(34, 4), F08, new Vector2(2, 2), "FC_F07_F08"),
@@ -542,9 +590,13 @@ namespace HiddenWeight.EditorTools
             FractureEnvironmentArtSlicer.SliceAll();
             FractureAnimationArtSlicer.SliceAll();
 
+            // 숏컷·승강기 겉모습은 **발판 시트**에서 고른다. 예전에는 문 시트의 아치를
+            // 썼는데, 숏컷은 4x0.6짜리 다리라 아치 한 장이 가로로 9배 눌려 무엇인지 알 수
+            // 없는 띠가 됐다(FractureArtDefectAuditTool). 발판 시트는 원래 비율이 2.4:1인
+            // 다리 그림이라 같은 자리에 그대로 들어맞는다.
             UseArtRoot("Assets/Art/Fracture", "Fracture",
-                "FractureDoor_r1_c1", "FractureDoor_r1_c2",
-                "FractureDoor_r2_c1", "FractureDoor_r2_c2");
+                "FracturePlatform_r3_c2", "FracturePlatform_r2_c3",
+                "FracturePlatform_r4_c1", "FracturePlatform_r4_c3");
 
             var builders = new (string room, System.Action<RoomCtx> build)[]
             {
@@ -591,6 +643,7 @@ namespace HiddenWeight.EditorTools
                 Rooms = rooms.transform,
                 O = Vector2Int.zero,
                 FloorArt = false,
+                Depth = FractureFloorDepth,
             };
         }
 
@@ -676,49 +729,87 @@ namespace HiddenWeight.EditorTools
             BuildFractureDoorVisual(go.transform, side, col.size);
         }
 
+        // 문 아치 한 장의 실측 규격(Fracture_DoorsShortcuts_v1.png).
+        //
+        // 셀은 384x512px인데 그림은 그 안에서 276x366px만 차지하고 아래로 81px 여백이 있으며,
+        // 가로로도 셀 중심에서 30.5px 치우쳐 있다. 셀 크기로 배치하면 아치가 바닥에서 뜨고
+        // 옆으로 밀린다 — 그림이 실제로 차지하는 사각형을 기준으로 놓아야 문설주 밑동이
+        // 바닥에 닿는다. 값은 알파 경계를 재서 얻었다.
+        const float ArchCellWidth = 384f, ArchCellHeight = 512f;
+        const float ArchContentWidth = 276f, ArchContentHeight = 366f;
+        const float ArchBottomGap = 81f;                   // 그림 밑동에서 셀 바닥까지
+        const float ArchCenterOffset = 30.5f;              // 그림 중심 − 셀 중심
+
+        // 문 아치 한 장을 밑동 기준으로 세운다. 스프라이트를 늘리지 않으므로 대리석 결이
+        // 원본 비율 그대로 남는다.
+        static SpriteRenderer BuildFractureArch(Transform parent, string name, Vector2 footCenter,
+                                                float contentHeight, Color tint, int order,
+                                                string spriteName = "FractureDoor_r1_c1")
+        {
+            var sprite = Art(spriteName);
+            if (sprite == null) return null;
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = tint;
+            renderer.sortingOrder = order;
+
+            // 셀 전체를 얼마로 키워야 그림 부분이 contentHeight가 되는가.
+            float cellHeight = contentHeight * (ArchCellHeight / ArchContentHeight);
+            float cellWidth = cellHeight * (ArchCellWidth / ArchCellHeight);
+            FitSprite(renderer, cellWidth, cellHeight);
+
+            // 피벗이 셀 아래 가운데라 셀 바닥이 곧 원점이다. 그림 밑동과 중심이 요청한
+            // 자리에 오도록 여백만큼 되민다.
+            //
+            // 반드시 **로컬** 좌표다. footCenter는 문(부모) 기준이므로 월드 좌표에 넣으면
+            // 방 안의 문이 전부 원점 근처에 겹쳐 선다 — 실제로 F06의 동쪽 문 아치가
+            // 서쪽 문 위에 포개져 그려졌다.
+            go.transform.localPosition = new Vector3(
+                footCenter.x - ArchCenterOffset / ArchCellWidth * cellWidth,
+                footCenter.y - ArchBottomGap / ArchCellHeight * cellHeight, 0f);
+            return renderer;
+        }
+
         // 문에 겉모습을 준다. 여태 문은 트리거 콜라이더뿐이라 화면에서는 아무것도 아니었고,
         // 처음 오는 사람은 방의 어디가 출구인지 알 수 없었다.
         //
-        // 문 시트의 아치 한 장만 얹어 봤더니 읽히지 않았다 — 얇은 선 한 겹이라 화려한 원화
-        // 배경에 묻히고, 앵커가 바닥 높이라 그림 절반이 바닥 아래로 들어가 공중에 뜬
-        // 낙서처럼 보였다. 그래서 지형과 같은 대리석으로 **문설주를 세운다**. 같은 재료로
-        // 지은 구조물이라 세계의 일부로 읽히고, 두 기둥 사이의 빈 곳이 곧 지나갈 자리다.
+        // 한때 지형 타일을 0.55유닛 조각으로 여섯 장 쌓아 문설주를 세웠다. 화면에서는
+        // 대리석 기둥이 아니라 **파랑·흰색이 번갈아 나오는 체크무늬 막대**였다 — 지형 셀
+        // 하나가 아치 장식이 들어간 그림이라, 그걸 잘게 쪼개 쌓으면 장식만 되풀이된다.
+        // 방마다 이런 막대가 두세 개씩 서 있었고 방 구석에서 화면을 잘라 먹었다.
+        //
+        // 문 시트에는 이미 완성된 대리석 아치가 있다. 늘리지 말고 한 장 그대로 세운다.
         //
         // 겉모습은 반드시 자식에 준다. 루트에 스케일을 주면 트리거 콜라이더가 함께 줄어
         // 문이 열리는 범위가 달라진다.
         static void BuildFractureDoorVisual(Transform parent, Side side, Vector2 size)
         {
-            // 위아래로 난 문은 문설주를 세울 수 없다. 빛만 둔다.
+            // 위아래로 난 문은 아치를 세울 수 없다. 빛만 둔다.
             bool upright = side != Side.U && side != Side.D;
-
-            const float postWidth = 0.55f;
-            const float openingHalf = 0.95f;   // 기둥 안쪽 면까지의 거리
-            const float postHeight = 3.4f;
+            const float archHeight = 3.6f;
 
             if (upright)
-            {
-                // 지형 시트의 피벗은 Bottom이다(FractureEnvironmentArtSlicer). 중심 기준으로
-                // 놓으면 그림이 절반 높이만큼 위로 떠올라 문이 공중에 매달린다 —
-                // 실제로 한 번 그렇게 나왔다. 앵커는 바닥 높이이므로 y=0이 곧 밑동이다.
-                DoorPiece(parent, "DoorPostLeft", "FractureTerrain_r2_c3",
-                    new Vector2(-openingHalf - postWidth * 0.5f, 0f),
-                    new Vector2(postWidth, postHeight), new Color(0.82f, 0.84f, 0.95f, 1f), 5);
-                DoorPiece(parent, "DoorPostRight", "FractureTerrain_r2_c3",
-                    new Vector2(openingHalf + postWidth * 0.5f, 0f),
-                    new Vector2(postWidth, postHeight), new Color(0.82f, 0.84f, 0.95f, 1f), 5);
-                // 상인방. 두 기둥을 잇는 가로대가 있어야 "문"으로 읽힌다.
-                DoorPiece(parent, "DoorLintel", "FractureTerrain_r1_c3",
-                    new Vector2(0f, postHeight),
-                    new Vector2(openingHalf * 2f + postWidth * 2f, 0.7f),
-                    new Color(0.88f, 0.9f, 1f, 1f), 5);
-            }
+                BuildFractureArch(parent, "DoorArch", Vector2.zero, archHeight,
+                    new Color(0.9f, 0.91f, 0.99f, 1f), 5);
 
-            // 지나갈 자리. 균열은 미래로 난 틈이므로 청록 발광이 맞다.
+            // 지나갈 자리의 빛.
+            //
+            // 청록(0.62, 0.95, 1)이었다. 청록은 **응시**의 색이다(CLAUDE.md 아트 방향:
+            // 현재의 응시는 시선과 청록 계열의 긴장, 미래의 균열은 밝고 화사하지만 미세하게
+            // 어긋난 색). 균열의 문마다 응시의 색이 켜져 있으면 지역을 색으로 읽는 규칙
+            // 자체가 무너진다. 균열의 강조색 쪽으로 옮기되, 흰빛을 남겨 "틈에서 새어 나오는
+            // 빛"으로는 계속 읽히게 한다.
+            //
+            // 빛은 둥근 그림이라 가로세로가 크게 다르면 타원으로 뭉개진다. 위아래 문에서
+            // 4.2x1.4로 눌러 쓰던 것을 정사각에 가깝게 되돌렸다.
             var glow = DoorPiece(parent, "DoorGlow", "FractureAmbientVFX_r1_c3",
-                new Vector2(0f, upright ? postHeight * 0.5f : 0f),
-                upright ? new Vector2(openingHalf * 1.9f, postHeight * 0.92f)
-                        : new Vector2(size.x * 1.4f, size.y * 1.2f),
-                new Color(0.62f, 0.95f, 1f, 0.55f), 4);
+                new Vector2(0f, upright ? archHeight * 0.45f : 0f),
+                upright ? new Vector2(1.7f, 2.6f) : new Vector2(2.4f, 1.8f),
+                new Color(1f, 0.82f, 0.90f, 0.55f), 4);
             glow.gameObject.AddComponent<DoorBeacon>();
         }
 
@@ -741,6 +832,78 @@ namespace HiddenWeight.EditorTools
                         size.x / spriteSize.x, size.y / spriteSize.y, 1f);
             }
             return sr;
+        }
+
+        // 지형 타일로 기둥·들보처럼 **가늘고 긴 것**을 만들 때 쓴다.
+        //
+        // DoorPiece는 스프라이트 한 장을 목표 크기로 늘린다. 지형 시트는 한 칸이 거의
+        // 정사각(8x8 유닛)이라, 폭 0.6 · 높이 3.4짜리 문설주로 만들면 가로가 14배 눌린다.
+        // 화면에서는 돌기둥이 아니라 세로로 뭉개진 띠 하나가 배경 위에 붙어 있는 것으로
+        // 보였다 — 균열 15개 방에 이런 조각이 74개 있었다(FractureArtDefectAuditTool).
+        //
+        // 여기서는 원본 비율을 지킨 조각을 여러 장 이어 붙인다. 남는 자리가 생기지 않도록
+        // 장수는 반올림으로 정하고 그만큼만 미세하게 늘린다 — 왜곡이 6배에서 1.2배 이하로
+        // 떨어진다. 같은 돌을 쌓아 올린 구조물로 읽히고, 지형과 재료가 같아 배경에 얹힌
+        // 이물처럼 보이지 않는다.
+        // 월드 좌표에 세우는 기둥 장식. BuildDecor와 같은 자리·같은 크기를 차지하되
+        // 그림은 늘리지 않고 이어 붙인다. BuildDecor는 중심 기준이므로 절반만큼 내린다.
+        static void TiledDecor(Transform parent, string name, Vector2 worldPos, Vector2 size,
+                               string spriteName, Color tint, int order)
+        {
+            var holder = new GameObject(name);
+            holder.transform.SetParent(parent, false);
+            holder.transform.position = new Vector3(worldPos.x, worldPos.y, 0f);
+            TiledPiece(holder.transform, name + "_Column", spriteName,
+                       new Vector2(0f, -size.y * 0.5f), size, tint, order);
+        }
+
+        static void TiledPiece(Transform parent, string name, string spriteName,
+                               Vector2 offset, Vector2 size, Color tint, int order,
+                               bool vertical = true)
+        {
+            var sprite = Art(spriteName);
+            if (sprite == null || sprite.bounds.size.x <= 0f || sprite.bounds.size.y <= 0f)
+            {
+                DoorPiece(parent, name, spriteName, offset, size, tint, order);
+                return;
+            }
+
+            var group = new GameObject(name);
+            group.transform.SetParent(parent, false);
+            group.transform.localPosition = new Vector3(offset.x, offset.y, 0f);
+
+            var native = sprite.bounds.size;
+            // 짧은 쪽을 기준으로 배율을 잡고, 긴 쪽을 그 배율의 조각으로 채운다.
+            float across = vertical ? size.x : size.y;
+            float along = vertical ? size.y : size.x;
+            float nativeAcross = vertical ? native.x : native.y;
+            float nativeAlong = vertical ? native.y : native.x;
+
+            float scale = across / nativeAcross;
+            int pieces = Mathf.Max(1, Mathf.RoundToInt(along / (nativeAlong * scale)));
+            float step = along / pieces;
+
+            // 지형 시트의 피벗은 Bottom(아래 가운데)이다. 조각의 위치가 곧 그 조각의 밑동이다.
+            float pieceScaleAlong = step / nativeAlong;
+            for (int i = 0; i < pieces; i++)
+            {
+                var go = new GameObject($"{name}_{i:00}");
+                go.transform.SetParent(group.transform, false);
+
+                // 문설주는 밑동에서 위로 쌓고, 들보는 왼쪽 끝에서 오른쪽으로 잇는다.
+                go.transform.localPosition = vertical
+                    ? new Vector3(0f, i * step, 0f)
+                    : new Vector3(-along * 0.5f + (i + 0.5f) * step, 0f, 0f);
+
+                go.transform.localScale = vertical
+                    ? new Vector3(scale, pieceScaleAlong, 1f)
+                    : new Vector3(pieceScaleAlong, scale, 1f);
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = sprite;
+                sr.color = tint;
+                sr.sortingOrder = order;
+            }
         }
 
         static void BuildFractureRoomStart(RoomCtx c)
@@ -788,9 +951,13 @@ namespace HiddenWeight.EditorTools
             // 균열 시트는 전부 "Fracture" 접두사를 쓴다(FractureTerrain / FracturePlatform …).
             // 숏컷 겉모습은 문 시트(Fracture_DoorsShortcuts_v1)의 1행을 닫힘/열림으로,
             // 2행을 승강기용으로 쓴다.
+            // 숏컷·승강기 겉모습은 **발판 시트**에서 고른다. 예전에는 문 시트의 아치를
+            // 썼는데, 숏컷은 4x0.6짜리 다리라 아치 한 장이 가로로 9배 눌려 무엇인지 알 수
+            // 없는 띠가 됐다(FractureArtDefectAuditTool). 발판 시트는 원래 비율이 2.4:1인
+            // 다리 그림이라 같은 자리에 그대로 들어맞는다.
             UseArtRoot("Assets/Art/Fracture", "Fracture",
-                "FractureDoor_r1_c1", "FractureDoor_r1_c2",
-                "FractureDoor_r2_c1", "FractureDoor_r2_c2");
+                "FracturePlatform_r3_c2", "FracturePlatform_r2_c3",
+                "FracturePlatform_r4_c1", "FracturePlatform_r4_c3");
 
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Fracture", out var root);
@@ -812,7 +979,8 @@ namespace HiddenWeight.EditorTools
                 Map = tilemap,
                 Root = root,
                 Rooms = rooms.transform,
-                FloorArt = false
+                FloorArt = false,
+                Depth = FractureFloorDepth,
             };
 
             // 방마다 오프셋을 여기서 준다.
@@ -937,20 +1105,13 @@ namespace HiddenWeight.EditorTools
 
             BuildCheckpoint(c.Root.transform, c.P(5f, 3f));
 
-            // 자각으로 반응할 것 같은 이중 윤곽. 자각을 켜도 아무 변화가 없다 —
-            // AwarenessRevealed를 일부러 쓰지 않는다. 여기 있는 것은 그냥 장식이다.
-            for (int i = 0; i < 3; i++)
-            {
-                float x = 9f + i * 4f;
-                // 바닥(y=2)에 세운다. 예전에는 y=4.5에 놓아 공중에 뜬 채였고, 게다가 문
-                // 시트를 써서 진짜 포탈문과 같은 아치로 보였다 — 지나갈 수 있을 것처럼
-                // 생긴 것이 허공에 떠 있으니 "의미 없는 그림"으로 읽힐 수밖에 없었다.
-                // 미끼는 자각에 반응할 듯한 **화단**이어야 한다(설계 4.1의 "이중 윤곽의 꽃").
-                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}", c.P(x, 2f), new Vector2(1.5f, 1.8f),
-                    "FractureProp_r1_c4", FractureStone, 0f, -5);
-                BuildDecor(c.Root.transform, $"F01_DoubleEdge_{i}_Echo", c.P(x + 0.22f, 2.05f), new Vector2(1.5f, 1.8f),
-                    "FractureProp_r1_c4", new Color(1f, 1f, 1f, 0.32f), 0f, -6);
-            }
+            // 여기에 "이중 윤곽의 꽃" 화단 3개와 각각의 잔상을 두었다(설계 4.1의 미끼).
+            // 자각에 반응할 것처럼 생겼지만 실제로는 아무 반응도 하지 않는 장식이었다.
+            //
+            // 2026-08-04 사용자가 화면을 보고 제거를 결정했다. 반응할 듯한 모양으로 눈길을
+            // 끌어 놓고 아무 일도 일어나지 않으면, 의도한 "불신의 씨앗"이 아니라 그냥
+            // 신경 쓸 필요 없는 그림 한 무더기로 읽힌다. 미끼를 살리려면 자각에 실제로
+            // 반응해야 하고, 그건 별개의 작업이다.
 
             // 하늘의 세로 균열 — 지역 전체의 진행 방향이자 결말(2.3절 랜드마크).
             // 단색 Tile로 그리면 하늘에 회색 막대가 선다. 부드러운 발광 조각을 늘려
@@ -1068,12 +1229,26 @@ namespace HiddenWeight.EditorTools
             c.Floor(0, 8, 2, 2);      // 하층 안전 바닥 — 로컬 8~9를 비워 FS1 통로를 만든다
             c.Floor(9, 24, 2, 2);
 
-            // 첫 화단만 주 동선에서 주기를 읽는다. 아래 두 단계는 안전 발판이라 첫 방문의
-            // 관찰 학습은 남기면서 재방문 하강이 반복 대기로 늘어나지 않는다.
-            BuildMovingPlatform(c.Root.transform, c.P(12f, 15f), new Vector2(2f, 0f), 6f);
-            BuildFractureSafePlatform(c.Root.transform, c.P(15f, 11f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(12f, 7f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(18f, 5f));
+            // 내려가는 길이자 **다시 올라오는 길**이다.
+            //
+            // 예전 배치는 내려가는 것만 생각해 단마다 4유닛씩 벌어져 있었다(바닥 2 → 5.25
+            // → 7.25 → 11.25 → 15.3 → 관찰대 18). 내려올 때는 그냥 떨어지면 되니 문제가
+            // 없었지만, 이 방의 유일한 출구는 들어온 곳(관찰대 2,18)이라 되돌아갈 수 없었다.
+            // 실측 최대 점프 높이는 2.72다.
+            //
+            // 한 단의 높이차를 전부 2.5 이하로 두고, 관찰대(x 0~8) 밑으로는 발판을 넣지
+            // 않는다 — 슬래브 아래 0.95유닛 틈에 서면 키 1.4인 플레이어가 갇힌다.
+            // 첫 화단에서 주기를 읽는 관찰 학습은 그대로 남는다.
+            // 첫 단은 반드시 **관찰대 끝 바로 밑**에 둔다. 오른쪽으로 치워 두면 관찰대에서
+            // 걸어 나온 사람이 그대로 왼쪽 하층 바닥(x 0~8)에 떨어지는데, 거기서 오른쪽으로
+            // 걸으면 곧바로 FS1 통로 구멍(x 8~9)에 빠져 비밀방으로 새 버린다.
+            // 봇이 실제로 그렇게 됐다(FracturePortalRouteTests).
+            BuildFractureSafePlatform(c.Root.transform, c.P(10f, 16f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(13f, 13.6f));
+            BuildMovingPlatform(c.Root.transform, c.P(12f, 11.2f), new Vector2(2f, 0f), 6f);
+            BuildFractureSafePlatform(c.Root.transform, c.P(17f, 9f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(14f, 6.6f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(18f, 4.2f));
 
             // FS1 입구는 "배경 기둥과 실제 통로가 한 번 정렬되는" 순간에만 열린다(4.4절).
             // 왕복 화단이 구멍 위를 지날 때는 막히고, 비켜났을 때만 내려갈 수 있다 —
@@ -1081,8 +1256,12 @@ namespace HiddenWeight.EditorTools
             BuildMovingPlatform(c.Root.transform, c.P(8.5f, 2.4f), new Vector2(3.5f, 0f), 7f);
             // 기둥은 지형 벽 켜를 그대로 쓴다 — 배경 기둥과 실제 통로가 정렬되는 순간을
             // 읽어야 FS1을 찾을 수 있으므로(설계 4.4) 진짜 벽처럼 보여야 한다.
-            BuildDecor(c.Root.transform, "F04_FS1_Pillar", c.P(8.5f, 6f), new Vector2(1f, 7f),
-                "FractureTerrain_r2_c3", new Color(0.8f, 0.78f, 0.9f), 0f, -6);
+            // BuildDecor는 스프라이트 한 장을 목표 크기로 늘린다. 폭 1 · 높이 7짜리 기둥에
+            // 쓰면 가로가 7배 눌려 "진짜 벽처럼" 보이라는 이 기둥의 역할과 정반대가 된다.
+            // 셀은 벽 켜 중에서 **가장 밋밋한 것**을 고른다. 아치가 그려진 셀(r2_c3)을
+            // 1유닛 조각으로 일곱 번 쌓으면 장식만 되풀이돼 파랑·흰색 체크무늬 막대가 된다.
+            TiledDecor(c.Root.transform, "F04_FS1_Pillar", c.P(8.5f, 6f), new Vector2(1f, 7f),
+                "FractureTerrain_r2_c4", new Color(0.8f, 0.78f, 0.9f), -6);
 
             BuildFractureEnemy(c.Root.transform, c.P(4f, 3f), FractureEnemyKind.Sprout);
             BuildFractureEnemy(c.Root.transform, c.P(19f, 3f), FractureEnemyKind.Sprout);
@@ -1098,9 +1277,11 @@ namespace HiddenWeight.EditorTools
         {
             c.Floor(0, 18, 2);
 
-            BuildFractureSafePlatform(c.Root.transform, c.P(5f, 5f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(9.5f, 7f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(14f, 8f));
+            // 바닥 y=2에서 한 단씩. 첫 발판이 5였을 때는 3.25를 한 번에 올라야 해서
+            // (실측 점프 2.72) 이 비밀방의 보상과 기억 파편에 닿을 수 없었다.
+            BuildFractureSafePlatform(c.Root.transform, c.P(5f, 4.2f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(9.5f, 6.4f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(14f, 8.4f));
 
             // 완성되지 못한 미래들의 잔해.
             for (int i = 0; i < 4; i++)
@@ -1161,13 +1342,22 @@ namespace HiddenWeight.EditorTools
             BuildDecor(c.Root.transform, "F06_FS2_Marker", c.P(4.5f, 6f), new Vector2(1.2f, 1.2f),
                 "FractureForesight_r1_c2", FracturePeach, 0f, -4);
 
-            // 주 동선에서 읽는 이동 발판은 2개(3초 / 5초)만 남긴다.
-            BuildMovingPlatform(c.Root.transform, c.P(9f, 6f), new Vector2(3f, 0f), 3f);
-            BuildMovingPlatform(c.Root.transform, c.P(15f, 7f), new Vector2(3f, 0f), 5f);
+            // 상단으로 오르는 사다리.
+            //
+            // 예전에는 첫 발판이 y=6(윗면 6.25)이었다. 바닥이 y=2이므로 한 번에 4.25를
+            // 올라야 했는데 실측 최대 점프 높이는 2.72다 — 이 방의 위쪽 절반(선반, 보상,
+            // 7초 발판)에 **닿는 길이 아예 없었다**. 화면에는 분명히 올라갈 곳이 보이는데
+            // 방법이 없다는 보고가 이 방에서 나왔다.
+            //
+            // 한 칸의 높이차를 전부 2.5 이하로 다시 놓는다. 시차 온실의 주제(서로 다른
+            // 주기를 읽어 올라간다)는 그대로다 — 주기 3초 → 5초 → 고정 → 7초 순서로
+            // 한 단씩 올라가고, 각 단은 아래 단에서 실제로 닿는다.
+            BuildMovingPlatform(c.Root.transform, c.P(9f, 4.4f), new Vector2(3f, 0f), 3f);
+            BuildMovingPlatform(c.Root.transform, c.P(15f, 6.8f), new Vector2(3f, 0f), 5f);
 
             // 세 번째 7초 발판과 두 번째 선구는 상단 보상 분기다. 아래 주 동선의 점프
             // 높이에 발판 밑면이 걸리지 않으므로 숙련자는 기다리지 않고 출구로 달린다.
-            BuildFractureSafePlatform(c.Root.transform, c.P(18f, 6.5f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(20f, 9.2f));
             c.Tiles(19, 27, 9, 10);
             BuildMovingPlatform(c.Root.transform, c.P(22f, 12f), new Vector2(3f, 0f), 7f);
 
@@ -1196,8 +1386,9 @@ namespace HiddenWeight.EditorTools
                 BuildDecor(c.Root.transform, $"FS2_StoppedThing_{i}", c.P(3f + i * 4.5f, 5f), new Vector2(1.4f, 3f),
                     "FractureProp_r2_c3", new Color(0.92f, 0.88f, 0.8f), 0f, -6);
 
-            BuildFractureSafePlatform(c.Root.transform, c.P(8f, 6f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(14f, 8f));
+            // FS1과 같은 이유로 한 단씩 내려 놓는다(바닥 y=2, 한 단 2.5 이하).
+            BuildFractureSafePlatform(c.Root.transform, c.P(8f, 4.2f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(14f, 6.6f));
 
             BuildRewardChest(c.Root.transform, "fracture_fs2_shard", c.P(20f, 3f), 0, true);
 
@@ -1225,8 +1416,13 @@ namespace HiddenWeight.EditorTools
 
             // 수평·수직 경로가 교차하지만 실제 충돌 시점은 겹치지 않는다.
             // 이 둘은 큰 재화로 가는 위쪽 선택 경로다 — 주 동선의 필수 발판이 아니다.
-            BuildMovingPlatform(c.Root.transform, c.P(10f, 8f), new Vector2(0f, 4f), 4f);
-            BuildOrbitPlatform(c.Root.transform, "F07_Orbit_A", c.P(24f, 9f), new Vector2(0f, 3f), 60f, 0f);
+            //
+            // 선택 경로라도 **탈 수는 있어야** 한다. 예전에는 수직 발판의 가장 낮은 자리가
+            // 윗면 8.3, 회전 발판의 가장 낮은 자리가 9.25였다. 바닥은 4, 옆 발판은 5.25~5.75라
+            // 어느 쪽도 실측 점프 높이 2.72로는 닿지 않았다 — 위층 보상 상자까지 통째로
+            // 도달 불가였다. 궤도와 왕복 폭은 그대로 두고 시작 높이만 내린다.
+            BuildMovingPlatform(c.Root.transform, c.P(10f, 6.2f), new Vector2(0f, 4f), 4f);
+            BuildOrbitPlatform(c.Root.transform, "F07_Orbit_A", c.P(24f, 7.6f), new Vector2(0f, 3f), 60f, 0f);
 
             BuildFractureEnemy(c.Root.transform, c.P(17f, 5f), FractureEnemyKind.Sprout);
             BuildFractureEnemy(c.Root.transform, c.P(30f, 5f), FractureEnemyKind.Collector);
@@ -1261,7 +1457,12 @@ namespace HiddenWeight.EditorTools
                 _fractureShortcutB, new Color(0.7f, 0.9f, 0.85f));
 
             // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공에 떨어지지 않게 막는다.
-            var edge = BuildSolidBlock(c.Root.transform, "F08_RightEdge",
+            //
+            // 이름을 RoomEdge 계열로 맞춘 이유: 런타임 아트 입히기가 "보이지 않는 장벽"을
+            // 이름으로 가른다(CameraLockedRoomBackground.IsInvisibleBarrier). 예전 이름
+            // F08_RightEdge는 그 목록에 없어, 26유닛짜리 투명 벽에 대리석 조각 1.7유닛만
+            // 입혀졌다 — 허공에 돌 한 조각이 떠 있는 것으로 보였다.
+            var edge = BuildSolidBlock(c.Root.transform, "F08_RoomEdge_Fall",
                 c.P(24.5f, 12f), new Vector2(1f, 26f), "Ground");
             edge.GetComponent<SpriteRenderer>().enabled = false;
 
@@ -1424,13 +1625,18 @@ namespace HiddenWeight.EditorTools
 
             var wallL = BuildSolidBlock(c.Root.transform, "F12_Wall_L", c.P(0.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
             var wallR = BuildSolidBlock(c.Root.transform, "F12_Wall_R", c.P(29.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
-            ApplyBlockArt(wallL, new Vector2(1.2f, 10f));
-            ApplyBlockArt(wallR, new Vector2(1.2f, 10f));
+            // 세로 벽이므로 바닥 윗면 셀이 아니라 벽 켜 셀을 쓴다(ApplyBlockArt 주석 참고).
+            ApplyBlockArt(wallL, new Vector2(1.2f, 10f), spriteName: "Terrain_r2_c4");
+            ApplyBlockArt(wallR, new Vector2(1.2f, 10f), spriteName: "Terrain_r2_c4");
 
             // 단계마다 일부 발판이 사라지지만 좌측 안정 지대는 언제나 반응 가능한 안전 경로다.
-            BuildFractureCrumbling(c.Root.transform, c.P(13f, 7f));
-            BuildFractureCrumbling(c.Root.transform, c.P(17f, 9f));
-            BuildFractureSafePlatform(c.Root.transform, c.P(6f, 8f));
+            //
+            // 전장 바닥은 y=4다. 예전 높이(윗면 7.25 / 9.25 / 8.25)는 한 번에 3.25~4.25를
+            // 올라야 해서 실측 점프 높이 2.72로는 어느 발판에도 올라설 수 없었다 —
+            // 보스 전장이 사실상 평지 한 층이었다. 한 단씩 밟고 올라가도록 다시 놓는다.
+            BuildFractureCrumbling(c.Root.transform, c.P(13f, 6.2f));
+            BuildFractureCrumbling(c.Root.transform, c.P(17f, 8.6f));
+            BuildFractureSafePlatform(c.Root.transform, c.P(6f, 6.2f));
 
             var boss = BuildBoss(c.Root.transform, c.P(16f, 6f), "Enemy_Fracture_NotYetMe", 22,
                 new[]
@@ -1467,11 +1673,13 @@ namespace HiddenWeight.EditorTools
                 new[] { new[] { boss } }, new int[0], reward, null);
 
             // 마지막 단계: 하늘 균열이 세 갈래로 보이다가, 플레이어가 향한 하나만 실제가 된다.
+            // 세 갈래의 높이도 발판 사다리에 맞춘다. 위의 두 갈래가 어떤 발판에서도 닿지
+            // 않으면 "고를 수 있다"가 거짓말이 된다.
             BuildPathChoice(c.Root.transform, "F12_SkyChoice", c.P(22f, 5f), new[]
             {
-                (c.P(21f, 6f), c.P(24f, 7f)),
-                (c.P(21f, 9f), c.P(24f, 10f)),
-                (c.P(21f, 12f), c.P(24f, 13f)),
+                (c.P(21f, 5.5f), c.P(24f, 6.2f)),
+                (c.P(21f, 8f), c.P(24f, 8.7f)),
+                (c.P(21f, 10.5f), c.P(24f, 11.2f)),
             });
 
             BuildStoryFragment(c.Root.transform, c.P(27f, 5f), "fracture_core",

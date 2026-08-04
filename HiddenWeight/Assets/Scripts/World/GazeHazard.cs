@@ -81,7 +81,7 @@ namespace HiddenWeight.World
                 if (offSeconds <= 0f) return true;
 
                 float cycle = onSeconds + offSeconds;
-                float t = Mathf.Repeat(Time.time + phaseOffset, cycle);
+                float t = Mathf.Repeat(ZoneClock.Now + phaseOffset, cycle);
                 return t < onSeconds;
             }
         }

@@ -277,6 +277,23 @@ namespace HiddenWeight.EditorTools
             SetField(frag, "text", p => p.stringValue = text);
             SetField(frag, "grantsSkill", p => p.intValue = (int)grantsSkill);
             SetField(frag, "grantsAwareness", p => p.boolValue = grantsAwareness);
+
+            // 기억 파편은 이 게임에서 서사적으로 가장 중요한 수집물인데, 프리팹의 공용
+            // 플레이스홀더(작은 흰 점)를 그대로 쓰고 있었다 — 여섯 방에서 배경에 묻혔다.
+            // 재화와 같은 방식으로 지역 수집물 시트를 쓰고, 재화(Shard)와는 다른 행을 골라
+            // 둘이 구분되게 한다.
+            var fragSprite = go.GetComponentInChildren<SpriteRenderer>();
+            if (fragSprite != null)
+            {
+                var art = ZoneArt("ItemToken_00") ?? ZoneArt("ItemShard_00");
+                if (art != null)
+                {
+                    fragSprite.sprite = art;
+                    fragSprite.color = Color.white;
+                    AttachAnimator(go, fragSprite, new[] { (_artPrefix + "ItemToken", 7f, true) }, 0f);
+                    FitRenderer(fragSprite, 1.1f, 1.1f);
+                }
+            }
             return go;
         }
 
@@ -991,9 +1008,13 @@ namespace HiddenWeight.EditorTools
         // (Task 13 최초 버전의 버그: 플레이어 스프라이트 정렬 순서가 타일맵과 동률이라 안 보이던 문제 +
         // 스폰 좌표가 바닥 레이아웃과 독립적으로 하드코딩되어 있던 문제, 둘 다 여기서 고친다).
         // 카메라는 스폰과 정확히 같은 X/Y(Z만 -10)에 둬서 첫 프레임에 엉뚱한 위치에서 보간해오지 않게 한다.
-        static void PlacePlayerAndCamera(GameObject root, Vector3 spawn)
+        static void PlacePlayerAndCamera(GameObject root, Vector3 spawn, bool lockCameraToPlayer = false)
         {
-            Spawn("MainCamera", new Vector3(spawn.x, spawn.y, -10f)).transform.SetParent(root.transform, true);
+            var camGO = Spawn("MainCamera", new Vector3(spawn.x, spawn.y, -10f));
+            camGO.transform.SetParent(root.transform, true);
+            if (lockCameraToPlayer)
+                SetField(camGO.GetComponent<RoomCamera>(), "lockToPlayer", p => p.boolValue = true);
+
             Spawn("Player", spawn).transform.SetParent(root.transform, true);
 
             // HUD(FragmentLog 포함)는 의도적으로 Zone 루트 아래에 넣지 않고 씬 루트 오브젝트로

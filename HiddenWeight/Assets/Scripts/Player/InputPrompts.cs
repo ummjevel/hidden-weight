@@ -23,6 +23,29 @@ namespace HiddenWeight.Player
             { InputActionId.Pause, LoadKey(InputActionId.Pause, KeyCode.Escape) }
         };
 
+        // 문자 키를 대신할 수 있는 보조 키.
+        //
+        // macOS에서 한글 입력기가 켜져 있으면 문자 키 이벤트가 입력기에 먹혀 게임까지
+        // 오지 않는다 — 한국어권 플레이어가 게임을 켜면 공격도 스킬도 지도도 안 되고,
+        // 방향키와 Space만 듣는 상태가 된다. 원인이 게임 밖에 있어 바인딩으로는 못 고치지만,
+        // 문자가 아닌 키를 하나씩 더 받아 두면 그 상태에서도 끝까지 플레이할 수 있다.
+        //
+        // 기존 바인딩은 그대로 살아 있다. 이건 빼는 변경이 아니라 더하는 변경이다.
+        static readonly Dictionary<InputActionId, KeyCode> KeyboardAlternate =
+            new Dictionary<InputActionId, KeyCode>
+        {
+            { InputActionId.Attack, KeyCode.Alpha1 },
+            { InputActionId.Skill, KeyCode.Alpha2 },
+            { InputActionId.Awareness, KeyCode.Alpha3 },
+            { InputActionId.Interact, KeyCode.Return },
+            { InputActionId.Map, KeyCode.Tab },
+        };
+
+        // 보조 키가 없으면 KeyCode.None을 돌려준다 — Input.GetKey(None)은 항상 false라
+        // 호출부가 조건 없이 OR로 이어 붙여도 안전하다.
+        public static KeyCode GetAlternateKey(InputActionId action)
+            => KeyboardAlternate.TryGetValue(action, out var key) ? key : KeyCode.None;
+
         static readonly KeyCode[] RebindCandidates =
         {
             KeyCode.Space, KeyCode.LeftControl, KeyCode.LeftShift, KeyCode.J, KeyCode.K,
@@ -110,11 +133,30 @@ namespace HiddenWeight.Player
 
         static string FriendlyKey(KeyCode key)
         {
+            // KeyCode 이름을 그대로 내보내면 화면에 "Alpha1", "Return"이 찍힌다. 플레이어의
+            // 키보드에는 그런 각인이 없다 — 실제로 조작법 화면에 그렇게 나와 있었다.
+            if (key >= KeyCode.Alpha0 && key <= KeyCode.Alpha9)
+                return ((int)(key - KeyCode.Alpha0)).ToString();
+            if (key >= KeyCode.Keypad0 && key <= KeyCode.Keypad9)
+                return "숫자패드 " + (int)(key - KeyCode.Keypad0);
+
             switch (key)
             {
                 case KeyCode.LeftControl: return "Ctrl";
+                case KeyCode.RightControl: return "Ctrl(오른쪽)";
                 case KeyCode.LeftShift: return "Shift";
+                case KeyCode.RightShift: return "Shift(오른쪽)";
+                case KeyCode.LeftAlt: return "Alt";
+                case KeyCode.RightAlt: return "Alt(오른쪽)";
                 case KeyCode.Escape: return "Esc";
+                case KeyCode.Return: return "Enter";
+                case KeyCode.KeypadEnter: return "숫자패드 Enter";
+                case KeyCode.Space: return "Space";
+                case KeyCode.BackQuote: return "`";
+                case KeyCode.UpArrow: return "↑";
+                case KeyCode.DownArrow: return "↓";
+                case KeyCode.LeftArrow: return "←";
+                case KeyCode.RightArrow: return "→";
                 default: return key.ToString();
             }
         }
@@ -134,7 +176,23 @@ namespace HiddenWeight.Player
             return message;
         }
 
+        // 조작법 화면 위에 붙는 안내. 바꿀 수 있는 키는 아래 목록이 한 줄씩 보여 주므로
+        // 여기서는 **바꿀 수 없는 것만** 적는다. 예전에는 전체 목록을 여기서 한 번 찍고
+        // 아래에서 버튼으로 또 찍어, 같은 내용이 한 화면에 두 번 나와 있었다.
         public static string ControlsSummary()
-            => $"이동  {Get(InputActionId.Move)}\n점프  {Get(InputActionId.Jump)}\n대시  {Get(InputActionId.Dash)}\n공격  {Get(InputActionId.Attack)}\n상호작용  {Get(InputActionId.Interact)}\n감정 스킬  {Get(InputActionId.Skill)}\n자각  {Get(InputActionId.Awareness)}\n지도  {Get(InputActionId.Map)}\n일시정지  {Get(InputActionId.Pause)}";
+            => $"이동  {Get(InputActionId.Move)}    ·    상호작용  {Get(InputActionId.Interact)}{Alt(InputActionId.Interact)}"
+             + "\n\n아래 항목을 누르면 다음 키로 바뀝니다. 입력 장치를 바꾸면 표기도 함께 바뀝니다."
+             + "\n한글 입력 상태에서는 문자 키가 게임에 닿지 않습니다. 그때는 괄호 안의 키를 쓰세요.";
+
+        // 보조 키만 따로. 조작법 목록의 값 칸에 붙인다.
+        public static string AlternateSuffix(InputActionId action) => Alt(action);
+
+        // 보조 키 표기. 게임패드를 쓰는 중이면 굳이 보여 주지 않는다.
+        static string Alt(InputActionId action)
+        {
+            var key = GetAlternateKey(action);
+            return key == KeyCode.None || CurrentDevice == InputDeviceKind.Gamepad
+                ? string.Empty : $"  ({FriendlyKey(key)})";
+        }
     }
 }

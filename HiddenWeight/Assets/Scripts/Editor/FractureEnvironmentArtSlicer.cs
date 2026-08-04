@@ -32,7 +32,13 @@ namespace HiddenWeight.EditorTools
         static readonly Sheet[] Sheets =
         {
             // terrain_tiles(): 4행 x 6열
-            new Sheet { Path = "Environment/Terrain/Fracture_TerrainTiles_v1.png",
+            // v1은 PIL로 그린 플레이스홀더라 24칸이 전부 같은 납작한 사각형이었다 — 게임
+            // 화면이 박스로 보이던 원인이다. v2는 이미 일러스트로 완성된 발판 시트에서 파생해
+            // 끝단·벽 켜·천장·경사를 구분한다(`build_fracture_terrain_v2.py`).
+            // 접두사를 v1과 같게 두는 것은 의도적이다. 이름으로 조회하는 쪽
+            // (`TraversalArtPalette`, 씬 빌더)이 그대로 새 그림을 받는다. 잔재가
+            // Residue_TerrainTiles_v2로 갈아탄 것과 같은 방식이다.
+            new Sheet { Path = "Environment/Terrain/Fracture_TerrainTiles_v2.png",
                         Columns = 6, Rows = 4, Pivot = Bottom, Prefix = "FractureTerrain" },
 
             // platforms(): 12칸, col=i%3 / row=i//3 → 3열 x 4행
@@ -98,6 +104,11 @@ namespace HiddenWeight.EditorTools
                 importer.alphaIsTransparency = true;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.maxTextureSize = Mathf.Max(2048, Mathf.Max(texture.width, texture.height));
+
+                // 주의: 여기서 읽는 texture.width는 **임포트된 뒤**의 크기다. 2의 거듭제곱이
+                // 아닌 시트를 넣으면 유니티가 늘려 들여오고(1536x704 → 2048x512) 그 크기로
+                // 자른 좌표가 실제 텍스처 밖으로 나가, 서브에셋이 조용히 사라진다(v2 첫
+                // 임포트에서 24칸 중 16칸만 생겼다). 시트는 2의 거듭제곱 크기로 만들 것.
                 importer.spritesheet = BuildRects(texture.width, texture.height, sheet);
                 importer.SaveAndReimport();
 

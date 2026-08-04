@@ -100,6 +100,10 @@ namespace HiddenWeight.Player
             _attack = GetComponent<PlayerAttack>();
             _spriteAnimator = GetComponentInChildren<SpriteAnimator>();
 
+            // 접촉 그림자와 외곽선은 겉모습이므로 여기서 챙긴다. 프리팹에 넣지 않고 런타임에
+            // 붙이는 이유는 PlayerSilhouette 주석에 있다(프리팹 재생성이 오버라이드를 끊는다).
+            if (GetComponent<PlayerSilhouette>() == null) gameObject.AddComponent<PlayerSilhouette>();
+
             // 애니메이터가 있으면 그것이 그리는 렌더러가 진짜다. GetComponentInChildren는
             // 루트에 남아 있는(꺼진) 구형 렌더러를 먼저 집어서, 안 보이는 그림만 뒤집힌다.
             _sprite = _spriteAnimator != null && _spriteAnimator.Renderer != null

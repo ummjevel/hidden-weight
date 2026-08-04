@@ -786,22 +786,24 @@ namespace HiddenWeight.EditorTools
                 FloorArt = false
             };
 
-            BuildG01(ctx);
-            BuildG02(ctx);
-            BuildG03(ctx);
-            BuildG04(ctx);
-            BuildGS1(ctx);
-            BuildG05(ctx);
-            BuildG06(ctx);
-            BuildGS2(ctx);
-            BuildG07(ctx);
-            BuildG08(ctx);
-            BuildG09(ctx);
-            BuildG10(ctx);
-            BuildG11(ctx);
-            BuildGS3(ctx);
-            BuildG12(ctx);
+            // 균열과 같은 결함이 여기에도 있었다 — 방 씬 분할(62f891b)이 각 BuildGxx의
+            // c.O = Gxx를 걷어냈는데 이 Full 씬 빌더는 대신 오프셋을 주지 않아, 다시 구우면
+            // 15개 방이 원점에 겹쳐 쌓인다. 응시는 씬을 아직 다시 굽지 않아 드러나지 않았을
+            // 뿐이므로 같이 고쳐 둔다.
+            foreach (var (origin, build) in new (Vector2Int, System.Action<RoomCtx>)[]
+            {
+                (G01, BuildG01), (G02, BuildG02), (G03, BuildG03), (G04, BuildG04),
+                (GS1, BuildGS1), (G05, BuildG05), (G06, BuildG06), (GS2, BuildGS2),
+                (G07, BuildG07), (G08, BuildG08), (G09, BuildG09), (G10, BuildG10),
+                (G11, BuildG11), (GS3, BuildGS3), (G12, BuildG12),
+            })
+            {
+                ctx.O = origin;
+                build(ctx);
+            }
 
+            // 연결 통로는 방 상수로 절대 좌표를 계산하므로 오프셋을 비워 둔다.
+            ctx.O = Vector2Int.zero;
             BuildGazeConnections(ctx);
 
             ctx.O = G01;

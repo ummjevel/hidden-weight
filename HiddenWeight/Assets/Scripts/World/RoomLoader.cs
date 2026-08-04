@@ -30,8 +30,12 @@ namespace HiddenWeight.World
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
-                return;
+                // 예전에는 새로 생긴 쪽이 스스로를 파괴했다. 그러면 지역을 옮길 때 이전
+                // 지역의 로더가 한 프레임이라도 살아 있는 순간 **새 지역의 로더가 죽고**,
+                // ZoneEntryPoint의 첫 방 요청이 함께 사라져 빈 셸(검은 화면 + 낙하)로 들어간다.
+                // 새 지역이 이기는 것이 맞다 — 이전 지역의 로더는 이미 할 일이 없다.
+                Debug.LogWarning("[RoomLoader] 이전 지역의 로더가 남아 있어 교체한다.");
+                Destroy(Instance.gameObject);
             }
 
             Instance = this;
@@ -118,6 +122,9 @@ namespace HiddenWeight.World
                 }
 
                 CurrentRoom = roomName;
+                // 방에 들어설 때도 위상을 맞춘다 — 되돌아왔을 때 발판이 처음 봤던
+                // 리듬으로 돌아가야 방을 "같은 곳"으로 읽는다(설계 10절).
+                ZoneClock.Reset();
                 PlacePlayer(loaded, roomName, arriveAtDoorId);
                 SyncCamera(loaded);
 

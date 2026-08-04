@@ -337,5 +337,70 @@ namespace HiddenWeight.Tests
                 "4K 배경 위를 가리는 FloorArt 전경이 남아 있다: " +
                 string.Join(", ", floors));
         }
+
+        // v1 지형은 24칸이 전부 같은 납작한 사각형이었고, 런타임은 그중 한 칸만 뽑아 모든
+        // 바닥에 늘여 썼다 — 공간이 통짜 박스로 보이던 이유다. 끝단과 중간이 실제로 다른
+        // 그림인지 본다. 한 종류로 되돌아가면 이 검사가 먼저 깨진다.
+        [UnityTest]
+        public IEnumerator 바닥이_한_종류의_타일로만_그려지지_않는다()
+        {
+            yield return LoadFracture();
+
+            var used = new HashSet<string>();
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (renderer.name != "TraversalSurface" && renderer.name != "PlatformSurface")
+                    continue;
+                if (renderer.sprite != null) used.Add(renderer.sprite.name);
+            }
+
+            Assert.Greater(used.Count, 2,
+                "지형이 사실상 한 그림으로 그려지고 있다. 쓰인 타일: " +
+                string.Join(", ", used));
+        }
+
+        // 형광 테두리 밴드는 "안 보이는데 부딪히는 벽"을 막으려던 응급처치였다. 지형 그림이
+        // 네 면을 마감하게 되면서 걷어냈다 — 되살아나면 화면이 다시 디버그 뷰처럼 보인다.
+        [UnityTest]
+        public IEnumerator 형광_테두리_밴드가_남아있지_않다()
+        {
+            yield return LoadFracture();
+
+            var bands = new List<string>();
+            foreach (var transform in Object.FindObjectsByType<Transform>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (transform.name.StartsWith("PlatformEdge")
+                    || transform.name == "TraversalWallEdge"
+                    || transform.name == "TraversalEdge"
+                    || transform.name.StartsWith("WallClimbEdge"))
+                    bands.Add(transform.name);
+            }
+
+            Assert.IsEmpty(bands,
+                "균열에 형광 테두리 밴드가 남아 있다: " + string.Join(", ", bands));
+        }
+
+        // 방 문은 트리거 콜라이더뿐이라 화면에서는 아무것도 아니었다. 처음 오는 사람이
+        // 방의 어디가 출구인지 알 수 없던 가장 큰 이유다.
+        [UnityTest]
+        public IEnumerator 모든_방문에_눈에_보이는_표시가_있다()
+        {
+            yield return LoadFracture();
+
+            var blind = new List<string>();
+            foreach (var door in Object.FindObjectsByType<RoomDoor>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                bool visible = false;
+                foreach (var renderer in door.GetComponentsInChildren<SpriteRenderer>(true))
+                    if (renderer.sprite != null) { visible = true; break; }
+                if (!visible) blind.Add(door.name);
+            }
+
+            Assert.IsEmpty(blind,
+                "겉모습이 없는 방 문이 있다: " + string.Join(", ", blind));
+        }
     }
 }

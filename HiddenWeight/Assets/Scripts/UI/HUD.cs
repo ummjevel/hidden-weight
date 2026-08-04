@@ -35,6 +35,10 @@ namespace HiddenWeight.UI
         Text _skillGlyph;
         Text _skillName;
         Image _cooldownFill;
+        Image _cooldownInner;
+        Image _skillIcon;
+        EmotionId _lastSkillId = (EmotionId)(-1);
+        float _skillNameTimer;
 
         GameObject _channelGroup;
         Image _channelBackground;
@@ -101,11 +105,15 @@ namespace HiddenWeight.UI
             }
 
             EnsureHeartCount(max);
+            // 한 핵이 담는 체력. 최대치가 핵 수로 나누어떨어지지 않아도 마지막 핵이
+            // 나머지를 담으므로 총합은 항상 정확하다.
+            float perCore = Mathf.Max(1f, (float)max / _hearts.Count);
             for (int i = 0; i < _hearts.Count; i++)
             {
-                bool withinMax = i < max;
-                _hearts[i].gameObject.SetActive(withinMax);
-                if (withinMax) _hearts[i].color = i < current ? UIBuilder.HeartFull : UIBuilder.HeartEmpty;
+                _hearts[i].gameObject.SetActive(true);
+                float filled = Mathf.Clamp01((current - i * perCore) / perCore);
+                _hearts[i].fillAmount = filled;
+                _hearts[i].color = filled > 0f ? UIBuilder.HeartFull : UIBuilder.HeartEmpty;
             }
         }
 
@@ -118,6 +126,10 @@ namespace HiddenWeight.UI
             _gazeExposure.Clear();
             _dangerShown = false;
             ConfigureStatusEmblem(zone);
+
+            // 결정핵 색은 지역을 따라간다. 체력이 변할 때만 칠하면 지역을 넘어와도
+            // 이전 지역 색이 남는다 — 체력이 가득 찬 채로 넘어오는 것이 보통이다.
+            if (_health != null) HandleHealthChanged(_health.Current, _health.Max);
         }
 
         void ConfigureStatusEmblem(ZoneData zone)
@@ -182,9 +194,15 @@ namespace HiddenWeight.UI
             else _statusEmblem.Stop("Exposure");
         }
 
+        // 체력은 칸 하나에 1을 담지 않는다. 체력이 늘어날수록 화면 가로를 잠식해
+        // 밝은 수채 배경 위에 붉은 픽셀 띠가 길게 깔렸다. 결정핵 다섯 개로 고정하고
+        // 한 핵이 여러 칸을 나눠 담아, 부분 소모는 핵의 채움 정도로 보여 준다.
+        const int HealthCores = 5;
+
         void EnsureHeartCount(int max)
         {
-            while (_hearts.Count < max)
+            int cores = Mathf.Clamp(max, 1, HealthCores);
+            while (_hearts.Count < cores)
             {
                 int index = _hearts.Count;
                 var go = new GameObject($"HealthCore{index}");
@@ -192,14 +210,49 @@ namespace HiddenWeight.UI
                 var image = go.AddComponent<Image>();
                 image.sprite = heartSprite;
                 image.color = UIBuilder.HeartEmpty;
+                // 아래에서 위로 차오른다 — 씨앗이 자라는 방향이고, 가로 채움보다 작게 읽힌다.
+                image.type = Image.Type.Filled;
+                image.fillMethod = Image.FillMethod.Vertical;
+                image.fillOrigin = 0;
 
                 var rt = image.rectTransform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
                 rt.pivot = new Vector2(0f, 1f);
-                rt.sizeDelta = new Vector2(34f, 34f);
-                rt.anchoredPosition = new Vector2(32f + index * 42f, -32f);
+                rt.sizeDelta = new Vector2(26f, 26f);
+                rt.anchoredPosition = new Vector2(32f + index * 32f, -32f);
                 _hearts.Add(image);
+
+                // 빈 핵도 자리를 알 수 있게 아주 옅은 바탕을 깔아 둔다.
+                var socket = new GameObject($"HealthSocket{index}");
+                socket.transform.SetParent(_canvasGO.transform, false);
+                socket.transform.SetSiblingIndex(go.transform.GetSiblingIndex());
+                var socketImage = socket.AddComponent<Image>();
+                socketImage.sprite = heartSprite;
+                socketImage.color = new Color(1f, 1f, 1f, 0.14f);
+                var socketRt = socketImage.rectTransform;
+                socketRt.anchorMin = socketRt.anchorMax = rt.anchorMin;
+                socketRt.pivot = rt.pivot;
+                socketRt.sizeDelta = rt.sizeDelta;
+                socketRt.anchoredPosition = rt.anchoredPosition;
             }
+        }
+
+        const float SkillNameSeconds = 2.4f;
+
+        // 지역 UI 시트의 아이콘을 감정별로 하나씩 쓴다. 지역마다 시트가 다르므로
+        // 같은 능력도 지역의 화풍으로 보인다.
+        static Sprite SkillIcon(EmotionId id)
+        {
+            var zone = GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null;
+            if (zone == null || zone.mapStateIcons == null) return null;
+            int index = id switch
+            {
+                EmotionId.Rewind => 5,
+                EmotionId.Hush => 6,
+                EmotionId.Foresight => 7,
+                _ => -1,
+            };
+            return index >= 0 && index < zone.mapStateIcons.Length ? zone.mapStateIcons[index] : null;
         }
 
         void HandleStateChanged(GameState next) => ApplyVisibility(next);
@@ -217,13 +270,37 @@ namespace HiddenWeight.UI
             }
 
             _skillGroup.SetActive(true);
-            _skillName.text = active.Data.displayName;
+
+            // 스킬 이름은 늘 띄우지 않는다. 획득 직후나 능력이 바뀐 순간에만 잠깐 보여주고
+            // 이후에는 아이콘만 남긴다 — 매 순간 읽을 글자가 아니다.
+            if (active.Id != _lastSkillId)
+            {
+                _lastSkillId = active.Id;
+                _skillNameTimer = SkillNameSeconds;
+                _skillName.text = active.Data.displayName;
+            }
+            if (_skillNameTimer > 0f)
+            {
+                _skillNameTimer -= Time.unscaledDeltaTime;
+                float alpha = Mathf.Clamp01(_skillNameTimer / 0.6f);
+                _skillName.color = new Color(_skillName.color.r, _skillName.color.g,
+                                             _skillName.color.b, alpha);
+            }
+
+            Sprite icon = SkillIcon(active.Id);
+            _skillIcon.enabled = icon != null;
+            _skillIcon.sprite = icon;
+            _skillGlyph.enabled = icon == null;
             _skillGlyph.text = GlyphFor(active.Id);
 
             float cooldown = active.Data.cooldown;
-            _cooldownFill.fillAmount = cooldown > 0f
-                ? Mathf.Clamp01(active.CooldownRemaining / cooldown)
-                : 0f;
+            // 남은 비율이 아니라 "회복된 비율"을 그린다. 고리가 차오르면 곧 쓸 수 있다는 뜻이다.
+            float ready = cooldown > 0f
+                ? 1f - Mathf.Clamp01(active.CooldownRemaining / cooldown)
+                : 1f;
+            // 원을 끝까지 닫지 않는다. 균열의 원은 언제나 조금 어긋나 있다.
+            _cooldownFill.fillAmount = ready * 0.92f;
+            _cooldownInner.fillAmount = ready * 0.78f;
 
             if (_statusEmblem != null && !_dangerShown
                 && (_statusZone == null || _statusZone.id != ZoneId.Gaze)
@@ -357,18 +434,40 @@ namespace HiddenWeight.UI
             groupRt.sizeDelta = new Vector2(250f, 72f);
             groupRt.anchoredPosition = new Vector2(-32f, -32f);
 
+            // 검은 패널을 없앤다. 밝은 수채 배경 위에서 이 사각형만 다른 게임의 조각처럼
+            // 떠 있었다. 아주 옅은 어둠만 남겨 아이콘 대비를 확보한다.
+            // 배경판을 아예 그리지 않는다. 옅게라도 남기면 밝은 수채 배경 위에서
+            // 회색 사각형 하나가 화면 구석에 떠 있는 것으로 보인다.
             var panel = _skillGroup.AddComponent<Image>();
-            panel.color = new Color(0.025f, 0.035f, 0.05f, 0.68f);
+            panel.color = new Color(0f, 0f, 0f, 0f);
+            panel.raycastTarget = false;
 
             var glyphBg = new GameObject("EmotionGlyph", typeof(RectTransform));
             glyphBg.transform.SetParent(_skillGroup.transform, false);
+            // 배경판을 그리지 않는다. 능력이 없거나 아이콘을 못 찾은 순간 화면 구석에
+            // 정체불명의 옅은 하늘색 사각형만 남는다 — 실제로 그렇게 보였다.
+            // 자리를 잡는 용도로만 두고 색은 비운다.
             var glyphBgImage = glyphBg.AddComponent<Image>();
-            glyphBgImage.color = new Color(0.35f, 0.85f, 0.86f, 0.28f);
+            glyphBgImage.color = new Color(0f, 0f, 0f, 0f);
+            glyphBgImage.raycastTarget = false;
             var glyphRt = glyphBgImage.rectTransform;
             glyphRt.anchorMin = glyphRt.anchorMax = new Vector2(1f, 0.5f);
             glyphRt.pivot = new Vector2(1f, 0.5f);
             glyphRt.sizeDelta = new Vector2(52f, 52f);
             glyphRt.anchoredPosition = new Vector2(-10f, 0f);
+
+            // 지역 아이콘이 있으면 그림이 주인공이고, 없을 때만 글리프 문자로 되돌아간다.
+            var iconGo = new GameObject("EmotionIcon", typeof(RectTransform));
+            iconGo.transform.SetParent(glyphBg.transform, false);
+            _skillIcon = iconGo.AddComponent<Image>();
+            _skillIcon.preserveAspect = true;
+            _skillIcon.raycastTarget = false;
+            var iconRt = _skillIcon.rectTransform;
+            iconRt.anchorMin = Vector2.zero;
+            iconRt.anchorMax = Vector2.one;
+            iconRt.offsetMin = new Vector2(6f, 6f);
+            iconRt.offsetMax = new Vector2(-6f, -6f);
+            _skillIcon.enabled = false;
 
             _skillGlyph = UIBuilder.CreateText(glyphBg.transform, "GlyphText", 32, TextAnchor.MiddleCenter);
             var glyphTextRt = _skillGlyph.rectTransform;
@@ -377,19 +476,10 @@ namespace HiddenWeight.UI
             glyphTextRt.offsetMin = Vector2.zero;
             glyphTextRt.offsetMax = Vector2.zero;
 
-            var cooldown = new GameObject("CooldownRing", typeof(RectTransform));
-            cooldown.transform.SetParent(glyphBg.transform, false);
-            _cooldownFill = cooldown.AddComponent<Image>();
-            _cooldownFill.color = new Color(0.02f, 0.025f, 0.035f, 0.72f);
-            _cooldownFill.type = Image.Type.Filled;
-            _cooldownFill.fillMethod = Image.FillMethod.Radial360;
-            _cooldownFill.fillOrigin = 2;
-            _cooldownFill.fillClockwise = false;
-            var cooldownRt = _cooldownFill.rectTransform;
-            cooldownRt.anchorMin = Vector2.zero;
-            cooldownRt.anchorMax = Vector2.one;
-            cooldownRt.offsetMin = Vector2.zero;
-            cooldownRt.offsetMax = Vector2.zero;
+            // 쿨타임은 아이콘을 덮는 검은 부채꼴이 아니라 둘레의 끊어진 이중 원으로 보여준다.
+            // 덮어 버리면 무슨 능력인지 읽을 수 없고, 균열의 "어긋난 원" 모티브와도 맞지 않는다.
+            _cooldownFill = CreateCooldownRing(glyphBg.transform, "CooldownRingOuter", -3f, true);
+            _cooldownInner = CreateCooldownRing(glyphBg.transform, "CooldownRingInner", 5f, false);
 
             _skillName = UIBuilder.CreateText(_skillGroup.transform, "EmotionName", 24, TextAnchor.MiddleRight);
             var nameRt = _skillName.rectTransform;
@@ -398,6 +488,56 @@ namespace HiddenWeight.UI
             nameRt.offsetMin = new Vector2(12f, 8f);
             nameRt.offsetMax = new Vector2(-72f, -8f);
             _skillGroup.SetActive(false);
+        }
+
+        // 둘레를 도는 얇은 고리 하나. 두 개를 서로 반대 방향으로 겹쳐 "어긋난 이중 원"을 만든다.
+        // 원 전체를 채우지 않고 항상 틈을 남긴다 — 닫힌 원은 완결을, 균열은 그 반대를 말한다.
+        static Image CreateCooldownRing(Transform parent, string name, float inset, bool clockwise)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var image = go.AddComponent<Image>();
+            // 스프라이트를 주지 않으면 기본 흰 사각형이 방사형으로 채워져 **사각형**이 된다
+            // — 화면 구석의 정체불명 하늘색 네모가 이것이었다. 고리 모양을 직접 만들어 쓴다.
+            image.sprite = RingSprite();
+            image.color = new Color(0.72f, 0.94f, 1f, 0.9f);
+            image.raycastTarget = false;
+            image.type = Image.Type.Filled;
+            image.fillMethod = Image.FillMethod.Radial360;
+            image.fillOrigin = 2;
+            image.fillClockwise = clockwise;
+            var rt = image.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(inset, inset);
+            rt.offsetMax = new Vector2(-inset, -inset);
+            return image;
+        }
+
+        // 가운데가 빈 고리 한 장. 방사형 채우기와 함께 쓰면 원둘레를 도는 호가 된다.
+        static Sprite _ringSprite;
+        static Sprite RingSprite()
+        {
+            if (_ringSprite != null) return _ringSprite;
+
+            const int size = 128;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = (x + 0.5f) / size * 2f - 1f;
+                    float dy = (y + 0.5f) / size * 2f - 1f;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    // 바깥 0.98, 안쪽 0.80 사이만 남긴다. 양 끝을 부드럽게 깎아 계단을 없앤다.
+                    float a = Mathf.Clamp01((0.98f - d) / 0.06f)
+                            * Mathf.Clamp01((d - 0.80f) / 0.06f);
+                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            texture.Apply();
+            _ringSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size),
+                                        new Vector2(0.5f, 0.5f), size);
+            _ringSprite.name = "CooldownRing";
+            return _ringSprite;
         }
 
         void BuildChannelGroup(Transform parent)

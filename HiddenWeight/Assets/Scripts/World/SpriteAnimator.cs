@@ -58,6 +58,11 @@ namespace HiddenWeight.World
         float _elapsed;
         int _frame;
 
+        // 재생 속도 배율. 걷는 속도와 무관하게 고정 fps로 돌리면 발이 지면 위를 미끄러진다.
+        // 이동을 소유한 쪽(적 행동 모듈)이 실제 수평 속도에 맞춰 매 프레임 넣어 준다.
+        // 1이면 클립에 적힌 fps 그대로라 이 값을 건드리지 않는 쪽은 동작이 변하지 않는다.
+        public float PlaybackSpeed { get; set; } = 1f;
+
         public string CurrentClip => _current != null ? _current.name : null;
         public bool IsFinished => _current != null && !_current.loop && _frame >= _current.frames.Length - 1;
         public event System.Action<string, int> FrameDisplayed;
@@ -96,7 +101,7 @@ namespace HiddenWeight.World
         {
             if (_current == null || _current.frames == null || _current.frames.Length == 0) return;
 
-            _elapsed += Time.deltaTime;
+            _elapsed += Time.deltaTime * Mathf.Max(0f, PlaybackSpeed);
             float frameTime = _current.fps <= 0f ? 0.1f : 1f / _current.fps;
             if (_elapsed < frameTime) return;
 

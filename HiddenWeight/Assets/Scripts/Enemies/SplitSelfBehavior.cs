@@ -57,6 +57,10 @@ namespace HiddenWeight.Enemies
             else
                 Body.linearVelocity = new Vector2(0f, Body.linearVelocity.y);
 
+            // 이 적은 이동 클립을 한 번도 고르지 않아 다가오는 내내 대기 그림으로
+            // 미끄러졌다. 실제 속도로 걷기/대기를 정한다.
+            UpdateLocomotionClip(Body.linearVelocity.x);
+
             UpdateMirror();
         }
 

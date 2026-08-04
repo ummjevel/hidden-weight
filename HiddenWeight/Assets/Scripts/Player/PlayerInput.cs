@@ -80,25 +80,30 @@ namespace HiddenWeight.Player
 
         public static bool AttackPressed
             => Enabled && (Injected.HasValue ? Injected.Value.attackPressed
-                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Attack)) || Input.GetKeyDown(KeyCode.JoystickButton2));
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Attack))
+                    || Input.GetKeyDown(InputPrompts.GetAlternateKey(InputActionId.Attack)) || Input.GetKeyDown(KeyCode.JoystickButton2));
 
         public static bool InteractPressed
             => Enabled && (Injected.HasValue ? Injected.Value.interactPressed
-                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Interact)) || Input.GetKeyDown(KeyCode.JoystickButton1));
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Interact))
+                    || Input.GetKeyDown(InputPrompts.GetAlternateKey(InputActionId.Interact)) || Input.GetKeyDown(KeyCode.JoystickButton1));
 
         public static bool SkillPressed
             => Enabled && (Injected.HasValue ? Injected.Value.skillPressed
-                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Skill)) || Input.GetKeyDown(KeyCode.JoystickButton3));
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Skill))
+                    || Input.GetKeyDown(InputPrompts.GetAlternateKey(InputActionId.Skill)) || Input.GetKeyDown(KeyCode.JoystickButton3));
 
         public static bool SkillHeld
             => Enabled && (Injected.HasValue ? Injected.Value.skillHeld
-                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Skill)) || Input.GetKey(KeyCode.JoystickButton3));
+                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Skill))
+                    || Input.GetKey(InputPrompts.GetAlternateKey(InputActionId.Skill)) || Input.GetKey(KeyCode.JoystickButton3));
 
         // 일시정지와 마찬가지로 Enabled 여부와 무관하게 항상 동작한다 — Ending 시퀀스는
         // PlayerInput.Enabled = false로 이동/공격을 막아둔 채 이 값만 직접 읽는다.
         public static bool AwarenessHeld
             => Injected.HasValue ? Injected.Value.awarenessHeld
-                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Awareness)) || Input.GetKey(KeyCode.JoystickButton5);
+                : Input.GetKey(InputPrompts.GetKeyboardKey(InputActionId.Awareness))
+                    || Input.GetKey(InputPrompts.GetAlternateKey(InputActionId.Awareness)) || Input.GetKey(KeyCode.JoystickButton5);
 
         // 일시정지 해제용이므로 Enabled 여부와 무관하게 항상 동작한다.
         public static bool PausePressed
@@ -108,6 +113,7 @@ namespace HiddenWeight.Player
 
         public static bool MapPressed
             => Injected.HasValue ? Injected.Value.mapPressed
-                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Map)) || Input.GetKeyDown(KeyCode.JoystickButton6);
+                : Input.GetKeyDown(InputPrompts.GetKeyboardKey(InputActionId.Map))
+                    || Input.GetKeyDown(InputPrompts.GetAlternateKey(InputActionId.Map)) || Input.GetKeyDown(KeyCode.JoystickButton6);
     }
 }

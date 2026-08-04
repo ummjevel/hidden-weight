@@ -22,6 +22,17 @@ namespace HiddenWeight.World
         [Header("화면")]
         [SerializeField] float baseOrthographicSize = 6f;
 
+        [Header("고정 추적")]
+        [Tooltip("켜면 데드존·방향 예측·낙하 보정·앵커 구도를 전부 건너뛰고 플레이어를 " +
+                 "화면 정중앙에 그대로 물고 간다. 균열(3맵)처럼 구도 연출 없이 캐릭터만 " +
+                 "따라가야 하는 지역용.")]
+        [SerializeField] bool lockToPlayer;
+
+        [Tooltip("고정 추적의 따라붙는 시간. 0이면 매 프레임 플레이어 좌표에 그대로 용접되어 " +
+                 "물리 스텝의 미세한 흔들림이 화면 전체에 그대로 드러난다. 0.05 안팎이면 " +
+                 "고정처럼 보이면서도 그 떨림만 걸러진다.")]
+        [SerializeField] float lockSmoothTime = 0.05f;
+
         [Header("데드존 (화면 중앙 기준 유닛)")]
         [SerializeField] float deadZoneHalfWidth = 2.5f;
         [SerializeField] float deadZoneUp = 1.5f;
@@ -156,6 +167,17 @@ namespace HiddenWeight.World
         {
             var anchor = ActiveAnchor;
             Vector2 playerPos = player.transform.position;
+
+            // 캐릭터 고정: 구도를 만드는 모든 보정을 건너뛴다. 데드존도 여기서 플레이어에
+            // 붙여 둬야 나중에 고정을 꺼도 추적점이 화면 밖에서 시작하지 않는다.
+            if (lockToPlayer)
+            {
+                _focus = playerPos;
+                _focusReady = true;
+                target = playerPos;
+                smoothX = smoothY = lockSmoothTime;
+                return;
+            }
 
             // 데드존은 앵커 구간에서도 계속 플레이어를 따라 둔다. 그래야 앵커에서 풀려날 때
             // 추적점이 이미 제자리에 있어 화면이 되돌아오며 튀지 않는다.
@@ -355,7 +377,9 @@ namespace HiddenWeight.World
             BindPlayer(player);
 
             _lookAheadDir = player.Facing;
-            _lookAhead = _lookAheadDir * lookAheadDistance;
+            // 고정 모드에서는 입구 예측을 미리 채우면 도착 첫 프레임에만 옆으로 밀렸다가
+            // 곧바로 중앙으로 튄다. 처음부터 정중앙에 세운다.
+            _lookAhead = lockToPlayer ? 0f : _lookAheadDir * lookAheadDistance;
             _lookAheadVelocity = 0f;
             _facingHoldTimer = 0f;
             _fallBias = 0f;

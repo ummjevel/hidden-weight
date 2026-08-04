@@ -96,7 +96,14 @@ namespace HiddenWeight.Core
             // grantedSkill 해금은 여기서 하지 않는다. 지역 안의 픽업(StoryFragment)에서 처리한다.
         }
 
-        public void RespawnPlayer() => RespawnRequested?.Invoke(Progress.LastCheckpoint);
+        public void RespawnPlayer()
+        {
+            // 발판 위상을 처음으로 되돌린다(설계 10절). 죽을 때마다 발판이 제각각의
+            // 위상에 있으면 같은 점프가 시도마다 다른 타이밍을 요구해, 실패가 학습으로
+            // 이어지지 않는다. 예지는 같은 시계를 읽으므로 정확도는 그대로다.
+            World.ZoneClock.Reset();
+            RespawnRequested?.Invoke(Progress.LastCheckpoint);
+        }
 
         public void BeginNewGame()
         {

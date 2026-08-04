@@ -176,6 +176,7 @@ namespace HiddenWeight.EditorTools
                     if (artRenderer == null) artRenderer = artObject.AddComponent<SpriteRenderer>();
                     artRenderer.sprite = idle;
                     artRenderer.sortingOrder = 10;
+                    artRenderer.sharedMaterial = PlayerOutlineMaterial();
 
                     // 크기는 애니메이터가 프레임마다 맞춘다(클립별 원본 셀 크기가 달라서
                     // 여기서 한 번 정해 두면 동작마다 캐릭터가 커졌다 작아진다).
@@ -256,6 +257,44 @@ namespace HiddenWeight.EditorTools
             if (!AssetDatabase.IsValidFolder("Assets/Settings"))
                 AssetDatabase.CreateFolder("Assets", "Settings");
             AssetDatabase.CreateAsset(mat, path);
+            return mat;
+        }
+
+        // 플레이어 외곽선. 적 것과 반대 방향의 문제를 푼다.
+        //
+        // 적은 어두운 그림이 어두운 배경에 묻혀 **밝은** 선으로 살렸다. 플레이어는 흰 치비인데
+        // 균열의 배경이 연보라·미색 수채라 밝은 데 밝은 것이 겹쳐 실루엣이 사라진다 — 화면에서
+        // 자기 캐릭터를 눈으로 찾아야 했다. 그래서 **어두운** 선으로 테두리를 만든다.
+        //
+        // 색은 검정이 아니라 배경에 있는 짙은 보라다. 검정 윤곽선은 수채 화풍 위에서 스티커처럼
+        // 도드라지고, 치비 비례와 합쳐지면 세계의 무게를 깎는다(CLAUDE.md 원칙 3).
+        // 선 굵기는 **원본 텍스처의 텍셀** 단위다. 플레이어 시트는 한 칸이 최대 384x512인데
+        // 화면에서는 90픽셀 남짓으로 그려진다 — 1텍셀이 화면 0.2픽셀도 안 된다. 처음에 적과
+        // 같은 1.8을 줬더니 외곽선이 아예 보이지 않았다. 큰 시트에는 큰 값이 필요하다.
+        public static Material PlayerOutlineMaterial()
+        {
+            const string path = "Assets/Settings/PlayerOutline.mat";
+            var shader = Shader.Find("Hidden Weight/SpriteOutline") ?? Shader.Find("Sprites/Default");
+
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                if (!AssetDatabase.IsValidFolder("Assets/Settings"))
+                    AssetDatabase.CreateFolder("Assets", "Settings");
+                mat = new Material(shader);
+                AssetDatabase.CreateAsset(mat, path);
+            }
+
+            // 이미 있는 에셋도 매번 값을 다시 쓴다. 처음 만들 때만 설정하면 값을 고쳐도
+            // 반영되지 않아, 에셋을 손으로 지워야 하는 함정이 생긴다.
+            if (mat.shader != null && mat.shader.name == "Hidden Weight/SpriteOutline")
+            {
+                mat.SetColor("_OutlineColor", new Color(0.26f, 0.21f, 0.36f, 1f));
+                mat.SetFloat("_OutlineWidth", 6f);
+                mat.SetFloat("_FillAlpha", 1f);
+                EditorUtility.SetDirty(mat);
+                AssetDatabase.SaveAssetIfDirty(mat);
+            }
             return mat;
         }
 
@@ -676,6 +715,10 @@ namespace HiddenWeight.EditorTools
 
             var rb = root.AddComponent<Rigidbody2D>();
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            // 물리는 50Hz, 화면은 60Hz 이상이다. 보간이 없으면 플레이어 위치가 프레임마다
+            // 0 → 두 칸씩 계단으로 움직인다. 카메라가 플레이어에 고정된 지역(균열)에서는
+            // 그 계단이 화면 전체의 끊김으로 보인다.
+            rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
             var col = root.AddComponent<CapsuleCollider2D>();
             col.direction = CapsuleDirection2D.Vertical;

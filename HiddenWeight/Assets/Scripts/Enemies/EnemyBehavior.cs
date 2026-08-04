@@ -56,10 +56,75 @@ namespace HiddenWeight.Enemies
         // 예고는 매 프레임 다시 켜지는 곳이 있어(GuardBehavior) 전환 순간에만 소리를 낸다.
         bool _telegraphing;
 
+        // 이동 속도에 맞춰 걷기/대기 그림을 고르고 재생 속도를 맞춘다.
+        //
+        // 이걸 하지 않으면 두 가지가 함께 어긋난다 — 멈춰 있는데 걷는 그림이 돌아가고(제자리
+        // 걸음), 걷는 그림의 fps가 고정이라 이동 속도와 무관해 발이 지면 위를 미끄러진다.
+        // 균열 적은 궤도가 시간 함수라 속도가 계속 변하므로 특히 눈에 띈다.
+        protected void UpdateLocomotionClip(float speedX)
+        {
+            float reference = Data != null ? Mathf.Abs(Data.moveSpeed) : 0f;
+            float pace = Mathf.Abs(speedX);
+            bool walking = reference > 0.01f && pace > reference * 0.15f;
+
+            Self.PlayClip(walking ? "Walk" : "Idle");
+
+            if (_animator == null) _animator = GetComponentInChildren<World.SpriteAnimator>();
+            if (_animator != null)
+                _animator.PlaybackSpeed = walking
+                    ? Mathf.Clamp(pace / reference, 0.35f, 1.6f)
+                    : 1f;
+        }
+
+        World.SpriteAnimator _animator;
+
+        // 방향 전환을 한 프레임에 끝내면 그림이 툭 뒤집힌다. 가로 배율을 0을 지나 반대로
+        // 보간해 "돌아서는" 중간 프레임을 만든다 — 그림을 새로 그리지 않고도 전환이 읽힌다.
+        //
+        // 판정에는 손대지 않는다. _facing이 논리적 방향이고 배율은 겉모습일 뿐이라,
+        // 돌아서는 도중에도 이동과 공격 방향은 이미 새 방향이다.
+        const float TurnSeconds = 0.12f;
+        int _facing;
+        float _turnTimer = -1f;
+        float _baseScaleX;
+
+        protected int Facing => _facing >= 0 ? 1 : -1;
+
         protected void FaceTowards(int direction)
         {
+            int next = direction >= 0 ? 1 : -1;
+            if (_baseScaleX <= 0f) _baseScaleX = Mathf.Abs(transform.localScale.x);
+            if (_baseScaleX <= 0f) _baseScaleX = 1f;
+
+            if (_facing == 0)
+            {
+                _facing = next;
+                ApplyFacingScale(1f);
+                return;
+            }
+
+            if (next == _facing) return;
+
+            _facing = next;
+            _turnTimer = 0f;
+        }
+
+        protected virtual void LateUpdate()
+        {
+            if (_turnTimer < 0f) return;
+
+            _turnTimer += Time.deltaTime;
+            float t = Mathf.Clamp01(_turnTimer / TurnSeconds);
+            // 0.5에서 배율이 0이 되었다가 반대 방향으로 펴진다.
+            ApplyFacingScale(Mathf.Abs(t * 2f - 1f));
+            if (t >= 1f) _turnTimer = -1f;
+        }
+
+        void ApplyFacingScale(float amount)
+        {
             var scale = transform.localScale;
-            scale.x = Mathf.Abs(scale.x) * (direction >= 0 ? 1 : -1);
+            // 완전히 0이면 렌더러가 사라져 한 프레임 깜빡인다. 아주 얇게 남긴다.
+            scale.x = _baseScaleX * Mathf.Max(0.05f, amount) * _facing;
             transform.localScale = scale;
         }
     }

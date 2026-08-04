@@ -9,6 +9,9 @@ Shader "Hidden Weight/SpriteOutline"
         _Color ("Tint", Color) = (1,1,1,1)
         _OutlineColor ("Outline Color", Color) = (0.86, 0.78, 0.62, 1)
         _OutlineWidth ("Outline Width (texel)", Range(0, 6)) = 2.2
+        // 안쪽 픽셀을 얼마나 남길지. 1이면 원본 그대로(기존 적 실루엣 용도)이고, 0에 가까우면
+        // 외곽선만 남아 "무엇의 형태인지만 알려주는" 실루엣이 된다(예지 고스트 용도).
+        _FillAlpha ("Fill Alpha", Range(0, 1)) = 1
     }
     SubShader
     {
@@ -51,6 +54,7 @@ Shader "Hidden Weight/SpriteOutline"
             float4 _Color;
             float4 _OutlineColor;
             float _OutlineWidth;
+            float _FillAlpha;
 
             Varyings vert(Attributes IN)
             {
@@ -87,6 +91,7 @@ Shader "Hidden Weight/SpriteOutline"
                     }
                 }
 
+                c.a *= _FillAlpha;
                 return c;
             }
             ENDHLSL

@@ -365,6 +365,88 @@ def make_wall_cap(tile, top):
     return fitted.crop((0, 0, 256, 192) if top else (0, 64, 256, 256))
 
 
+def opaque_mean(im, box):
+    """투명 여백을 제외한 지정 영역의 평균 RGBA 색."""
+    pixels = [pixel for pixel in im.crop(box).getdata() if pixel[3] > 16]
+    if not pixels:
+        return (150, 150, 180, 255)
+    return tuple(round(sum(pixel[i] for pixel in pixels) / len(pixels)) for i in range(4))
+
+
+def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
+    """끝단 사이를 잇는 장식 없는 대리석·유리 장경간."""
+    source = Image.new("RGBA", size, (0, 0, 0, 0))
+    for index, tile in enumerate(surface_tiles):
+        source.alpha_composite(tile, (index * CELL_W, 0))
+
+    stone_top = opaque_mean(source, (0, 8, size[0], 62))[:3]
+    stone_side = opaque_mean(source, (0, 64, size[0], 142))[:3]
+    glass = opaque_mean(source, (0, 142, size[0], 205))[:3]
+    rng = random.Random(271828)
+
+    out = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(out)
+    # 한 장의 연속 상판. 큰 문양 대신 위→아래 재질 위계만 유지한다.
+    for y in range(0, 142):
+        t = y / 141
+        color = tuple(round(a + (b - a) * t) for a, b in zip(stone_top, stone_side))
+        draw.line((0, y, size[0], y), fill=color + (255,))
+    for y in range(142, 205):
+        t = (y - 142) / 62
+        target = (
+            min(255, round(glass[0] * 0.86)),
+            min(255, round(glass[1] * 1.08)),
+            min(255, round(glass[2] * 1.12)),
+        )
+        color = tuple(round(a + (b - a) * t) for a, b in zip(stone_side, target))
+        draw.line((0, y, size[0], y), fill=color + (255,))
+
+    # 저주파 대리석 결. 반복 타일의 사각 경계가 아니라 전체 장경간을 가로지른다.
+    noise = Image.new("L", (64, 16))
+    noise.putdata([rng.randrange(78, 178) for _ in range(64 * 16)])
+    noise = noise.filter(ImageFilter.GaussianBlur(1.6)).resize((size[0], 142), Image.Resampling.BICUBIC)
+    texture = Image.new("RGBA", (size[0], 142), (255, 255, 255, 0))
+    texture.putalpha(noise.point(lambda value: max(0, min(22, (value - 96) // 3))))
+    out.alpha_composite(texture, (0, 0))
+
+    detail = Image.new("RGBA", size, (0, 0, 0, 0))
+    detail_draw = ImageDraw.Draw(detail)
+    # 상판과 유리의 긴 수평 몰딩. 세로 칸막이는 약하게, 256px마다만 둔다.
+    detail_draw.line((0, 48, size[0], 48), fill=(245, 239, 252, 82), width=3)
+    detail_draw.line((0, 62, size[0], 62), fill=(89, 88, 129, 64), width=3)
+    detail_draw.line((0, 140, size[0], 140), fill=(90, 94, 137, 92), width=4)
+    detail_draw.line((0, 146, size[0], 146), fill=(230, 219, 235, 70), width=2)
+    for x in range(256, size[0], 256):
+        detail_draw.line((x, 68, x, 137), fill=(104, 101, 144, 24), width=2)
+
+    # 유리 면의 큰 패싯은 구조를 이어 주되, 고딕 메달 문양처럼 시선을 빼앗지 않는다.
+    for x in range(-64, size[0] + 128, 128):
+        detail_draw.line((x, 204, x + 64, 146), fill=(225, 247, 255, 48), width=2)
+        detail_draw.line((x + 64, 146, x + 128, 204), fill=(70, 143, 190, 46), width=2)
+    out.alpha_composite(detail)
+
+    # 성긴 크리스탈 하단. 동일한 삼각형을 매 칸 붙이지 않고 길이와 간격을 결정적으로 바꾼다.
+    fringe = Image.new("RGBA", size, (0, 0, 0, 0))
+    fringe_draw = ImageDraw.Draw(fringe)
+    x = -24
+    while x < size[0] + 24:
+        width = rng.randrange(52, 88)
+        depth = rng.randrange(18, 39)
+        mid = x + width // 2
+        color = (
+            min(255, round(glass[0] * 0.92)),
+            min(255, round(glass[1] * 1.12)),
+            min(255, round(glass[2] * 1.18)),
+            238,
+        )
+        fringe_draw.polygon(((x, 203), (x + width, 203), (mid, 203 + depth)), fill=color)
+        fringe_draw.line(((x, 203), (mid, 203 + depth), (x + width, 203)),
+                         fill=(224, 244, 255, 92), width=2)
+        x += width + rng.randrange(18, 42)
+    out.alpha_composite(fringe)
+    return feather_repeat_edges(out, 12)
+
+
 def make_low_contrast_fill(wall_middle):
     """두꺼운 충돌 덩어리 안쪽을 위한, 장식 없는 저대비 재질."""
     fill = wall_middle.resize((512, 512), Image.Resampling.BICUBIC)
@@ -374,12 +456,7 @@ def make_low_contrast_fill(wall_middle):
 
 def build_continuous_modules(graded_tiles):
     """v2의 역할별 셀에서 긴 수평·수직 v3 모듈을 파생한다."""
-    surface_middle = Image.new("RGBA", (1024, 256), (0, 0, 0, 0))
-    for index, tile in enumerate(graded_tiles[1:5]):
-        surface_middle.alpha_composite(tile, (index * CELL_W, 0))
-    for seam_x in (256, 512, 768):
-        surface_middle = smooth_vertical_seam(surface_middle, seam_x)
-    surface_middle = feather_repeat_edges(surface_middle)
+    surface_middle = make_calm_surface_strip(graded_tiles[1:5])
 
     wall_middle = make_calm_wall_strip(graded_tiles[6:10])
     modules = {

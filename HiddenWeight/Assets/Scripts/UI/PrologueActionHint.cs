@@ -36,6 +36,8 @@ namespace HiddenWeight.UI
 
         public RequiredAction Action => action;
         public bool IsCompleted { get; private set; }
+        public static bool HasActiveHint => _active != null && _active._activated
+            && Time.unscaledTime < _active._hideAt;
 
         void Start()
         {
@@ -66,7 +68,21 @@ namespace HiddenWeight.UI
             if (_active == this) _active = null;
         }
 
-        void RefreshPrompt(InputDeviceKind _) => _text.text = InputPrompts.Format(message);
+        void RefreshPrompt(InputDeviceKind _)
+        {
+            // 키만 보여 주면 처음 보는 플레이어는 기능을 추측해야 한다. 프롤로그에서는
+            // 입력과 행동을 항상 한 쌍으로 표시하고, 복합 조작은 두 번째 줄에서 설명한다.
+            string copy = action switch
+            {
+                RequiredAction.Move => "{Move}  ·  이동",
+                RequiredAction.Jump => "{Jump}  ·  점프",
+                RequiredAction.WallJump => "{Jump}  ·  벽점프\n벽에 붙은 상태에서 누르기",
+                RequiredAction.Dash => "{Dash}  ·  대시\n점프 중에도 사용 가능",
+                RequiredAction.Attack => "{Attack}  ·  공격",
+                _ => message
+            };
+            _text.text = InputPrompts.Format(copy);
+        }
 
         bool Matches(PlayerState state)
         {
@@ -108,6 +124,7 @@ namespace HiddenWeight.UI
             {
                 if (_active != null && _active != this)
                     _active.DismissImmediately();
+                PrologueConceptHint.DismissActiveImmediately();
                 _active = this;
                 _activated = true;
                 _visibleSince = Time.unscaledTime;

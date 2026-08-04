@@ -7,6 +7,8 @@ namespace HiddenWeight.UI
     // 사라지며, 확인 입력이나 이동 정지를 요구하지 않는다.
     public class PrologueConceptHint : MonoBehaviour
     {
+        static PrologueConceptHint _active;
+
         [SerializeField, TextArea(1, 3)] string message;
         [SerializeField] float showRadius = 3f;
         [SerializeField] float visibleSeconds = 5.5f;
@@ -19,6 +21,16 @@ namespace HiddenWeight.UI
 
         public string Message => message;
         public bool HasShown { get; private set; }
+
+        public static void DismissActiveImmediately()
+        {
+            if (_active == null) return;
+            _active._hideAt = Time.unscaledTime;
+            _active._alpha = 0f;
+            if (_active._text != null)
+                _active._text.color = new Color(0.94f, 0.93f, 1f, 0f);
+            _active = null;
+        }
 
         void Start()
         {
@@ -43,14 +55,22 @@ namespace HiddenWeight.UI
             _player = PlayerController.Instance;
         }
 
+        void OnDestroy()
+        {
+            if (_active == this) _active = null;
+        }
+
         void Update()
         {
             if (_text == null) return;
             if (_player == null) _player = PlayerController.Instance;
 
             if (!HasShown && _player != null
+                && !PrologueActionHint.HasActiveHint
                 && Vector2.Distance(_player.transform.position, transform.position) <= showRadius)
             {
+                DismissActiveImmediately();
+                _active = this;
                 HasShown = true;
                 _hideAt = Time.unscaledTime + visibleSeconds;
             }

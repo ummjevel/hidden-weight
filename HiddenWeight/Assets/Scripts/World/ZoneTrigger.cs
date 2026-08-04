@@ -45,7 +45,7 @@ namespace HiddenWeight.World
                 if (bar != null) bar.color = color;
             if (_exitLabel != null)
             {
-                bool residue = gameObject.scene.name == "Zone_Residue_Full";
+                bool residue = gameObject.scene.name.Contains("Residue");
                 _exitLabel.text = residue
                     ? (open ? "다음 지역 · 응시" : "기억의 교수자를 처치하면 열립니다.")
                     : (open ? "응시로 가는 통로" : "기억의 교수자를 쓰러뜨려야 열린다");

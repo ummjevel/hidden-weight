@@ -135,8 +135,13 @@ namespace HiddenWeight.Enemies
 
         public void ConfigureArena(params Rewindable[] rewindables) => arenaRewindables = rewindables;
 
-        // 현재는 잔재의 R10/R12에서만 켠다. 다른 지역 보스의 기존 연출에는 영향을 주지 않는다.
-        public void ConfigureAttackReadability(bool showRanges) => _showAttackRanges = showRanges;
+        // 보스별 판정 도형 표시를 제어한다. 잔재 R10/R12는 false로 두어 준비 자세와
+        // 애니메이션만으로 공격을 읽게 하고, 다른 지역은 각 빌더의 설정을 그대로 따른다.
+        public void ConfigureAttackReadability(bool showRanges)
+        {
+            _showAttackRanges = showRanges;
+            if (!showRanges) ClearAttackRange();
+        }
 
         // 개별 보스의 난도 튜닝용이다. 기본 직렬화 값은 건드리지 않고 호출된 인스턴스에만
         // 적용하므로, R10을 완화해도 R12와 다른 지역 보스의 속도는 그대로 유지된다.

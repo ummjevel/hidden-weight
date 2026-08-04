@@ -105,7 +105,7 @@ namespace HiddenWeight.World
         // 막고 있지 않으면 null. 그래야 열린 뒤에는 문구가 저절로 사라진다.
         string CurrentMessage()
         {
-            bool residue = gameObject.scene.name == "Zone_Residue_Full";
+            bool residue = gameObject.scene.name.Contains("Residue");
 
             if (_encounter != null)
                 return _encounter.IsRunning && !_encounter.IsFinished

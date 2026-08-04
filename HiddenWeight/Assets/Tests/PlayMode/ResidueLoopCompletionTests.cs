@@ -127,8 +127,8 @@ namespace HiddenWeight.Tests
             Assert.AreEqual("WatcherAnimIdle", presentation.SafeClip);
             Assert.IsNotNull(boss.GetComponent<ResidueBossHitFeedback>(),
                 "R10 중간보스에 피격 반동이 연결되지 않았다.");
-            Assert.IsTrue(boss.GetComponent<BossController>().AttackRangesVisible,
-                "R10 중간보스가 공격 전에 실제 판정 범위를 표시하지 않는다.");
+            Assert.IsFalse(boss.GetComponent<BossController>().AttackRangesVisible,
+                "R10 중간보스에 주황색 디버그 판정 범위가 남아 있다.");
             Assert.IsNotNull(boss.GetComponent<ResidueFinalBossDeathCleanup>(),
                 "R10 중간보스를 처치해도 형체를 즉시 지우는 처리가 없다.");
             var bossAnimator = boss.GetComponentInChildren<SpriteAnimator>(true);
@@ -192,8 +192,8 @@ namespace HiddenWeight.Tests
                 "R12 최종 보스가 동일한 셀 크기의 정규화 포즈 시트를 사용하지 않는다.");
             Assert.IsNotNull(boss.GetComponent<ResidueBossHitFeedback>(),
                 "R12 최종 보스에 피격 반동이 연결되지 않았다.");
-            Assert.IsTrue(boss.GetComponent<BossController>().AttackRangesVisible,
-                "R12 최종 보스가 공격 전에 실제 판정 범위를 표시하지 않는다.");
+            Assert.IsFalse(boss.GetComponent<BossController>().AttackRangesVisible,
+                "R12 최종 보스에 주황색 디버그 판정 범위가 남아 있다.");
             var normalizedAtlas = Resources.Load<Texture2D>(
                 "Art/Residue/Bosses/MemoryInstructor_Poses_v5");
             Assert.IsNotNull(normalizedAtlas, "중앙 정렬한 R12 최종 보스 이미지가 로드되지 않는다.");

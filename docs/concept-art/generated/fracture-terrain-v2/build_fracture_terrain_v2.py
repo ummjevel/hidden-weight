@@ -20,14 +20,25 @@ v1(`build_fracture_gameplay_art.py`의 `terrain_tiles()`)은 PIL 다각형에 fi
 """
 
 from pathlib import Path
+import random
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageStat
 
 ROOT = Path(__file__).resolve().parents[4]
 ART = ROOT / "HiddenWeight/Assets/Art/Fracture"
 PLATFORMS = ART / "Environment/Terrain/Fracture_Platforms_v1.png"
 ROOMS = ART / "Rooms4K"
 OUT = ART / "Environment/Terrain/Fracture_TerrainTiles_v2.png"
+MODULE_OUT = ART / "Environment/Terrain"
+MODULE_NAMES = {
+    "SurfaceLeft": "Fracture_TraversalSurfaceLeft_v3.png",
+    "SurfaceMiddle": "Fracture_TraversalSurfaceMiddle_v3.png",
+    "SurfaceRight": "Fracture_TraversalSurfaceRight_v3.png",
+    "WallTop": "Fracture_TraversalWallTop_v3.png",
+    "WallMiddle": "Fracture_TraversalWallMiddle_v3.png",
+    "WallBottom": "Fracture_TraversalWallBottom_v3.png",
+    "Fill": "Fracture_TraversalFill_v3.png",
+}
 
 COLUMNS, ROWS = 6, 4
 # 셀은 정사각이고 시트는 1536x1024다. 크기를 2의 거듭제곱에서 벗어나게 하면 유니티가 늘려
@@ -252,6 +263,155 @@ def crack(im, seed_x):
     return out
 
 
+def smooth_vertical_seam(im, seam_x, radius=10):
+    """서로 다른 원화 조각이 만나는 세로 경계를 좁은 구간에서 보간한다."""
+    out = im.copy()
+    px = out.load()
+    left_x = max(0, seam_x - radius)
+    right_x = min(out.width - 1, seam_x + radius)
+    span = max(1, right_x - left_x)
+    for y in range(out.height):
+        left = px[left_x, y]
+        right = px[right_x, y]
+        for x in range(left_x + 1, right_x):
+            t = (x - left_x) / span
+            px[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(left, right))
+    return out
+
+
+def feather_repeat_edges(im, radius=10):
+    """반복되는 중앙 모듈의 마지막·첫 픽셀을 같게 만들고 안쪽으로 부드럽게 푼다."""
+    out = im.copy()
+    px = out.load()
+    radius = min(radius, out.width // 4)
+    for y in range(out.height):
+        for distance in range(radius):
+            lx = distance
+            rx = out.width - 1 - distance
+            left, right = px[lx, y], px[rx, y]
+            average = tuple(round((a + b) * 0.5) for a, b in zip(left, right))
+            t = distance / max(1, radius - 1)
+            px[lx, y] = tuple(round(a + (b - a) * t) for a, b in zip(average, left))
+            px[rx, y] = tuple(round(a + (b - a) * t) for a, b in zip(average, right))
+    return out
+
+
+def make_calm_wall_strip(wall_tiles, size=(256, 768)):
+    """기존 벽 팔레트를 저주파 질감으로 바꿔 블록 문양의 반복을 숨긴다."""
+    # 실제 원화에서 평균 팔레트만 가져온다. 문양을 흐리게 남기면 결국 흐릿한 블록이
+    # 반복되므로, 중앙 면은 재질만 말하고 장식은 상·하단 캡에 맡긴다.
+    means = [ImageStat.Stat(tile.convert("RGB")).mean[:3] for tile in wall_tiles]
+    base = tuple(round(sum(values) / len(values)) for values in zip(*means))
+    top = tuple(min(255, round(value * 1.07)) for value in base)
+    bottom = (
+        max(0, round(base[0] * 0.82)),
+        min(255, round(base[1] * 0.94)),
+        min(255, round(base[2] * 1.08)),
+    )
+
+    rng = random.Random(314159)
+    noise = Image.new("L", (32, 96))
+    noise.putdata([rng.randrange(72, 184) for _ in range(32 * 96)])
+    noise = noise.filter(ImageFilter.GaussianBlur(2.2)).resize(
+        size, Image.Resampling.BICUBIC)
+
+    opaque = Image.new("RGBA", size, (0, 0, 0, 255))
+    pixels = opaque.load()
+    noise_pixels = noise.load()
+    for y in range(size[1]):
+        t = y / max(1, size[1] - 1)
+        color = tuple(round(a + (b - a) * t) for a, b in zip(top, bottom))
+        for x in range(size[0]):
+            variation = (noise_pixels[x, y] - 128) * 0.10
+            pixels[x, y] = tuple(
+                min(255, max(0, round(channel + variation))) for channel in color
+            ) + (255,)
+
+    # 가장자리의 얇은 세로 몰딩은 벽을 하나의 구조물로 묶되, 칸마다 반복되는 문양은 만들지 않는다.
+    rails = Image.new("RGBA", size, (0, 0, 0, 0))
+    rail_draw = ImageDraw.Draw(rails)
+    for x in (13, size[0] - 14):
+        rail_draw.line((x, 0, x, size[1]), fill=(238, 229, 244, 44), width=2)
+    for x in (17, size[0] - 18):
+        rail_draw.line((x, 0, x, size[1]), fill=(76, 88, 128, 38), width=2)
+    opaque.alpha_composite(rails)
+
+    # 긴 대리석 결. 규칙적인 타일 경계가 아니라 전체 높이를 가로지르는 낮은 대비의 선이다.
+    veins = Image.new("RGBA", size, (0, 0, 0, 0))
+    vein_draw = ImageDraw.Draw(veins)
+    for _ in range(7):
+        x = rng.randrange(28, size[0] - 28)
+        points = []
+        for y in range(-20, size[1] + 80, 80):
+            x = min(size[0] - 24, max(24, x + rng.randrange(-18, 19)))
+            points.append((x, y))
+        vein_draw.line(points, fill=(92, 91, 132, 18), width=2)
+    opaque.alpha_composite(veins.filter(ImageFilter.GaussianBlur(0.7)))
+
+    dark = tuple(max(0, round(value * 0.72)) for value in base) + (30,)
+    light = tuple(min(255, round(value * 1.08)) for value in base) + (22,)
+    joints = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(joints)
+    for y in range(256, size[1], 256):
+        draw.line((0, y, size[0], y), fill=dark, width=2)
+        draw.line((0, y + 2, size[0], y + 2), fill=light, width=1)
+    opaque.alpha_composite(joints)
+    return feather_repeat_edges(opaque, 8)
+
+
+def make_wall_cap(tile, top):
+    """연속 벽의 시작과 끝에만 쓰는 256x192 마감 조각."""
+    fitted = cover(tile, (256, 256), ay="top" if top else "bottom")
+    return fitted.crop((0, 0, 256, 192) if top else (0, 64, 256, 256))
+
+
+def make_low_contrast_fill(wall_middle):
+    """두꺼운 충돌 덩어리 안쪽을 위한, 장식 없는 저대비 재질."""
+    fill = wall_middle.resize((512, 512), Image.Resampling.BICUBIC)
+    fill = ImageEnhance.Contrast(fill).enhance(0.28)
+    return feather_repeat_edges(fill, 12)
+
+
+def build_continuous_modules(graded_tiles):
+    """v2의 역할별 셀에서 긴 수평·수직 v3 모듈을 파생한다."""
+    surface_middle = Image.new("RGBA", (1024, 256), (0, 0, 0, 0))
+    for index, tile in enumerate(graded_tiles[1:5]):
+        surface_middle.alpha_composite(tile, (index * CELL_W, 0))
+    for seam_x in (256, 512, 768):
+        surface_middle = smooth_vertical_seam(surface_middle, seam_x)
+    surface_middle = feather_repeat_edges(surface_middle)
+
+    wall_middle = make_calm_wall_strip(graded_tiles[6:10])
+    modules = {
+        "SurfaceLeft": graded_tiles[0],
+        "SurfaceMiddle": surface_middle,
+        "SurfaceRight": graded_tiles[5],
+        "WallTop": make_wall_cap(graded_tiles[10], top=True),
+        "WallMiddle": wall_middle,
+        "WallBottom": make_wall_cap(graded_tiles[14], top=False),
+        "Fill": make_low_contrast_fill(wall_middle),
+    }
+
+    expected = {
+        "SurfaceLeft": (256, 256),
+        "SurfaceMiddle": (1024, 256),
+        "SurfaceRight": (256, 256),
+        "WallTop": (256, 192),
+        "WallMiddle": (256, 768),
+        "WallBottom": (256, 192),
+        "Fill": (512, 512),
+    }
+    MODULE_OUT.mkdir(parents=True, exist_ok=True)
+    for role, image in modules.items():
+        image = image.convert("RGBA")
+        if image.size != expected[role] or image.getbbox() is None:
+            raise ValueError(f"invalid {role}: size={image.size} bbox={image.getbbox()}")
+        path = MODULE_OUT / MODULE_NAMES[role]
+        image.save(path)
+        print(f"wrote {path} {image.size}")
+    return modules
+
+
 def build():
     sheet = load_platforms()
     # 폭이 다른 세 종류를 모두 쓴다. 좁은 칸은 끝단, 넓은 칸은 중간 반복에 적합하다.
@@ -333,14 +493,18 @@ def build():
         lambda t: grade(t, 1.0, 0.86, 0.92, SAT),   # r4 특수
     ]
 
+    graded_tiles = []
     out = Image.new("RGBA", (COLUMNS * CELL_W, ROWS * CELL_H), (0, 0, 0, 0))
     for index, tile in enumerate(tiles):
         col, row = index % COLUMNS, index // COLUMNS
-        out.alpha_composite(graders[row](tile), (col * CELL_W, row * CELL_H))
+        graded = graders[row](tile)
+        graded_tiles.append(graded)
+        out.alpha_composite(graded, (col * CELL_W, row * CELL_H))
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out.save(OUT)
     print(f"wrote {OUT} {out.size}")
+    build_continuous_modules(graded_tiles)
     return out
 
 

@@ -37,7 +37,7 @@ namespace HiddenWeight.UI
             _onConfirm = onConfirm;
             _returnSelection = returnSelection;
             _cancelButton.gameObject.SetActive(true);
-            _root.SetActive(true);
+            Surface();
             UIBuilder.Select(_cancelButton);
         }
 
@@ -49,8 +49,18 @@ namespace HiddenWeight.UI
             _onConfirm = null;
             _returnSelection = returnSelection;
             _cancelButton.gameObject.SetActive(false);
-            _root.SetActive(true);
+            Surface();
             UIBuilder.Select(_confirmButton);
+        }
+
+        // 이 모달은 일시정지 메뉴와 **같은 부모** 아래에 있고, 섹션 패널(지도·설정…)이
+        // 나중에 만들어져 형제 순서상 뒤에 온다. 그래서 그냥 켜면 지도 아래에 깔려
+        // 글자만 비쳐 보였다 — 되돌릴 수 없는 선택을 묻는 화면이 읽히지 않았다.
+        // 띄우는 순간 맨 앞으로 올린다.
+        void Surface()
+        {
+            _root.SetActive(true);
+            _root.transform.SetAsLastSibling();
         }
 
         public void Confirm()

@@ -18,6 +18,8 @@ namespace HiddenWeight.UI
     {
         GameObject _panel;
         RectTransform _content;
+        ScrollRect _scroll;
+        GameObject _lastScrolledTo;
         Text _title;
         Text _body;
         Button _backButton;
@@ -36,6 +38,44 @@ namespace HiddenWeight.UI
             if (IsVisible && CurrentSection == PauseSection.Controls) Rebuild(0);
         }
 
+        // 스크롤은 마우스 휠로만 움직였다. 키보드·게임패드로 아래 항목에 포커스를 옮기면
+        // 화면 밖으로 나간 항목이 그대로 보이지 않아, UI 크기를 키운 플레이어는 설정
+        // 화면에서 아래쪽 항목을 아예 조작할 수 없었다 — 크기를 되돌릴 수도 없었다.
+        void Update()
+        {
+            if (!IsVisible || _scroll == null || _content == null || EventSystem.current == null) return;
+
+            var selected = EventSystem.current.currentSelectedGameObject;
+            if (selected == null || selected == _lastScrolledTo) return;
+            if (!selected.transform.IsChildOf(_content)) return;
+
+            _lastScrolledTo = selected;
+            ScrollIntoView((RectTransform)selected.transform);
+        }
+
+        static readonly Vector3[] _itemCorners = new Vector3[4];
+        static readonly Vector3[] _viewCorners = new Vector3[4];
+
+        void ScrollIntoView(RectTransform target)
+        {
+            Canvas.ForceUpdateCanvases();
+            target.GetWorldCorners(_itemCorners);
+            _scroll.viewport.GetWorldCorners(_viewCorners);
+
+            float scale = _content.lossyScale.y;
+            if (scale <= 0f) return;
+
+            // 한 줄이 딱 맞게 걸치면 다음 항목이 있다는 걸 알 수 없다. 한 칸 여유를 둔다.
+            float margin = 24f * scale;
+            float below = (_viewCorners[0].y + margin) - _itemCorners[0].y;
+            float above = _itemCorners[1].y - (_viewCorners[1].y - margin);
+
+            float delta = below > 0f ? below : above > 0f ? -above : 0f;
+            if (Mathf.Abs(delta) < 0.001f) return;
+
+            _content.anchoredPosition += new Vector2(0f, delta / scale);
+        }
+
         // 섹션 패널이 열리고 닫힐 때 알린다. 일시정지 메뉴의 탭·버튼은 이 패널과 같은
         // 부모에 있고 패널이 화면 대부분을 덮으므로, 그대로 두면 지도 위에 글자가 겹쳐 찍힌다.
         public event System.Action<bool> VisibilityChanged;
@@ -44,6 +84,8 @@ namespace HiddenWeight.UI
         {
             CurrentSection = section;
             _panel.SetActive(true);
+            _lastScrolledTo = null;
+            if (_content != null) _content.anchoredPosition = Vector2.zero;
             Rebuild();
             UIBuilder.Select(_actionButtons.Count > 0 ? _actionButtons[0] : _backButton);
             VisibilityChanged?.Invoke(true);
@@ -123,9 +165,9 @@ namespace HiddenWeight.UI
                 CreateMapNode(room, current, i > 0 && ZonePart(rooms[i - 1]) == zonePart);
             }
 
-            CreateSectionLabel("열린 지름길  " + progress.OpenedShortcutCount
-                + "    ·    최근 체크포인트  "
-                + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
+            // 체크포인트의 월드 좌표는 적지 않는다. "(3.0, 4.0, 0.0)"은 개발자에게만
+            // 뜻이 있고, 플레이어에게는 화면에 새어 나온 내부 값으로 보인다.
+            CreateSectionLabel("열린 지름길  " + progress.OpenedShortcutCount);
         }
 
         // 지역 지도. 세로 목록이 아니라 노드 그래프로 그린다.
@@ -175,13 +217,33 @@ namespace HiddenWeight.UI
                               visited.Contains(roomId), branch: true);
             }
 
-            // 숏컷은 세 지역이 같은 구조다(설계 8.2): A 05→03, B 08→03, C 10→07.
-            CreateSectionLabel(
-                $"지름길   A  {letter}05 ↔ {letter}03    ·    B  {letter}08 ↔ {letter}03"
-                + $"    ·    C  {letter}10 ↔ {letter}07");
-            CreateSectionLabel("열린 지름길  " + progress.OpenedShortcutCount
-                + "    ·    최근 체크포인트  "
-                + (progress.LastCheckpoint == Vector3.zero ? "기록 없음" : progress.LastCheckpoint.ToString("F1")));
+            CreateSectionLabel(ShortcutLine(progress, zone, letter));
+        }
+
+        // 숏컷은 세 지역이 같은 구조다(설계 8.2): A 05↔03, B 08↔03, C 10↔07.
+        //
+        // 예전에는 이 세 줄을 **열지 않았어도 전부** 적었다. 아직 가보지 않은 방 사이의
+        // 연결을 지도가 미리 알려 주면 탐험이 남지 않는다. 연 것만 적고, 나머지는
+        // 몇 개가 남았는지만 알린다.
+        static readonly (int from, int to, string suffix)[] ShortcutRoutes =
+            { (5, 3, "a"), (8, 3, "b"), (10, 7, "c") };
+
+        static string ShortcutLine(ProgressState progress, ZoneId zone, string letter)
+        {
+            string zoneKey = zone.ToString().ToLowerInvariant();
+            var opened = new List<string>();
+            int closed = 0;
+            foreach (var route in ShortcutRoutes)
+            {
+                if (progress.IsShortcutOpen($"{zoneKey}_shortcut_{route.suffix}"))
+                    opened.Add($"{letter}{route.from:00} ↔ {letter}{route.to:00}");
+                else closed++;
+            }
+
+            if (opened.Count == 0)
+                return "지름길   아직 연 길이 없습니다";
+            return "지름길   " + string.Join("    ·    ", opened)
+                 + (closed > 0 ? $"    ·    아직 닫힌 길 {closed}" : string.Empty);
         }
 
         // 12칸 + 연결선 11개가 패널 안에 들어와야 한다. 넓게 잡으면 뒤쪽 방(F08~F12)이
@@ -298,8 +360,7 @@ namespace HiddenWeight.UI
         void BuildControls()
         {
             _title.text = "손에 남는 조작";
-            _body.text = InputPrompts.ControlsSummary()
-                + "\n\n입력 장치가 바뀌면 안내도 함께 바뀝니다. 키보드 항목을 누르면 다음 키로 이동합니다.";
+            _body.text = InputPrompts.ControlsSummary();
             if (InputPrompts.CurrentDevice == InputDeviceKind.Gamepad) return;
             AddBinding("점프", InputActionId.Jump);
             AddBinding("대시", InputActionId.Dash);
@@ -313,7 +374,7 @@ namespace HiddenWeight.UI
         void AddBinding(string label, InputActionId action)
         {
             int index = _actionButtons.Count;
-            AddFlowButton(label + "    " + InputPrompts.Get(action), () =>
+            AddFlowButton(label, InputPrompts.Get(action) + InputPrompts.AlternateSuffix(action), () =>
             {
                 InputPrompts.CycleKeyboardBinding(action);
                 Rebuild(index);
@@ -345,7 +406,7 @@ namespace HiddenWeight.UI
         void AddSetting(string label, UnityEngine.Events.UnityAction action)
         {
             int index = _actionButtons.Count;
-            AddFlowButton(label + "    " + SettingValue(label), () =>
+            AddFlowButton(label, SettingValue(label), () =>
             {
                 action();
                 Rebuild(index);
@@ -367,13 +428,35 @@ namespace HiddenWeight.UI
             }
         }
 
-        void AddFlowButton(string label, UnityEngine.Events.UnityAction action)
+        // 이름은 왼쪽, 값은 오른쪽. 예전에는 "전체 음량    100%"를 한 덩어리로 만들어
+        // 가운데 정렬했다 — 칸은 화면 폭만큼 넓은데 글자만 한가운데 떠 있어, 어느 항목이
+        // 어떤 값인지 훑어 내려가며 읽을 수가 없었다.
+        void AddFlowButton(string label, string value, UnityEngine.Events.UnityAction action)
         {
             var button = UIBuilder.CreateButton(_content, label, 0f, action);
             var rt = (RectTransform)button.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
             rt.sizeDelta = new Vector2(0f, 56f);
             button.gameObject.AddComponent<LayoutElement>().preferredHeight = 56f;
+
+            var labelText = button.GetComponentInChildren<Text>();
+            labelText.alignment = TextAnchor.MiddleLeft;
+            labelText.rectTransform.offsetMin = new Vector2(28f, 0f);
+            labelText.rectTransform.offsetMax = new Vector2(-28f, 0f);
+
+            if (!string.IsNullOrEmpty(value))
+            {
+                var valueText = UIBuilder.CreateText(button.transform, "Value", 24, TextAnchor.MiddleRight);
+                valueText.text = value;
+                valueText.color = UIBuilder.AccentColor;
+                valueText.raycastTarget = false;
+                var valueRt = valueText.rectTransform;
+                valueRt.anchorMin = Vector2.zero;
+                valueRt.anchorMax = Vector2.one;
+                valueRt.offsetMin = new Vector2(28f, 0f);
+                valueRt.offsetMax = new Vector2(-28f, 0f);
+            }
+
             _dynamicItems.Add(button.gameObject);
             _actionButtons.Add(button);
         }
@@ -576,7 +659,9 @@ namespace HiddenWeight.UI
             var viewport = new GameObject("SectionViewport", typeof(RectTransform));
             viewport.transform.SetParent(_panel.transform, false);
             var viewportRt = (RectTransform)viewport.transform;
-            viewportRt.anchorMin = new Vector2(0.05f, 0.13f);
+            // 아래를 0.13에서 0.19로 올린다. 0.13이면 스크롤 영역의 마지막 줄이 "뒤로"
+            // 버튼과 겹쳐, 마지막 항목이 버튼에 반쯤 잘린 채로 보였다.
+            viewportRt.anchorMin = new Vector2(0.05f, 0.19f);
             viewportRt.anchorMax = new Vector2(0.95f, 0.84f);
             viewportRt.offsetMin = viewportRt.offsetMax = Vector2.zero;
             viewport.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.10f);
@@ -598,13 +683,13 @@ namespace HiddenWeight.UI
             contentLayout.childForceExpandHeight = false;
             contentGo.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var scroll = viewport.AddComponent<ScrollRect>();
-            scroll.viewport = viewportRt;
-            scroll.content = _content;
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 38f;
+            _scroll = viewport.AddComponent<ScrollRect>();
+            _scroll.viewport = viewportRt;
+            _scroll.content = _content;
+            _scroll.horizontal = false;
+            _scroll.vertical = true;
+            _scroll.movementType = ScrollRect.MovementType.Clamped;
+            _scroll.scrollSensitivity = 38f;
 
             _body = UIBuilder.CreateText(_content, "SectionBody", 22, TextAnchor.UpperLeft);
             _body.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -612,10 +697,14 @@ namespace HiddenWeight.UI
             _body.lineSpacing = 1.15f;
             _body.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            _backButton = UIBuilder.CreateButton(_panel.transform, "뒤로", -365f, Hide);
+            _backButton = UIBuilder.CreateButton(_panel.transform, "뒤로", 0f, Hide);
             var backRt = (RectTransform)_backButton.transform;
-            backRt.anchorMin = backRt.anchorMax = new Vector2(0.5f, 0.5f);
+            // 패널 아래쪽에 붙인다. 가운데 기준 고정 오프셋(-365)은 화면 비율이 바뀌어
+            // 패널 높이가 달라지면 스크롤 영역 위로 파고들었다.
+            backRt.anchorMin = backRt.anchorMax = new Vector2(0.5f, 0f);
+            backRt.pivot = new Vector2(0.5f, 0f);
             backRt.sizeDelta = new Vector2(220f, 54f);
+            backRt.anchoredPosition = new Vector2(0f, 34f);
             _panel.SetActive(false);
         }
     }

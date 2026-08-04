@@ -41,7 +41,19 @@ namespace HiddenWeight.UI
             ZoneId.Fracture => new Color(0.88f, 0.56f, 0.66f, 1f),
             _ => new Color(0.68f, 0.62f, 0.80f, 1f),
         };
-        public static readonly Color HeartFull = new Color(0.78f, 0.24f, 0.22f, 1f);
+        // 체력 결정핵의 색. 지역을 따라간다.
+        //
+        // 예전에는 어느 지역에서나 새빨간 (0.78, 0.24, 0.22) 하나였다. 균열은 연보라·청록의
+        // 밝은 수채 배경인데 그 위에 선명한 핏빛 도트 하트 다섯 개가 얹혀, 화면에서 유일하게
+        // 다른 게임에서 온 것처럼 보였다(브랜드 성격 "몽환적·회복적"과도 어긋난다).
+        // 잔재의 앰버, 응시의 청록, 균열의 결정빛으로 나눈다.
+        public static Color HeartFull => CurrentZone switch
+        {
+            ZoneId.Residue => new Color(0.80f, 0.42f, 0.26f, 1f),
+            ZoneId.Gaze => new Color(0.42f, 0.74f, 0.72f, 1f),
+            ZoneId.Fracture => new Color(0.72f, 0.72f, 0.94f, 1f),
+            _ => new Color(0.78f, 0.24f, 0.22f, 1f),
+        };
         // 지금은 HUD가 하트를 enabled on/off로만 표시한다(빈 하트를 별도로 그리지 않음).
         // 최대 체력 확장 때 빈 하트 아웃라인을 그리게 되면 이 색을 쓴다.
         public static readonly Color HeartEmpty = new Color(1f, 1f, 1f, 0.25f);

@@ -123,6 +123,10 @@ namespace HiddenWeight.UI
             _gazeExposure.Clear();
             _dangerShown = false;
             ConfigureStatusEmblem(zone);
+
+            // 결정핵 색은 지역을 따라간다. 체력이 변할 때만 칠하면 지역을 넘어와도
+            // 이전 지역 색이 남는다 — 체력이 가득 찬 채로 넘어오는 것이 보통이다.
+            if (_health != null) HandleHealthChanged(_health.Current, _health.Max);
         }
 
         void ConfigureStatusEmblem(ZoneData zone)

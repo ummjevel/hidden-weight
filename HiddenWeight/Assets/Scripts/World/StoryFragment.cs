@@ -28,11 +28,58 @@ namespace HiddenWeight.World
 
         protected virtual void Start()
         {
+            ApplyResiduePresentation();
+
             // 이미 먹은 파편은 오브젝트째 감춘다. 남겨 두면 지급은 막히지만 화면에는 계속 보여
             // "아직 안 먹은 것"처럼 읽힌다(재방문 시 혼란).
             if (GameManager.Instance != null && !string.IsNullOrEmpty(fragmentId)
                 && GameManager.Instance.Progress.HasFragment(fragmentId))
                 gameObject.SetActive(false);
+        }
+
+        void ApplyResiduePresentation()
+        {
+            // 잔재의 중요 파편은 StoryFragment 프리팹의 기본 흰 타일 대신 용도별 전용
+            // 문양을 쓴다. id를 명시해 다른 지역과 일반 파편의 표현은 바꾸지 않는다.
+            string resourcePath;
+            string objectName;
+            float worldSize;
+            switch (fragmentId)
+            {
+                case "residue_skill":
+                    resourcePath = "Art/Residue/UI/RewindSkillIcon";
+                    objectName = "ResidueSkillIcon";
+                    worldSize = 1.15f;
+                    break;
+                case "residue_r11":
+                    resourcePath = "Art/Residue/UI/MemoryFragmentIcon";
+                    objectName = "ResidueMemoryFragmentIcon";
+                    worldSize = 1.1f;
+                    break;
+                case "residue_core":
+                    resourcePath = "Art/Residue/UI/MemoryCoreIcon";
+                    objectName = "ResidueMemoryCoreIcon";
+                    worldSize = 1.25f;
+                    break;
+                default:
+                    return;
+            }
+
+            var icon = Resources.Load<Sprite>(resourcePath);
+            var placeholder = GetComponent<SpriteRenderer>();
+            if (icon == null || placeholder == null) return;
+
+            placeholder.enabled = false;
+            var art = new GameObject(objectName);
+            art.transform.SetParent(transform, false);
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = icon;
+            renderer.color = Color.white;
+            renderer.sortingLayerID = placeholder.sortingLayerID;
+            renderer.sortingOrder = placeholder.sortingOrder;
+            float sourceSize = Mathf.Max(icon.bounds.size.x, icon.bounds.size.y);
+            if (sourceSize > 0f)
+                art.transform.localScale = Vector3.one * (worldSize / sourceSize);
         }
 
         void OnTriggerEnter2D(Collider2D other)

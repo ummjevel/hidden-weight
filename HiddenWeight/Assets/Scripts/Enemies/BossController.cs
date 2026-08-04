@@ -131,6 +131,21 @@ namespace HiddenWeight.Enemies
 
         public void ConfigureArena(params Rewindable[] rewindables) => arenaRewindables = rewindables;
 
+        // 개별 보스의 난도 튜닝용이다. 기본 직렬화 값은 건드리지 않고 호출된 인스턴스에만
+        // 적용하므로, R10을 완화해도 R12와 다른 지역 보스의 속도는 그대로 유지된다.
+        public void ConfigureDifficulty(float recovery, float charge, float sweepWarning,
+                                        float chargeWarning, float slamWarning,
+                                        float projectileWarning, float range)
+        {
+            recoverSeconds = Mathf.Max(0.1f, recovery);
+            chargeSpeed = Mathf.Max(0.1f, charge);
+            sweepTelegraph = Mathf.Max(0.1f, sweepWarning);
+            chargeTelegraph = Mathf.Max(0.1f, chargeWarning);
+            slamTelegraph = Mathf.Max(0.1f, slamWarning);
+            projectileTelegraph = Mathf.Max(0.1f, projectileWarning);
+            sweepRange = Mathf.Max(0.5f, range);
+        }
+
         void OnEnable() => StartCoroutine(FightRoutine());
 
         IEnumerator FightRoutine()
@@ -291,10 +306,15 @@ namespace HiddenWeight.Enemies
                     // 홍채 훑기 — 시선이 바닥을 한 방향으로 지나간다. 숨거나(숨죽이기) 훑는
                     // 선 바깥으로 비키면(엄폐·이동) 둘 다 정답이 되도록, 판정은 좁은 세로
                     // 띠 하나가 천천히 움직이는 형태다.
+                    //
+                    // 엄폐: 판정 박스에 들어와도 보스와의 직선(origin→플레이어)이 지형
+                    // (obstacleMask = Ground|Wall)에 막히면 맞지 않는다 — 엄폐 기둥 뒤에
+                    // 서면 실제로 안전해진다(GazeHazard의 라인캐스트 차단과 같은 방식).
                     int direction = player.transform.position.x >= transform.position.x ? 1 : -1;
                     float distance = sweepRange * 2f;
                     float elapsed = 0f;
                     var sweep = ShowDropShadow(transform.position);
+                    var origin = new Vector2(transform.position.x, transform.position.y - 0.5f);
 
                     while (elapsed < gazeSweepSeconds)
                     {
@@ -309,7 +329,7 @@ namespace HiddenWeight.Enemies
                         }
 
                         var seen = Physics2D.OverlapBox(center, new Vector2(gazeSweepWidth, sweepHeight), 0f, gazeMask);
-                        if (seen != null)
+                        if (seen != null && !Physics2D.Linecast(origin, seen.transform.position, obstacleMask))
                         {
                             var health = seen.GetComponentInParent<PlayerHealth>();
                             if (health != null) health.TakeDamage(_self.Data.contactDamage, center);

@@ -15,9 +15,9 @@ namespace HiddenWeight.Emotions
     // (기획서 EMOTION_SYSTEM 3.3절: 예지만이 유일하게 신뢰 가능한 정보원).
     public class AwarenessSystem : MonoBehaviour
     {
-        // 기획서 5.3절 리터럴: 자각 중 이동 가능하되 속도 0.6배.
+        // EMOTION_SYSTEM.md 4.2절: 자각 중 이동 가능하되 속도 70%.
         // EmotionData에는 없는 값이라 여기 직렬화 필드로 둔다.
-        [SerializeField] float slowMultiplier = 0.6f;
+        [SerializeField] float slowMultiplier = 0.7f;
         [SerializeField] float volumeRampTime = 0.25f;
 
         public static AwarenessSystem Instance { get; private set; }

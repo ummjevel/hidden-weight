@@ -10,16 +10,16 @@
 | `EmotionSkill.cs` | 세 스킬의 공통 추상 베이스. 쿨타임 진행, 이동속도 배율 적용/복원을 공통 처리하고 `CanUse`/`OnBegin`/`OnTick`/`OnEnd`를 하위 클래스에 위임 | 5.2 |
 | `EmotionSkillController.cs` | `K` 키 단일 디스패처. 현재 지역이 부여하고 보유한 스킬 하나를 활성화하고 Hold/Tap 입력을 라우팅. `Instance`/`RefreshActive()` 노출 | 5.2, 6.2 |
 | `RewindSkill.cs` | 되감기(잔재). 홀드 채널링 1.0초, 조준 반경 6유닛 내 가장 가까운 `IRewindable` 복원, 쿨타임 2초, 채널링 중 이동 불가, 피격 시 즉시 캔슬(쿨타임만 소모) | 5.2, 4.2, EMOTION_SYSTEM 1.2 |
-| `HushSkill.cs` | 숨죽이기(응시). 홀드 중 속도 0.45배 + 스케일 0.6배 + `PlayerHushed` 레이어 전환 + 공격 비활성, 해제 순간 무적 0.2초 | 5.2, EMOTION_SYSTEM 2.2 |
+| `HushSkill.cs` | 숨죽이기(응시). 홀드 중 속도 0.65배 + 스케일 0.55배 + `PlayerHushed` 레이어 전환 + 공격 비활성, 해제 순간 무적 0.2초 | 5.2, EMOTION_SYSTEM 2.2 |
 | `ForesightSkill.cs` | 예지(균열). 탭 1회, 반경 8유닛 내 `IForeseeable`의 2.0초 뒤 상태를 반투명 고스트로 1.5초 표시, 쿨타임 3초 | 5.2 |
-| `AwarenessSystem.cs` | 자각(L 홀드). URP Volume weight 0.25초 램프(채도 -80 + Vignette), 이동속도 0.6배, `AwarenessRegistry`를 통한 `IAwarenessReactive` 방송. 균열 지역에서는 완전 무력화(항상 "이상 없음") | 5.3, EMOTION_SYSTEM 3.3 |
+| `AwarenessSystem.cs` | 자각(L 홀드). URP Volume weight 0.25초 램프(채도 -80 + Vignette), 이동속도 0.7배, `AwarenessRegistry`를 통한 `IAwarenessReactive` 방송. 균열 지역에서는 완전 무력화(항상 "이상 없음") | 5.3, EMOTION_SYSTEM 3.3 |
 
 ## 핵심 규칙 구현
 
 - **되감기(RewindSkill)**: `Data.channelTime`(1.0초) 동안 채널링해야 `IRewindable.Rewind()`가 호출된다. 채널링 중 `_target.CanRewind`가 거짓이 되면 즉시 취소. **채널링 중 피격당하면**(같은 GameObject의 `PlayerHealth.Damaged` 이벤트 구독) 즉시 캔슬되며 쿨타임은 그대로 소모된다 — 기획서 EMOTION_SYSTEM 1.2절 "캔슬 + 쿨타임만 소모". **대상 없이 시작한 경우에만** `SkipCooldown = true`로 쿨타임 없이 취소되고, 그 외 모든 종료(성공 포함)는 `Data.cooldown`(2초)이 정상 적용된다. 이동 불가는 `RewindSkill` 자체 코드가 아니라 `EmotionSkill` 베이스가 `Data.moveSpeedMultiplier == 0f`를 보고 `PlayerController.MovementLocked`를 자동으로 켜고 끄는 것으로 구현된다.
-- **숨죽이기(HushSkill)**: `PlayerAttack.CanAttack`은 스스로 스킬 상태를 조회하지 않는다 — `HushSkill.OnBegin`이 `GetComponent<PlayerAttack>().CanAttack = false`로 직접 끄고, `OnEnd`가 `true`로 복원하는 능동적 제어다. 레이어를 `PlayerHushed`로 바꿔 시선 판정(`GazeHazard` 등)에서 벗어나며, `localScale *= hushScale`(0.6배)만 적용하고 콜라이더 크기 조정 코드는 별도로 없다(스케일 변경이 `CapsuleCollider2D`에 자동 반영된다고 전제). `OnEnd`에서 `PlayerHealth.GrantInvulnerability(0.2f)`를 호출해 원래 크기로 돌아오는 순간의 피격을 막는다(기획서 EMOTION_SYSTEM 2.2절).
+- **숨죽이기(HushSkill)**: `PlayerAttack.CanAttack`은 스스로 스킬 상태를 조회하지 않는다 — `HushSkill.OnBegin`이 `GetComponent<PlayerAttack>().CanAttack = false`로 직접 끄고, `OnEnd`가 `true`로 복원하는 능동적 제어다. 레이어를 `PlayerHushed`로 바꿔 시선 판정(`GazeHazard` 등)에서 벗어나며, `localScale *= hushScale`(0.55배)만 적용하고 콜라이더 크기 조정 코드는 별도로 없다(스케일 변경이 `CapsuleCollider2D`에 자동 반영된다고 전제). `OnEnd`에서 `PlayerHealth.GrantInvulnerability(0.2f)`를 호출해 원래 크기로 돌아오는 순간의 피격을 막는다(기획서 EMOTION_SYSTEM 2.2절).
 - **예지(ForesightSkill)**: Tap 입력이라 `EmotionSkillController`가 `End()`를 걸어주지 않으므로, `OnTick`에서 `_timer`(effectDuration=1.5초)가 0 이하가 되면 스킬이 **스스로** `End()`를 호출해 종료한다. `IForeseeable.PredictActive(previewLeadTime)`이 `false`(미래에 사라짐)면 고스트를 아예 생성하지 않는 방식으로 "사라질 예정"을 표현한다.
-- **자각(AwarenessSystem)**: `AwarenessRegistry.Items`(World 소유 등록소)를 순회해 방송하며, `FindObjectsOfType` 등 씬 전수 탐색을 쓰지 않는다. `AwarenessRegistry.Added` 이벤트를 구독해, 방송이 켜진 도중 새로 등록되는 오브젝트도 즉시 동기화한다. **균열 지역(`ZoneData.awarenessStable == false`)에서는 자각이 완전히 무력화된다** — 볼륨(채도 상실)·감속 등 "자각을 쓰는 감각"은 그대로지만, 반응 오브젝트에는 항상 "이상 없음"(false)만 방송된다(`reveal = IsActive && IsStable`를 직전 방송값과 비교해 바뀔 때만 `Broadcast`). 기획서 EMOTION_SYSTEM 3.3절 "예지만이 유일하게 신뢰 가능한 정보원"의 구현이며, 이전의 "절반 무작위 깜빡임(UnstableFlicker)" 방식은 파편이 결국 보여 기획 의도와 어긋나 제거됐다(2026-07-26). 이 때문에 균열 지역의 파편은 `HiddenFragment`가 아니라 눈에 보이는 일반 `StoryFragment`로 배치된다. 그 외 수치(램프 0.25초, 속도 0.6배, 채도 -80)는 기획서 5.3절과 정확히 일치한다.
+- **자각(AwarenessSystem)**: `AwarenessRegistry.Items`(World 소유 등록소)를 순회해 방송하며, `FindObjectsOfType` 등 씬 전수 탐색을 쓰지 않는다. `AwarenessRegistry.Added` 이벤트를 구독해, 방송이 켜진 도중 새로 등록되는 오브젝트도 즉시 동기화한다. **균열 지역(`ZoneData.awarenessStable == false`)에서는 자각이 완전히 무력화된다** — 볼륨(채도 상실)·감속 등 "자각을 쓰는 감각"은 그대로지만, 반응 오브젝트에는 항상 "이상 없음"(false)만 방송된다(`reveal = IsActive && IsStable`를 직전 방송값과 비교해 바뀔 때만 `Broadcast`). 기획서 EMOTION_SYSTEM 3.3절 "예지만이 유일하게 신뢰 가능한 정보원"의 구현이며, 이전의 "절반 무작위 깜빡임(UnstableFlicker)" 방식은 파편이 결국 보여 기획 의도와 어긋나 제거됐다(2026-07-26). 이 때문에 균열 지역의 파편은 `HiddenFragment`가 아니라 눈에 보이는 일반 `StoryFragment`로 배치된다. 그 외 수치(램프 0.25초, 속도 0.7배, 채도 -80)는 EMOTION_SYSTEM.md 4.2절과 정확히 일치한다.
 
 ## 씬 배치
 
@@ -30,7 +30,7 @@
 
 ## 다른 모듈과의 연결
 
-- **Player**: `PlayerController.ExternalSpeedMultiplier`(모든 스킬 공통 감속 + 자각 감속 0.6배), `PlayerController.MovementLocked`(되감기 채널링 중), `PlayerAttack.CanAttack`(숨죽이기 중 비활성)을 직접 읽고 쓴다. `PlayerInput.SkillHeld`/`SkillPressed`(K)와 `PlayerInput.AwarenessHeld`(L)를 입력으로 읽는다.
+- **Player**: `PlayerController.ExternalSpeedMultiplier`(모든 스킬 공통 감속 + 자각 감속 0.7배), `PlayerController.MovementLocked`(되감기 채널링 중), `PlayerAttack.CanAttack`(숨죽이기 중 비활성)을 직접 읽고 쓴다. `PlayerInput.SkillHeld`/`SkillPressed`(K)와 `PlayerInput.AwarenessHeld`(L)를 입력으로 읽는다.
 - **World**: 구체 클래스를 참조하지 않고 `World/Interactions.cs`의 `IRewindable`/`IForeseeable`/`IAwarenessReactive` 인터페이스와 `AwarenessRegistry`(정적 등록소, `Items`/`Added` 노출)만 소비한다. World가 Emotions를 몰라도 Emotions가 World를 관찰할 수 있게 하는 단방향 관찰 구조다.
 - **World → Emotions 역호출(유일한 예외)**: `World/StoryFragment.cs`의 `Collect()`가 스킬을 새로 부여할 때 `EmotionSkillController.Instance?.RefreshActive()`를 호출해, 방금 얻은 스킬을 즉시 활성 스킬로 반영시킨다. `EmotionSkillController.Instance`는 `Update`에서도 `Active == null`일 때 매 프레임 `RefreshActive()`를 자동 호출하므로, 이 역호출이 없어도 다음 프레임에는 결국 동기화되지만 즉시 반영을 위해 명시적으로 호출한다.
 

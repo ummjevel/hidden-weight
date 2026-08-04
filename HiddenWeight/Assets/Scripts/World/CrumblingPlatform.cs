@@ -13,7 +13,9 @@ namespace HiddenWeight.World
         [SerializeField] float respawnDelay = 0f;   // 0이면 되감기로만 복구된다
 
         Collider2D _collider;
+        Collider2D _rewindSensor;
         SpriteRenderer _sprite;
+        Color _intactColor = Color.white;
         Coroutine _crumbleRoutine;
         float _crumbleTimer;
 
@@ -44,6 +46,22 @@ namespace HiddenWeight.World
         {
             _collider = GetComponent<Collider2D>();
 
+            // 무너지면 본 충돌체를 꺼야 플레이어가 아래로 떨어진다. 하지만 RewindSkill은
+            // Physics2D 겹침 검사로 대상을 찾으므로 충돌체가 하나도 남지 않으면 K를 눌러도
+            // 이 발판을 찾을 수 없다. 잔재에서만 플레이를 막지 않는 트리거 센서를 별도로 둔다.
+            if (gameObject.scene.name.Contains("Residue") && _collider is BoxCollider2D box)
+            {
+                var sensorObject = new GameObject("RewindTargetSensor");
+                sensorObject.layer = gameObject.layer;
+                sensorObject.transform.SetParent(transform, false);
+                var sensor = sensorObject.AddComponent<BoxCollider2D>();
+                sensor.size = box.size;
+                sensor.offset = box.offset;
+                sensor.isTrigger = true;
+                sensor.enabled = false;
+                _rewindSensor = sensor;
+            }
+
             // 지역 아트는 루트 렌더러를 끄고 "Art" 자식에 그린다(ReplaceArt). 루트만 잡으면
             // 무너질 때 이미 꺼진 렌더러를 다시 끄는 셈이라, 아트가 그려진 발판은 사라지지
             // 않은 채 충돌만 없어진다 — 보이는 렌더러를 잡아야 한다.
@@ -55,6 +73,8 @@ namespace HiddenWeight.World
             if (_sprite == null || !_sprite.enabled)
                 foreach (var renderer in GetComponentsInChildren<SpriteRenderer>())
                     if (renderer.enabled) { _sprite = renderer; break; }
+
+            if (_sprite != null) _intactColor = _sprite.color;
 
             _animator = GetComponentInChildren<SpriteAnimator>();
         }
@@ -97,6 +117,7 @@ namespace HiddenWeight.World
             _collider.enabled = false;
             HideSurfaceTiles();
             HasCrumbled = true;
+            if (_rewindSensor != null) _rewindSensor.enabled = true;
             Core.AudioManager.Instance?.PlaySfx(Core.SfxCue.PlatformCollapse, 0.55f);
 
             // 2행 붕괴 → 3행 파손 정착. 파손 상태를 그림으로 보여줄 수 있으면 스프라이트를
@@ -107,11 +128,13 @@ namespace HiddenWeight.World
                 // 있으므로 다시 밟아도 붕괴가 두 번 시작되지 않는다.
                 while (_animator != null && !_animator.IsFinished) yield return null;
                 PlayState("PlatformBroken");
+                ShowResidueBrokenSilhouette(0.48f);
             }
             else if (!PlayState("PlatformBroken"))
             {
-                _sprite.enabled = false;
+                if (!ShowResidueBrokenSilhouette(0.28f)) _sprite.enabled = false;
             }
+            else ShowResidueBrokenSilhouette(0.48f);
 
             _crumbleTimer = 0f;
             _crumbleRoutine = null;
@@ -159,14 +182,30 @@ namespace HiddenWeight.World
             }
 
             _crumbleTimer = 0f;
+            if (_rewindSensor != null) _rewindSensor.enabled = false;
             _collider.enabled = true;
             _sprite.enabled = true;
             RestoreSurfaceTiles();
+            _sprite.color = _intactColor;
             HasCrumbled = false;
 
             // 4행: 되감기 복구. 붕괴의 역순으로 다시 쌓인다(명세의 "reverse visual order").
             // 없으면 스프라이트를 그냥 켜는 것으로 끝난다.
             if (!PlayState("PlatformRestore")) PlayState("PlatformCrack");
+        }
+
+        // 잔재에서는 무너진 발판이 완전히 사라지면 공중에 K 글자만 남아 복원 대상을
+        // 알아볼 수 없다. 충돌은 꺼 둔 채 파손 그림만 반투명하게 남겨 "밟을 수 없는
+        // 되감기 대상"임을 보여 준다. 다른 지역의 기존 붕괴 표현에는 영향을 주지 않는다.
+        bool ShowResidueBrokenSilhouette(float alpha)
+        {
+            if (_sprite == null || !gameObject.scene.name.Contains("Residue")) return false;
+
+            _sprite.enabled = true;
+            Color broken = _intactColor;
+            broken.a = Mathf.Min(_intactColor.a, alpha);
+            _sprite.color = broken;
+            return true;
         }
 
         public Vector3 PredictPosition(float leadSeconds) => transform.position; // 움직이지 않는다

@@ -106,6 +106,17 @@ namespace HiddenWeight.Enemies
                 ? _animator.Renderer
                 : GetComponentInChildren<SpriteRenderer>();
 
+            // 잔재 적 스프라이트는 프레임마다 캔버스 여백이 다르다. 피벗을 루트 중앙에 두면
+            // R07처럼 발이 바닥 위에 떠 보이므로, 몸통 콜라이더의 실제 하단을 발 기준선으로 쓴다.
+            // 다른 지역의 기존 연출에는 영향을 주지 않도록 잔재 씬에만 적용한다.
+            if (_animator != null && _bodyCollider != null
+                && gameObject.scene.name.Contains("Residue"))
+            {
+                float feetY = transform.InverseTransformPoint(
+                    new Vector3(_bodyCollider.bounds.center.x, _bodyCollider.bounds.min.y, 0f)).y;
+                _animator.LockFeetToLocalY(feetY);
+            }
+
             Health = data.maxHealth;
             if (_sprite != null) _sprite.color = data.tint;
             if (_sprite != null && outlineMaterial != null) _sprite.material = outlineMaterial;

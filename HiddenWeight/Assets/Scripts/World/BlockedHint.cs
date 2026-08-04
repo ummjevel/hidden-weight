@@ -74,6 +74,14 @@ namespace HiddenWeight.World
         {
             if (_text == null) return;
 
+            // 잔재의 되감기 대상은 중력으로 쓰러질 수 있지만 안내문까지 함께 눕거나 세로로
+            // 돌면 읽을 수 없다. 다른 지역의 기존 월드 문구 동작은 건드리지 않는다.
+            if (gameObject.scene.name.Contains("Residue"))
+            {
+                _text.transform.position = transform.position + Vector3.up * TextHeight;
+                _text.transform.rotation = Quaternion.identity;
+            }
+
             string message = CurrentMessage();
             var player = PlayerController.Instance;
 
@@ -89,21 +97,27 @@ namespace HiddenWeight.World
         // 막고 있지 않으면 null. 그래야 열린 뒤에는 문구가 저절로 사라진다.
         string CurrentMessage()
         {
+            bool residue = gameObject.scene.name == "Zone_Residue_Full";
+
             if (_encounter != null)
                 return _encounter.IsRunning && !_encounter.IsFinished
-                    ? "적을 모두 물리쳐야 열린다"
+                    ? (residue ? "적을 모두 처치하면 열립니다." : "적을 모두 물리쳐야 열린다")
                     : null;
 
             if (_gate != null)
-                return _gate.IsOpen ? null : GateMessage(_gate.RequiredSkill);
+                return _gate.IsOpen ? null : GateMessage(_gate.RequiredSkill, residue);
 
             if (_shortcut != null)
-                return _shortcut.IsOpen ? null : "반대편에서만 열 수 있다";
+                return _shortcut.IsOpen
+                    ? null
+                    : (residue ? ResidueShortcutMessage(_shortcut.Id) : "반대편에서만 열 수 있다");
 
             // 지역 출구는 조건을 못 채웠을 때만 이유를 말한다. 열려 있으면 굳이 안내하지
             // 않는다 — 지나가면 되는 곳에 문구가 남아 있으면 읽을 것이 늘기만 한다.
             if (_zoneTrigger != null)
-                return _zoneTrigger.IsOpen ? null : "이 지역을 끝내야 나갈 수 있다";
+                return _zoneTrigger.IsOpen
+                    ? null
+                    : (residue ? "기억의 교수자를 처치하면 열립니다." : "이 지역을 끝내야 나갈 수 있다");
 
             // 방 문은 반대다. 막지 않지만 "여기가 다음 방으로 가는 길"이라는 안내가 필요하다.
             // 문 너머는 아직 로드되지 않은 다른 씬이라 눈으로는 길인지 벽인지 알 수 없다.
@@ -116,17 +130,42 @@ namespace HiddenWeight.World
 
             // 되감기로 되돌릴 수 있는 것은, 되돌릴 수 있는 상태일 때만 알려 준다.
             if (_rewindable != null)
-                return _rewindable.CanRewind ? "되감기로 되돌릴 수 있다" : null;
+                return _rewindable.CanRewind
+                    ? (residue ? "되감기로 복원할 수 있습니다." : "되감기로 되돌릴 수 있다")
+                    : null;
 
             return null;
         }
 
-        static string GateMessage(EmotionId skill) => skill switch
+        static string ResidueShortcutMessage(string id)
         {
-            EmotionId.Rewind => "되감기가 있어야 지나갈 수 있다",
-            EmotionId.Hush => "숨죽이기가 있어야 지나갈 수 있다",
-            EmotionId.Foresight => "예지가 있어야 지나갈 수 있다",
-            _ => "아직 열리지 않았다",
-        };
+            switch (id)
+            {
+                case "residue_shortcut_a":
+                    return "R05의 무너진 구조물을 되감으면 열립니다.";
+                case "residue_shortcut_b":
+                    return "R08 상층의 도르래를 되감으면 열립니다.";
+                case "residue_shortcut_c":
+                    return "R10 중간 보스를 처치하면 열립니다.";
+                case "residue_secret_s2":
+                    return "R06의 선택 구조물을 되감으면 열립니다.";
+                default:
+                    return "다른 구간의 장치를 작동하면 열립니다.";
+            }
+        }
+
+        static string GateMessage(EmotionId skill, bool residue)
+        {
+            if (residue && skill == EmotionId.Rewind)
+                return "되감기가 필요합니다.";
+
+            return skill switch
+            {
+                EmotionId.Rewind => "되감기가 있어야 지나갈 수 있다",
+                EmotionId.Hush => "숨죽이기가 있어야 지나갈 수 있다",
+                EmotionId.Foresight => "예지가 있어야 지나갈 수 있다",
+                _ => "아직 열리지 않았다",
+            };
+        }
     }
 }

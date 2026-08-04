@@ -1,4 +1,5 @@
 using UnityEngine;
+using HiddenWeight.Core;
 using HiddenWeight.Data;
 
 namespace HiddenWeight.World
@@ -14,6 +15,9 @@ namespace HiddenWeight.World
         [SerializeField] string targetRoom;
         [SerializeField] string targetDoorId;
         [SerializeField] Vector2 arrivalOffset;
+        // 비어 있으면 항상 통과 가능. 값이 있으면 그 숏컷이 열려야만 문이 반응한다
+        // (RoomLink.requiredShortcutId 참고 — 물리적 숏컷 A/B/C용 문에 쓴다).
+        [SerializeField] string requiredShortcutId;
 
         public string DoorId => doorId;
         public Side Side => side;
@@ -27,17 +31,23 @@ namespace HiddenWeight.World
 
         public void Disarm() => Armed = false;
 
-        public void Configure(string id, Side doorSide, string room, string targetDoor, Vector2 offset)
+        public void Configure(string id, Side doorSide, string room, string targetDoor, Vector2 offset,
+            string shortcutId = null)
         {
             doorId = id;
             side = doorSide;
             targetRoom = room;
             targetDoorId = targetDoor;
             arrivalOffset = offset;
+            requiredShortcutId = shortcutId;
 
             var col = GetComponent<Collider2D>();
             if (col != null) col.isTrigger = true;
         }
+
+        bool ShortcutSatisfied()
+            => string.IsNullOrEmpty(requiredShortcutId)
+               || (GameManager.Instance != null && GameManager.Instance.Progress.IsShortcutOpen(requiredShortcutId));
 
         public static Vector2 DefaultArrivalOffset(Side side) => side switch
         {
@@ -51,6 +61,7 @@ namespace HiddenWeight.World
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!Armed || !PlayerLayers.IsPlayer(other.gameObject)) return;
+            if (!ShortcutSatisfied()) return;
             RoomLoader.Instance?.RequestTransition(this);
         }
 

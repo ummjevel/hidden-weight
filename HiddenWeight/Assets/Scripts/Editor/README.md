@@ -14,7 +14,7 @@
 | `DataAssetBuilder.cs` | ScriptableObject 데이터 에셋 12종(PlayerData 1 + EmotionData 3 + EnemyData 3 + ZoneData 4 + BalanceData 1) 생성. 이미 있는 에셋은 값을 덮어쓰지 않고 그대로 반환 | 8.2 Data 단계, 밸런스 수치 |
 | `PlaceholderArtBuilder.cs` | 단색 PNG 스프라이트 10종을 코드로 생성하고 Sprite/PPU 32/Point 필터로 임포트 설정 | 2절 PPU 기준, 8.10 플레이스홀더 |
 | `PrefabBuilder.cs` | 프리팹 13종(GameManager 포함) 생성, 다른 모듈의 컴포넌트를 `AddComponent`로 조립. 2026-07-26: Player에 `VoidRespawn`, RewindableBlock·CrumblingPlatform에 `RewindHighlight` 추가 | 8.10 프리팹 자동 생성 |
-| `ZoneSceneBuilder.cs` | 씬 7개(Bootstrap/Title/Zone_Prologue/Zone_Residue/Zone_Gaze/Zone_Fracture/Ending) 생성, 룸·타일맵·프리팹 배치, `EditorBuildSettings.scenes` 등록. 2026-07-26: 좌우 경계벽(`BuildBoundary`, 낙하 소프트락 방지)·프롤로그 굴뚝 공중 부양 벽(입구 개방)·회전형 눈 3개(위상차 0/120/240도)·자각 해금 지점(`BuildAwarenessUnlock`, 응시 Room3 끝)·연출 데코(`BuildDecor` — 새장/무너진 탑/거울 방)·튜토리얼 힌트 7곳(`BuildTutorialHint`)·균열 파편을 보이는 `StoryFragment`로 교체(자각 무력화 대응) | 4장 씬 구성, 5.3 백트래킹, 8.10 씬 자동 생성 |
+| `ZoneSceneBuilder.cs` | 씬 7개 생성과 빌드 등록. 프롤로그는 T01~T04 네 방, 하부 안전길, 벽점프 굴뚝, 대시 틈, 학습 적, 맥락형 안내를 배치한다. `BuildPrologueOnly()`는 다른 지역 씬을 저장하지 않고 프롤로그만 다시 만든다. | LEVEL_10_DREAM_TUTORIAL, 8.10 씬 자동 생성 |
 | `ResidueZoneBuilder.cs` | `ZoneSceneBuilder`의 partial. 잔재 재설계 전체 지역(주 동선 12룸 + 비밀 3룸)을 `Zone_Residue_Full` 씬으로 짓는다. 방 로컬 좌표를 전역으로 옮기는 `RoomCtx`와 조우·보상·숏컷 조립 헬퍼도 여기 있다 | LEVEL_21_RESIDUE_ROOMS.md |
 | `GazeZoneBuilder.cs` | 같은 partial. 응시 전체 지역(G01~G12 + GS1~GS3)을 `Zone_Gaze_Full` 씬으로 짓는다. 시선 배치·숨죽이기 게이트 규격·재판관 연결·눈꺼풀 벽을 담당 | LEVEL_30_GAZE_DESIGN.md |
 | `FractureZoneBuilder.cs` | 같은 partial. 균열 전체 지역(F01~F12 + FS1~FS3)을 `Zone_Fracture_Full` 씬으로 짓는다. 자각으로 여는 문을 하나도 두지 않고, 붕괴 발판은 전부 자동 복구로 만든다 | LEVEL_40_FRACTURE_DESIGN.md |
@@ -29,6 +29,7 @@
 - `PlaceholderArtBuilder.Run()`
 - `PrefabBuilder.Run()`
 - `ZoneSceneBuilder.Run()`
+- `ZoneSceneBuilder.BuildPrologueOnly()` — 다른 지역 씬을 건드리지 않고 `Zone_Prologue`만 다시 생성한다.
 - `BuildScript.Compile()` — `EditorUtility.scriptCompilationFailed`가 `true`면 에러 로그 후 `EditorApplication.Exit(1)`, 아니면 `EditorApplication.Exit(0)`. `-executeMethod` 자체가 컴파일 실패 시 실행되지 못하므로, 이 메서드가 돌아 exit 코드를 남겼다는 사실 자체가 "컴파일 통과"의 증거다.
 - `BuildScript.BuildMac()` — 씬 7개를 하드코딩된 배열로 나열해 `BuildPipeline.BuildPlayer(scenes, "Builds/macOS/HiddenWeight.app", BuildTarget.StandaloneOSX, BuildOptions.None)` 호출. `report.summary.result != BuildResult.Succeeded`면 `Exit(1)`, 성공하면 `Exit(0)`.
 

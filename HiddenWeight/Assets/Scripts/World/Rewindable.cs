@@ -21,9 +21,15 @@ namespace HiddenWeight.World
         SpriteRenderer _sprite;
         Rigidbody2D _rb;
         Coroutine _bounceRoutine;
+        Coroutine _restoredColliderRoutine;
         bool _started;
+        Sprite _restoredPlatformSprite;
+        Vector2 _restoredColliderSize;
+        Vector2 _restoredColliderOffset;
+        float _restoredSurfaceInsetNormalized;
 
         public Transform Transform => transform;
+        public float RestoredSurfaceInsetNormalized => _restoredSurfaceInsetNormalized;
 
         // 이 대상을 되감으면 함께 열리는 숏컷. R05 사슬장치 → 숏컷 A, R08 도르래 → 숏컷 B처럼
         // "복원이 세계를 바꾼다"는 연결을 만든다(RESIDUE_LEVEL_DESIGN.md 숏컷 A/B).
@@ -44,6 +50,21 @@ namespace HiddenWeight.World
         // 같은 씬에 숏컷 오브젝트가 없을 때 쓰는 연결. 여는 대상을 id로만 지정한다.
         public void ConfigureLinkedShortcut(string shortcutId, params Rewindable[] siblings)
             => ApplyLink(null, shortcutId, siblings);
+
+        // R05처럼 복원 대상 자체가 다음 턱까지 이어지는 디딤판인 경우에만 사용한다.
+        // 파손 상태의 작은 잔해 그림과 1x1 판정을 그대로 두면 복원 뒤 허공에 서 보이고,
+        // 턱 직전의 좁은 틈으로 다시 떨어질 수 있다.
+        public void ConfigureRestoredPlatform(Sprite sprite, Vector2 colliderSize,
+                                              Vector2 colliderOffset = default,
+                                              float surfaceInsetNormalized = 0f)
+        {
+            _restoredPlatformSprite = sprite;
+            _restoredColliderSize = colliderSize;
+            _restoredColliderOffset = colliderOffset;
+            _restoredSurfaceInsetNormalized = Mathf.Clamp01(surfaceInsetNormalized);
+            if (_started && _rb != null && _rb.bodyType == RigidbodyType2D.Static && !CanRewind)
+                ApplyRestoredPlatformPresentation();
+        }
 
         void ApplyLink(Shortcut shortcut, string shortcutId, Rewindable[] siblings)
         {
@@ -104,6 +125,7 @@ namespace HiddenWeight.World
             gameObject.SetActive(_initialActive);
             if (_sprite != null) _sprite.sprite = _initialSprite;
             Freeze();
+            ApplyRestoredPlatformPresentation();
 
             if (GameManager.Instance != null) GameManager.Instance.Progress.MarkRewound(persistentId);
 
@@ -143,21 +165,138 @@ namespace HiddenWeight.World
             _rb.bodyType = RigidbodyType2D.Static;
         }
 
+        void ApplyRestoredPlatformPresentation()
+        {
+            if (_restoredPlatformSprite == null || _restoredColliderSize.x <= 0f
+                || _restoredColliderSize.y <= 0f)
+                return;
+
+            var collider = GetComponent<BoxCollider2D>();
+            if (collider == null) return;
+
+            // 채널링 중인 플레이어가 복원될 3x1 영역 안에 있으면 그 자리에서 판정을
+            // 넓히지 않는다. 강제로 위로 옮기면 공중에 뜨고, 즉시 넓히면 아래 바닥과
+            // 사이에 끼므로 플레이어가 영역을 벗어난 첫 물리 프레임에 안전하게 확장한다.
+            if (PlayerOverlapsRestoredBounds(collider))
+            {
+                if (_restoredColliderRoutine == null)
+                    _restoredColliderRoutine = StartCoroutine(ExpandRestoredColliderWhenClear(collider));
+            }
+            else
+            {
+                collider.offset = _restoredColliderOffset;
+                collider.size = _restoredColliderSize;
+                Physics2D.SyncTransforms();
+            }
+
+            foreach (var renderer in GetComponentsInChildren<SpriteRenderer>(true))
+                renderer.enabled = false;
+
+            Transform visual = transform.Find("RestoredPlatformVisual");
+            if (visual == null)
+            {
+                var go = new GameObject("RestoredPlatformVisual");
+                visual = go.transform;
+                visual.SetParent(transform, false);
+                go.AddComponent<SpriteRenderer>();
+            }
+
+            var platform = visual.GetComponent<SpriteRenderer>();
+            platform.enabled = true;
+            platform.sprite = _restoredPlatformSprite;
+            platform.color = Color.white;
+            platform.sortingOrder = 5;
+
+            Vector2 spriteSize = _restoredPlatformSprite.bounds.size;
+            float scale = _restoredColliderSize.x / Mathf.Max(0.001f, spriteSize.x);
+            visual.localScale = Vector3.one * scale;
+            visual.localPosition = Vector3.zero;
+
+            AlignRestoredVisualSurface(visual, platform, collider);
+        }
+
+        void AlignRestoredVisualSurface(Transform visual, SpriteRenderer platform,
+                                        BoxCollider2D collider)
+        {
+            Bounds collisionBounds = RestoredWorldBounds(collider);
+            Bounds artBounds = platform.bounds;
+            // 잔재 발판은 난간 장식이 돌 보행면보다 위로 솟아 있다. 사각 bounds 최고점을
+            // 충돌면에 맞추면 실제 돌 윗면은 아래에 남아 캐릭터가 허공을 걷게 된다.
+            float visibleSurfaceY = artBounds.max.y
+                - artBounds.size.y * _restoredSurfaceInsetNormalized;
+            visual.position += new Vector3(
+                collisionBounds.center.x - artBounds.center.x,
+                collisionBounds.max.y - visibleSurfaceY,
+                0f);
+        }
+
+        IEnumerator ExpandRestoredColliderWhenClear(BoxCollider2D collider)
+        {
+            while (collider != null && PlayerOverlapsRestoredBounds(collider))
+                yield return new WaitForFixedUpdate();
+
+            if (collider != null)
+            {
+                collider.offset = _restoredColliderOffset;
+                collider.size = _restoredColliderSize;
+                Physics2D.SyncTransforms();
+            }
+            _restoredColliderRoutine = null;
+        }
+
+        bool PlayerOverlapsRestoredBounds(BoxCollider2D collider)
+        {
+            int playerLayer = LayerMask.NameToLayer("Player");
+            int hushedLayer = LayerMask.NameToLayer("PlayerHushed");
+            int mask = 0;
+            if (playerLayer >= 0) mask |= 1 << playerLayer;
+            if (hushedLayer >= 0) mask |= 1 << hushedLayer;
+            if (mask == 0) return false;
+
+            Bounds bounds = RestoredWorldBounds(collider);
+            // 위에 정상적으로 서 있는 접촉은 겹침으로 보지 않도록 세로 영역을 조금 줄인다.
+            Vector2 querySize = new Vector2(bounds.size.x * 0.98f, bounds.size.y * 0.9f);
+            return Physics2D.OverlapBox(bounds.center, querySize, 0f, mask) != null;
+        }
+
+        Bounds RestoredWorldBounds(BoxCollider2D collider)
+        {
+            Vector3 scale = transform.lossyScale;
+            Vector3 center = transform.TransformPoint(_restoredColliderOffset);
+            return new Bounds(center, new Vector3(
+                _restoredColliderSize.x * Mathf.Abs(scale.x),
+                _restoredColliderSize.y * Mathf.Abs(scale.y), 0.1f));
+        }
+
         // 0.3초에 걸쳐 스케일을 0.8 -> 1.0으로 튕기는 되감기 연출.
         IEnumerator BounceRoutine()
         {
             const float duration = 0.3f;
             float elapsed = 0f;
 
+            // R05 복원 발판은 그림만 튕겨야 한다. 루트를 튕기면 3x1 콜라이더까지 매 프레임
+            // 커졌다 줄어들어, 방금 위로 올린 플레이어를 다시 바닥과 발판 사이에 끼운다.
+            Transform bounceTarget = transform.Find("RestoredPlatformVisual");
+            bool visualOnly = bounceTarget != null;
+            if (!visualOnly) bounceTarget = transform;
+            Vector3 finalScale = bounceTarget.localScale;
+            var platform = visualOnly ? bounceTarget.GetComponent<SpriteRenderer>() : null;
+            var collider = visualOnly ? GetComponent<BoxCollider2D>() : null;
+
             while (elapsed < duration)
             {
                 float scale = Mathf.Lerp(0.8f, 1f, elapsed / duration);
-                transform.localScale = new Vector3(scale, scale, 1f);
+                bounceTarget.localScale = new Vector3(
+                    finalScale.x * scale, finalScale.y * scale, finalScale.z);
+                if (platform != null && collider != null)
+                    AlignRestoredVisualSurface(bounceTarget, platform, collider);
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
-            transform.localScale = Vector3.one;
+            bounceTarget.localScale = finalScale;
+            if (platform != null && collider != null)
+                AlignRestoredVisualSurface(bounceTarget, platform, collider);
             _bounceRoutine = null;
         }
     }

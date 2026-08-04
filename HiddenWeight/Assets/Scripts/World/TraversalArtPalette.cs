@@ -7,7 +7,19 @@ namespace HiddenWeight.World
     public sealed class TraversalArtPalette : ScriptableObject
     {
         // 지형 한 장을 늘여 쓰는 옛 방식. 아직 역할별 타일셋이 없는 지역이 쓴다.
+        public Sprite prologueSurface;
+        public Sprite prologueWall;
+        public Sprite prologueFill;
         public Sprite residueSurface;
+        public Sprite residueGroundLeft;
+        public Sprite residueGroundMiddle;
+        public Sprite residueGroundRight;
+        public Sprite residueGroundFill;
+        public Sprite residuePlatformShort;
+        public Sprite residuePlatformMedium;
+        public Sprite residuePlatformLong;
+        public Sprite residueWallMiddle;
+        public Sprite residueClimbPillar;
         public Sprite gazeSurface;
         public Sprite fractureSurface;
 
@@ -17,6 +29,7 @@ namespace HiddenWeight.World
 
         public Sprite SurfaceFor(string sceneName)
         {
+            if (sceneName.Contains("Prologue")) return prologueSurface;
             if (sceneName.Contains("Gaze")) return gazeSurface;
             if (sceneName.Contains("Fracture")) return fractureSurface;
             return residueSurface;
@@ -31,8 +44,25 @@ namespace HiddenWeight.World
             return null;
         }
 
+        // 잔재는 타일셋이 아니라 모듈 조각(끝단·중간·발판 길이별)으로 간다. 균열의
+        // TileSetFor와 목적은 같고 조각을 나누는 축만 다르다 — 두 지역이 서로 다른 원화
+        // 구조를 받았기 때문에 하나로 합치지 않는다.
+        public bool HasResidueModularV3 => residueGroundMiddle != null
+            && residueGroundFill != null
+            && residuePlatformShort != null && residuePlatformMedium != null
+            && residuePlatformLong != null && residueWallMiddle != null;
+
+        public Sprite ResiduePlatformFor(float width)
+        {
+            if (width <= 3f) return residuePlatformShort;
+            if (width <= 6f) return residuePlatformMedium;
+            return residuePlatformLong;
+        }
+
         public Color SurfaceTintFor(string sceneName)
         {
+            if (sceneName.Contains("Prologue"))
+                return new Color(0.82f, 0.84f, 1f, 0.9f);
             // 균열 원화는 백색 발광이 강해 배경보다 앞으로 튀므로 한 단계 눌러 쓴다.
             // 역할별 타일셋을 쓰는 경우는 예외다 — 그 그림이 곧 지형이라 원색으로 둔다.
             if (sceneName.Contains("Fracture"))
@@ -52,10 +82,18 @@ namespace HiddenWeight.World
         // 두께를 느끼게 하는 옅은 그림자만 남긴다.
         public Color CollisionTintFor(string sceneName)
         {
+            if (sceneName.Contains("Prologue"))
+                return new Color(0.1f, 0.09f, 0.2f, 0.05f);
             if (sceneName.Contains("Gaze"))
                 return new Color(0.16f, 0.13f, 0.24f, 0.42f);
             if (sceneName.Contains("Fracture"))
                 return new Color(0.20f, 0.26f, 0.34f, 0.14f);
+            if (sceneName.Contains("Residue"))
+            {
+                // 잔재 V3는 충돌면을 새 모듈 아트가 직접 덮는다. 기존 황갈색 타일은
+                // 보조선처럼 보였으므로 충돌 확인용으로만 아주 희미하게 남긴다.
+                return new Color(0.12f, 0.16f, 0.22f, 0.08f);
+            }
             return new Color(0.18f, 0.13f, 0.08f, 0.46f);
         }
     }

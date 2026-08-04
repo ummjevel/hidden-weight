@@ -12,6 +12,16 @@ namespace HiddenWeight.EditorTools
         [MenuItem("Hidden Weight/Art/Build Traversal Art Palette")]
         public static void BuildTraversalArtPalette()
         {
+            const string prologueSurfacePath =
+                "Assets/Art/Prologue/Environment/Prologue_TraversalSurface_v2.png";
+            ConfigureTraversalSurfaceImport(prologueSurfacePath);
+            const string prologueWallPath =
+                "Assets/Art/Prologue/Environment/Prologue_TraversalWall_v2.png";
+            ConfigureTraversalSurfaceImport(prologueWallPath);
+            const string prologueFillPath =
+                "Assets/Art/Prologue/Environment/Prologue_TraversalFill_v1.png";
+            ConfigureTraversalFillImport(prologueFillPath);
+
             var palette = AssetDatabase.LoadAssetAtPath<TraversalArtPalette>(TraversalPalettePath);
             if (palette == null)
             {
@@ -19,9 +29,25 @@ namespace HiddenWeight.EditorTools
                 AssetDatabase.CreateAsset(palette, TraversalPalettePath);
             }
 
+            palette.prologueSurface = AssetDatabase.LoadAssetAtPath<Sprite>(prologueSurfacePath);
+            palette.prologueWall = AssetDatabase.LoadAssetAtPath<Sprite>(prologueWallPath);
+            palette.prologueFill = AssetDatabase.LoadAssetAtPath<Sprite>(prologueFillPath);
             palette.residueSurface = FindSprite(
                 "Assets/Art/Residue/Environment/Terrain/Residue_TerrainTiles_v2.png",
                 "Terrain_r1_c3");
+            const string residueTerrainV3 =
+                "Assets/Art/Residue/Environment/Terrain/ModularV3/Residue_ModularTerrain_v3.png";
+            const string residueWallsV3 =
+                "Assets/Art/Residue/Environment/Terrain/ModularV3/Residue_ModularWallsStairs_v3.png";
+            palette.residueGroundLeft = FindSprite(residueTerrainV3, "ResidueGroundLeft");
+            palette.residueGroundMiddle = FindSprite(residueTerrainV3, "ResidueGroundMiddle");
+            palette.residueGroundRight = FindSprite(residueTerrainV3, "ResidueGroundRight");
+            palette.residueGroundFill = FindSprite(residueTerrainV3, "ResidueGroundFill");
+            palette.residuePlatformShort = FindSprite(residueTerrainV3, "ResiduePlatformShort");
+            palette.residuePlatformMedium = FindSprite(residueTerrainV3, "ResiduePlatformMedium");
+            palette.residuePlatformLong = FindSprite(residueTerrainV3, "ResiduePlatformLong");
+            palette.residueWallMiddle = FindSprite(residueWallsV3, "ResidueWallMiddle");
+            palette.residueClimbPillar = FindSprite(residueWallsV3, "ResidueClimbPillar");
             palette.gazeSurface = FindSprite(
                 "Assets/Art/Gaze/Environment/Terrain/Gaze_TerrainTiles_v1.png",
                 "GazeTerrain_r1_c3");
@@ -29,8 +55,10 @@ namespace HiddenWeight.EditorTools
                 "Assets/Art/Fracture/Environment/Terrain/Fracture_TerrainTiles_v2.png";
             palette.fractureSurface = FindSprite(fractureSheet, "FractureTerrain_r1_c3");
 
-            if (palette.residueSurface == null || palette.gazeSurface == null
-                || palette.fractureSurface == null)
+            if (palette.prologueSurface == null || palette.prologueWall == null || palette.prologueFill == null
+                || palette.residueSurface == null
+                || palette.gazeSurface == null
+                || palette.fractureSurface == null || !palette.HasResidueModularV3)
                 throw new InvalidOperationException("지역별 보행 바닥 스프라이트를 찾지 못했다.");
 
             palette.fractureTiles = BuildFractureTileSet(fractureSheet);
@@ -92,12 +120,47 @@ namespace HiddenWeight.EditorTools
             return null;
         }
 
+        static void ConfigureTraversalSurfaceImport(string path)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+                return;
+
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = 100f;
+            importer.alphaIsTransparency = true;
+            importer.mipmapEnabled = false;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.filterMode = FilterMode.Bilinear;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+        }
+
+        static void ConfigureTraversalFillImport(string path)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+                return;
+
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = 256f;
+            importer.alphaIsTransparency = false;
+            importer.mipmapEnabled = false;
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.filterMode = FilterMode.Bilinear;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+        }
+
         public static void Build(Room room, string artRoot)
         {
             if (room == null)
                 throw new ArgumentNullException(nameof(room));
 
-            string spritePath = $"{artRoot}/Rooms4K/{room.name}.png";
+            string spritePath = ResidueBackgroundPath(room, artRoot)
+                ?? $"{artRoot}/Rooms4K/{room.name}.png";
             ConfigureBackgroundImport(spritePath);
             Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
             if (sprite == null)
@@ -122,13 +185,41 @@ namespace HiddenWeight.EditorTools
             var renderer = background.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
-            background.AddComponent<CameraLockedRoomBackground>();
+            var locked = background.AddComponent<CameraLockedRoomBackground>();
+            // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
+            // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
+            var size = room.WorldBounds.size;
+            locked.ConfigureWorldSize(new Vector2(size.x, size.y));
+            if (artRoot.EndsWith("/Prologue", StringComparison.Ordinal))
+            {
+                var serialized = new SerializedObject(locked);
+                serialized.FindProperty("backgroundTint").colorValue =
+                    new Color(0.9f, 0.92f, 1f, 0.9f);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             if (art.GetComponent<RoomVisualCuller>() == null)
                 art.gameObject.AddComponent<RoomVisualCuller>();
         }
 
-        static void ConfigureBackgroundImport(string path)
+        public static string ResidueBackgroundPath(Room room, string artRoot)
+        {
+            if (room == null || !artRoot.EndsWith("/Residue", StringComparison.Ordinal))
+                return null;
+
+            string roomName = room.name;
+            if (roomName.Contains("R08") || roomName.Contains("R09")
+                || roomName.Contains("Room08") || roomName.Contains("Room09"))
+                return "Assets/Art/Residue/Backgrounds/V3/Residue_Background_Shaft_v3.png";
+            if (roomName.Contains("R10") || roomName.Contains("R11")
+                || roomName.Contains("R12") || roomName.Contains("Room10")
+                || roomName.Contains("Room11") || roomName.Contains("Room12")
+                || roomName.Contains("S3") || roomName.Contains("Secret03"))
+                return "Assets/Art/Residue/Backgrounds/V3/Residue_Background_BellTower_v3.png";
+            return "Assets/Art/Residue/Backgrounds/V3/Residue_Background_Bridge_v3.png";
+        }
+
+        public static void ConfigureBackgroundImport(string path)
         {
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null)

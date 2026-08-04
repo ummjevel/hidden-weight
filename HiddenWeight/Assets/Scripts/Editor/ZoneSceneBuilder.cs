@@ -47,6 +47,17 @@ namespace HiddenWeight.EditorTools
             Debug.Log("[ZoneSceneBuilder] 씬 7개 생성 완료");
         }
 
+        // 튜토리얼 작업 중 다른 지역 씬을 다시 저장하지 않기 위한 제한된 진입점.
+        // 오늘 제작 범위인 Zone_Prologue만 생성하고 나머지 씬은 절대 건드리지 않는다.
+        public static void BuildPrologueOnly()
+        {
+            EnsureScenesFolder();
+            BuildZonePrologue();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[ZoneSceneBuilder] Zone_Prologue 전용 생성 완료");
+        }
+
         // ============================================================
         // 공통 헬퍼
         // ============================================================
@@ -445,7 +456,8 @@ namespace HiddenWeight.EditorTools
             return data;
         }
 
-        static GameObject BuildResidueEnemy(Transform parent, Vector2 pos, ResidueEnemyKind kind)
+        static GameObject BuildResidueEnemy(Transform parent, Vector2 pos, ResidueEnemyKind kind,
+                                            string animationPrefix = null)
         {
             var go = BuildEnemy(parent, pos, ResidueEnemyData(kind));
 
@@ -483,10 +495,10 @@ namespace HiddenWeight.EditorTools
                     artObject.transform.localScale = new Vector3(scale, scale, 1f);
                 }
 
-                string prefix = kind == ResidueEnemyKind.Walker ? "Walker"
+                string prefix = animationPrefix ?? (kind == ResidueEnemyKind.Walker ? "Walker"
                               : kind == ResidueEnemyKind.Carrier ? "Carrier"
                               : kind == ResidueEnemyKind.Finger ? "Finger"
-                              : "Hardened";
+                              : "Hardened");
                 AttachAnimator(artObject, artRenderer, EnemyClips(prefix), displayHeight);
                 SetField(go.GetComponent<HiddenWeight.Enemies.Enemy>(), "clipPrefix",
                     p => p.stringValue = prefix);
@@ -776,6 +788,133 @@ namespace HiddenWeight.EditorTools
             return go;
         }
 
+        static GameObject BuildPrologueActionHint(Transform parent, Vector2 pos,
+            PrologueActionHint.RequiredAction action, string message, float delaySeconds = 0f)
+        {
+            var go = new GameObject($"PrologueHint_{action}");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+
+            var hint = go.AddComponent<PrologueActionHint>();
+            SetField(hint, "action", p => p.intValue = (int)action);
+            SetField(hint, "message", p => p.stringValue = message);
+            SetField(hint, "delaySeconds", p => p.floatValue = delaySeconds);
+            return go;
+        }
+
+        static GameObject BuildPrologueConceptHint(Transform parent, Vector2 pos, string message,
+            float showRadius = 3f)
+        {
+            var go = new GameObject("PrologueConceptHint");
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+
+            var hint = go.AddComponent<PrologueConceptHint>();
+            SetField(hint, "message", p => p.stringValue = message);
+            SetField(hint, "showRadius", p => p.floatValue = showRadius);
+            return go;
+        }
+
+        static SpriteRenderer BuildPrologueDecor(Transform parent, string assetName,
+            Vector2 pos, Vector2 size, float alpha = 0.6f, float rotationZ = 0f)
+        {
+            var sprite = LoadPrologueSprite(assetName);
+
+            var go = new GameObject(assetName);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(pos.x, pos.y, 0f);
+            go.transform.rotation = Quaternion.Euler(0f, 0f, rotationZ);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = new Color(0.82f, 0.84f, 1f, alpha);
+            renderer.sortingOrder = -12;
+            FitSprite(renderer, size.x, size.y);
+            return renderer;
+        }
+
+        static Sprite LoadPrologueSprite(string assetName)
+        {
+            string path = $"Assets/Art/Prologue/Environment/{assetName}.png";
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null && (importer.textureType != TextureImporterType.Sprite
+                || importer.spriteImportMode != SpriteImportMode.Single
+                || !importer.alphaIsTransparency || importer.mipmapEnabled))
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = 100f;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+                throw new System.InvalidOperationException(
+                    $"튜토리얼 장식 스프라이트를 찾지 못했다: {path}");
+            return sprite;
+        }
+
+        static GameObject BuildPrologueWall(Transform parent, string name, Vector2 center,
+            Vector2 size)
+        {
+            var wall = BuildSolidBlock(parent, name, center, size, "Wall");
+            var placeholder = wall.GetComponent<SpriteRenderer>();
+            if (placeholder != null) placeholder.enabled = false;
+
+            var art = new GameObject("GeneratedWallArt");
+            art.transform.SetParent(wall.transform, false);
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = LoadPrologueSprite("Prologue_TraversalWall_v2");
+            renderer.color = new Color(0.86f, 0.88f, 1f, 0.92f);
+            renderer.sortingOrder = 3;
+            Vector2 spriteSize = renderer.sprite.bounds.size;
+            art.transform.localScale = new Vector3(
+                size.x / (spriteSize.x * Mathf.Abs(wall.transform.localScale.x)),
+                size.y / (spriteSize.y * Mathf.Abs(wall.transform.localScale.y)), 1f);
+            return wall;
+        }
+
+        static GameObject BuildPrologueEnemy(Transform parent, Vector2 position,
+            EnemyData data, string name, string spriteName, float displayHeight)
+        {
+            var enemy = BuildEnemy(parent, position, data);
+            enemy.name = name;
+
+            var placeholder = enemy.GetComponent<SpriteRenderer>();
+            if (placeholder != null) Object.DestroyImmediate(placeholder);
+
+            var art = new GameObject("GeneratedEnemyArt");
+            art.transform.SetParent(enemy.transform, false);
+            var renderer = art.AddComponent<SpriteRenderer>();
+            renderer.sprite = LoadPrologueSprite(spriteName);
+            renderer.color = Color.white;
+            renderer.sortingOrder = 8;
+            float scale = displayHeight / renderer.sprite.bounds.size.y;
+            art.transform.localScale = Vector3.one * scale;
+            return enemy;
+        }
+
+        static EnemyData PrologueEnemyData()
+        {
+            const string path = DataFolder + "/Enemy_Prologue.asset";
+            var data = AssetDatabase.LoadAssetAtPath<EnemyData>(path);
+            if (data != null) return data;
+
+            data = ScriptableObject.CreateInstance<EnemyData>();
+            data.maxHealth = 2;
+            data.moveSpeed = 1.2f;
+            data.contactDamage = 1;
+            data.tint = Color.white;
+            data.turnHesitationSeconds = 0.35f;
+            AssetDatabase.CreateAsset(data, path);
+            return data;
+        }
+
         // 자각 해금 지점: 거대 눈 오브제 + 트리거. 응시 지역 후반부에 1곳만 배치한다.
         static GameObject BuildAwarenessUnlock(Transform parent, Vector2 triggerPos, Vector2 eyePos, string text)
         {
@@ -920,57 +1059,109 @@ namespace HiddenWeight.EditorTools
         }
 
         // ============================================================
-        // Step 3: Zone_Prologue — 몽환의 우주. 튜토리얼 3룸.
+        // Step 3: Zone_Prologue — 몽환의 우주. 튜토리얼 T01~T04.
         // ============================================================
 
         static void BuildZonePrologue()
         {
             var scene = NewScene();
             var tilemap = BuildZoneRoot("Prologue", out var root);
+            // 런타임 배경 컴포넌트가 Awake하기 전 에디터 첫 프레임에서도 회색 플레이스홀더가
+            // 번쩍이지 않게 씬 자체에 튜토리얼 충돌 타일 투명도를 저장한다.
+            tilemap.color = new Color(0.1f, 0.09f, 0.2f, 0.05f);
             var rooms = new GameObject("Rooms"); rooms.transform.SetParent(root.transform, true);
 
-            // Room1 [0,24]: 평평한 바닥, 좌우 이동만.
-            const int room1XMin = -1, room1XMax = 25, room1FloorTop = 0;
-            Floor(tilemap, room1XMin, room1XMax, room1FloorTop);
-            // 스폰은 항상 이 바닥의 실제 topY에서 계산한다 — 하드코딩된 좌표가 레이아웃과
-            // 따로 놀다 바닥 밑/뒤에 파묻히는 일(Task 13 버그)을 막는다.
-            PlacePlayerAndCamera(root, new Vector3(room1XMin + 3f, room1FloorTop + 1f, 0f));
-            BuildTutorialHint(root.transform, new Vector2(10, 3), "← →  또는  A / D  이동");
-            BuildRoom(rooms.transform, "Room1", new Vector2(12, 4), new Vector2(26, 14));
+            var prologueEnemy = PrologueEnemyData();
 
-            // Room2 [24,48]: 3단 계단 + 폭4 구덩이(점프·대시). 착지 실패 시 낮은 통로로 떨어져
-            // 안전하게 재시도할 수 있다(진짜 무저갱이 아니다).
+            // T01 [0,24] — 이동과 점프. 구덩이·적·피해 없이 입력에만 집중한다.
+            const int t01XMin = -1, t01XMax = 24, t01FloorTop = 0;
+            Floor(tilemap, t01XMin, t01XMax, t01FloorTop);
+            PlaceTiles(tilemap, GroundTile(), 9, 11, 0, 1);
+            PlaceTiles(tilemap, GroundTile(), 16, 18, 0, 1);
+            PlaceTiles(tilemap, GroundTile(), 18, 20, 0, 2);
+            PlacePlayerAndCamera(root, new Vector3(3f, 1f, 0f));
+            BuildCheckpoint(root.transform, new Vector2(3f, 1f));
+            BuildPrologueActionHint(root.transform, new Vector2(5f, 3.2f),
+                PrologueActionHint.RequiredAction.Move, "{Move}", 0.35f);
+            BuildPrologueActionHint(root.transform, new Vector2(9.5f, 3.2f),
+                PrologueActionHint.RequiredAction.Jump, "{Jump}");
+            BuildPrologueConceptHint(root.transform, new Vector2(15f, 4.5f),
+                "이곳은 기억과 감정이\n공간이 된 꿈이다.");
+            var t01Room = BuildRoom(rooms.transform, "T01", new Vector2(12f, 7f),
+                new Vector2(24f, 14f)).GetComponent<Room>();
+            SingleRoomBackgroundBuilder.Build(t01Room, "Assets/Art/Prologue");
+            BuildPrologueDecor(t01Room.transform.Find("Art"), "Prologue_OrbitRing",
+                new Vector2(19f, 8.5f), new Vector2(6f, 5.3f), 0.48f, -8f);
+
+            // T02 [24,52] — 실패가 하부 안전길이 되는 첫 점프와 폭 4 벽점프 굴뚝.
             Floor(tilemap, 24, 30, 0);
-            Floor(tilemap, 30, 32, 1);
-            Floor(tilemap, 32, 34, 2);
-            Floor(tilemap, 34, 36, 3);
-            Floor(tilemap, 36, 40, 3);
-            // 착지 실패 시 떨어지는 낮은 통로. 표면을 y=1로 둔다 — y=0이면 양옆 바닥(y=3)까지
-            // 3을 올라야 하는데 실측 최대 점프 높이가 2.72라 다시 못 올라와 진행 불가가 된다.
-            Floor(tilemap, 40, 44, 1);
-            Floor(tilemap, 44, 48, 3);
-            BuildTutorialHint(root.transform, new Vector2(29, 3.5f), "Space  점프  ·  LeftCtrl  대시");
-            BuildRoom(rooms.transform, "Room2", new Vector2(36, 4), new Vector2(24, 14));
+            Floor(tilemap, 30, 35, -2);
+            Floor(tilemap, 35, 37, -1);
+            Floor(tilemap, 37, 42, 0);
+            Floor(tilemap, 42, 46, 0);
+            BuildPrologueWall(root.transform, "T02_Wall_Left", new Vector2(42f, 5.5f),
+                new Vector2(1f, 7f));
+            BuildPrologueWall(root.transform, "T02_Wall_Right", new Vector2(46f, 5.5f),
+                new Vector2(1f, 7f));
+            Floor(tilemap, 46, 52, 9);
+            BuildPrologueActionHint(root.transform, new Vector2(40f, 3f),
+                PrologueActionHint.RequiredAction.WallJump, "벽에 붙은 뒤  {Jump}");
+            BuildPrologueConceptHint(root.transform, new Vector2(33f, 2.5f),
+                "지나간 일, 지금의 시선,\n아직 오지 않은 걱정이 세 공간을 만들었다.");
+            var t02Room = BuildRoom(rooms.transform, "T02", new Vector2(38f, 7f),
+                new Vector2(28f, 18f)).GetComponent<Room>();
+            SingleRoomBackgroundBuilder.Build(t02Room, "Assets/Art/Prologue");
+            BuildPrologueDecor(t02Room.transform.Find("Art"), "Prologue_ConstellationHand",
+                new Vector2(28f, 10.5f), new Vector2(3.2f, 4.2f), 0.42f, 8f);
 
-            // Room3 [48,72]: 높이8 수직 벽 2개 사이 굴뚝을 좌우 벽점프 핑퐁으로 올라간다.
-            // 굴뚝 위는 뚫려 있고 출구 트리거가 그 바로 위에 떠 있다 — 꼭대기까지 오르면 닿는다.
-            // 예전 버전은 굴뚝 위가 착지 발판(타일)으로 막혀 있어서, 바깥 벽면을 같은 벽
-            // 반복 홉으로 오르는 고난도 루트만 남아 사실상 진행 불가에 가까웠다. 튜토리얼
-            // 난이도에 맞게 천장을 열고 안쪽 핑퐁 루트를 정식 경로로 만든다.
-            Floor(tilemap, 48, 72, 0);
-            // 벽 2개를 공중에 띄운다(y 2.2~8). 바닥에서 굴뚝 아래로 걸어 들어간 뒤 점프해서
-            // 벽면에 붙는 것이 입구다 — 점프 정점(속도14·중력3.5 기준 약 2.85)이 벽 하단(2.2)에
-            // 확실히 닿는다. 이전 버전은 벽이 바닥부터 서 있어 굴뚝에 들어갈 방법이 없었다.
-            BuildSolidBlock(root.transform, "Wall_Left", new Vector2(58, 5.1f), new Vector2(1, 5.8f), "Wall");
-            BuildSolidBlock(root.transform, "Wall_Right", new Vector2(61, 5.1f), new Vector2(1, 5.8f), "Wall");
-            BuildTutorialHint(root.transform, new Vector2(55, 3),
-                "점프해서 벽에 닿으면 자동으로 붙는다\nSpace  를 번갈아 눌러 좌우 벽을 오르기");
-            BuildRoom(rooms.transform, "Room3", new Vector2(60, 8), new Vector2(24, 20));
+            // T03 [52,82] — 점프+대시로 틈을 넘고, 넓은 바닥에서 첫 공격을 성공한다.
+            Floor(tilemap, 52, 60, 9);
+            Floor(tilemap, 60, 64, 5);
+            Floor(tilemap, 64, 66, 6);
+            Floor(tilemap, 66, 68, 7);
+            Floor(tilemap, 68, 70, 8);
+            Floor(tilemap, 70, 82, 9);
+            BuildPrologueActionHint(root.transform, new Vector2(57.5f, 12f),
+                PrologueActionHint.RequiredAction.Dash, "{Jump}  +  {Dash}");
+            BuildPrologueEnemy(root.transform, new Vector2(75f, 10f), prologueEnemy,
+                "NamelessEcho_T03", "Prologue_FragmentShard", 1.55f);
+            BuildPrologueActionHint(root.transform, new Vector2(73f, 12f),
+                PrologueActionHint.RequiredAction.Attack, "{Attack}");
+            BuildPrologueConceptHint(root.transform, new Vector2(80f, 12f),
+                "세 공간의 기억을 모으면\n이 꿈에서 깨어날 수 있다.", 2.5f);
+            var t03Room = BuildRoom(rooms.transform, "T03", new Vector2(67f, 13f),
+                new Vector2(30f, 16f)).GetComponent<Room>();
+            SingleRoomBackgroundBuilder.Build(t03Room, "Assets/Art/Prologue");
+            BuildPrologueDecor(t03Room.transform.Find("Art"), "Prologue_NebulaMist",
+                new Vector2(67f, 16f), new Vector2(5.5f, 3.2f), 0.38f);
 
-            // 굴뚝 입구(x 58.5~60.5) 바로 위를 넉넉히 덮는다 — 착지 없이 닿기만 하면 클리어.
-            BuildZoneTrigger(root.transform, new Vector2(59.5f, 9.5f), new Vector2(3, 3), false);
+            // T04 [82,114] — 공격, 벽점프, 점프+대시를 짧게 결합해 잔재의 경계를 넘는다.
+            Floor(tilemap, 82, 90, 9);
+            BuildPrologueEnemy(root.transform, new Vector2(85f, 10f), prologueEnemy,
+                "NamelessEcho_T04", "Prologue_ConstellationHand", 1.7f);
+            // 벽 하단을 바닥보다 2.2유닛 띄워 플레이어가 굴뚝 안으로 걸어 들어갈 수 있게 한다.
+            BuildPrologueWall(root.transform, "T04_Wall_Left", new Vector2(90f, 14.6f),
+                new Vector2(1f, 6.8f));
+            BuildPrologueWall(root.transform, "T04_Wall_Right", new Vector2(94f, 14.6f),
+                new Vector2(1f, 6.8f));
+            Floor(tilemap, 94, 101, 18);
+            Floor(tilemap, 101, 106, 14);
+            // 마지막 대시 실패는 사망이나 소프트락이 아니라 짧은 계단 우회로 연결한다.
+            PlaceTiles(tilemap, GroundTile(), 103, 104, 14, 15);
+            PlaceTiles(tilemap, GroundTile(), 104, 105, 14, 16);
+            PlaceTiles(tilemap, GroundTile(), 105, 106, 14, 17);
+            Floor(tilemap, 106, 114, 18);
+            BuildCheckpoint(root.transform, new Vector2(110f, 19f));
+            BuildPrologueConceptHint(root.transform, new Vector2(109f, 22f),
+                "첫 번째 공간 · 잔재\n지나간 기억이 남은 곳", 2.5f);
+            var t04Room = BuildRoom(rooms.transform, "T04", new Vector2(98f, 14f),
+                new Vector2(32f, 18f)).GetComponent<Room>();
+            SingleRoomBackgroundBuilder.Build(t04Room, "Assets/Art/Prologue");
+            BuildPrologueDecor(t04Room.transform.Find("Art"), "Prologue_FragmentShard",
+                new Vector2(85.5f, 20.5f), new Vector2(3.2f, 4.6f), 0.46f, -10f);
 
-            BuildBoundary(root.transform, "RightBoundary", 73f);
+            BuildZoneTrigger(root.transform, new Vector2(113f, 19f), new Vector2(2f, 3f), false);
+            BuildBoundary(root.transform, "RightBoundary", 115f);
 
             SaveScene(scene, "Zone_Prologue");
         }

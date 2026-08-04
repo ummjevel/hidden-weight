@@ -12,13 +12,15 @@ namespace HiddenWeight.Tests
 {
     // 잔재 지역이 플레이스홀더가 아니라 실제 잔재 아트를 쓰고 있는지 확인한다.
     // 스프라이트 이름으로 판별한다 — 잔재 시트는 ResidueArtSlicer가 이름을 붙여 뒀고
-    // (Terrain_/Platform_/Enemy_/Item_/Shortcut_/Prop_/Rewind_/Watcher_),
+    // (Terrain_/Platform_/Item_/Shortcut_/Prop_/Rewind_와 행동별 적 클립 접두사),
     // 플레이스홀더는 파일 이름 그대로(Tile/Player/Enemy/Fragment/Platform)다.
     public class ResidueArtTests
     {
         static readonly string[] ResiduePrefixes =
             { "Terrain_", "Platform_", "Rewind_", "Hazard_", "Prop_", "AmbientVFX_",
-              "Player_", "Enemy_", "Item_", "Shortcut_", "Watcher_" };
+              "Player_", "Enemy_", "Walker", "Carrier", "Finger", "Hardened", "Instructor",
+              "Item_", "Shortcut_", "Watcher_", "ResidueGround", "ResiduePlatform",
+              "ResidueWall", "ResidueClimb", "Residue_Background_" };
 
         [SetUp]
         public void Setup() => LogAssert.ignoreFailingMessages = true;
@@ -70,6 +72,21 @@ namespace HiddenWeight.Tests
                 + " / 프레임 전환 " + changed);
 
             Assert.IsTrue(changed, "플레이어 스프라이트가 한 프레임에 멈춰 있다 — 재생이 안 된다.");
+
+            SpriteAnimator carrier = null;
+            foreach (var animator in animators)
+                if (animator.Has("CarrierIdle")) { carrier = animator; break; }
+            Assert.IsNotNull(carrier, "R07 애도 운반자 애니메이터가 없다.");
+            carrier.Play("CarrierIdle", true);
+            yield return null;
+
+            var carrierSprite = carrier.Renderer.sprite;
+            Assert.IsNotNull(carrierSprite);
+            Assert.AreEqual(310f, carrierSprite.rect.width, 0.1f,
+                "운반자 프레임이 314px 셀 경계를 그대로 포함해 이웃 행이 번질 수 있다.");
+            float normalizedPivotY = carrierSprite.pivot.y / carrierSprite.rect.height;
+            Assert.That(normalizedPivotY, Is.InRange(0.05f, 0.1f),
+                "운반자 피벗이 몸체의 바닥이 아니라 셀 중앙에 있어 그림이 아래로 처진다.");
         }
 
         // 리뷰에서 나온 세 문제를 회귀로 막는다:
@@ -171,14 +188,43 @@ namespace HiddenWeight.Tests
 
             Assert.Greater(residue, 0, "잔재 아트가 하나도 안 쓰이고 있다.\n" + report);
 
+            Assert.IsTrue(counts.ContainsKey("Residue_Background_Bridge_v3")
+                && counts.ContainsKey("Residue_Background_Shaft_v3")
+                && counts.ContainsKey("Residue_Background_BellTower_v3"),
+                "잔재 V3 원경 3종이 Full 씬에 모두 배치되지 않았다.\n" + report);
+            bool foundModularTerrain = false;
+            foreach (var key in counts.Keys)
+                if (key.StartsWith("ResidueGround") || key.StartsWith("ResiduePlatform"))
+                    foundModularTerrain = true;
+            Assert.IsTrue(foundModularTerrain,
+                "늘리지 않는 잔재 V3 바닥 모듈이 런타임에 생성되지 않았다.\n" + report);
+
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+                Assert.AreNotEqual("TraversalVisibilityLine", renderer.sprite?.name,
+                    "잔재 V3 위에 노란 디버그형 충돌선이 아직 남아 있다: " + renderer.name);
+
             // 핵심 항목이 실제 아트로 바뀌었는지 개별 확인.
-            foreach (var required in new[] { "Terrain_", "Item_", "Enemy_", "Shortcut_" })
+            foreach (var required in new[] { "Terrain_", "Item_", "Shortcut_" })
             {
                 bool found = false;
                 foreach (var key in counts.Keys)
                     if (key.StartsWith(required)) { found = true; break; }
                 Assert.IsTrue(found, required + " 계열 아트가 씬에 하나도 없다.\n" + report);
             }
+
+            bool foundEnemyArt = false;
+            foreach (var key in counts.Keys)
+            {
+                if (key.StartsWith("Walker") || key.StartsWith("Carrier")
+                    || key.StartsWith("Finger") || key.StartsWith("Hardened")
+                    || key.StartsWith("Watcher_") || key.StartsWith("Instructor"))
+                {
+                    foundEnemyArt = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(foundEnemyArt, "잔재 적 행동 클립 아트가 씬에 하나도 없다.\n" + report);
         }
     }
 }

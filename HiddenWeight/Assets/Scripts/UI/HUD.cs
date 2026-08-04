@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using HiddenWeight.Core;
 using HiddenWeight.Data;
 using HiddenWeight.Emotions;
@@ -40,7 +41,9 @@ namespace HiddenWeight.UI
         float _skillNameTimer;
 
         GameObject _channelGroup;
+        Image _channelBackground;
         Image _channelFill;
+        Text _channelLabel;
 
         GameObject _bossGroup;
         Text _bossName;
@@ -307,6 +310,7 @@ namespace HiddenWeight.UI
 
             if (active is RewindSkill rewind && rewind.IsActive && rewind.CurrentTarget != null)
             {
+                ConfigureChannelStyle(SceneManager.GetActiveScene().name.Contains("Residue"));
                 _channelGroup.SetActive(true);
                 _channelFill.fillAmount = rewind.ChannelProgress;
                 PositionChannel(rewind.CurrentTarget.position);
@@ -368,7 +372,17 @@ namespace HiddenWeight.UI
 
         void HandleBossHealthChanged(int current, int max)
         {
-            _bossHealthFill.fillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+            float ratio = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+            _bossHealthFill.fillAmount = ratio;
+
+            // Source Image가 없는 런타임 생성 Image는 Filled 타입이어도 흰 텍스처 전체를
+            // 그려 fillAmount가 화면에 반영되지 않는다. 실제 RectTransform의 오른쪽 앵커를
+            // 체력 비율만큼 줄여 스프라이트 유무와 관계없이 확실히 감소시킨다.
+            var rt = _bossHealthFill.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = new Vector2(ratio, 1f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
         void UnbindBoss()
@@ -534,8 +548,8 @@ namespace HiddenWeight.UI
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.sizeDelta = new Vector2(84f, 84f);
 
-            var background = _channelGroup.AddComponent<Image>();
-            background.color = new Color(0.1f, 0.08f, 0.03f, 0.4f);
+            _channelBackground = _channelGroup.AddComponent<Image>();
+            _channelBackground.color = new Color(0.1f, 0.08f, 0.03f, 0.4f);
 
             var fill = new GameObject("ChannelFill", typeof(RectTransform));
             fill.transform.SetParent(_channelGroup.transform, false);
@@ -550,7 +564,47 @@ namespace HiddenWeight.UI
             fillRt.anchorMax = Vector2.one;
             fillRt.offsetMin = new Vector2(6f, 6f);
             fillRt.offsetMax = new Vector2(-6f, -6f);
+
+            _channelLabel = UIBuilder.CreateText(_channelGroup.transform, "ChannelLabel", 16,
+                TextAnchor.MiddleCenter);
+            _channelLabel.text = "되감는 중";
+            _channelLabel.color = new Color(1f, 0.96f, 0.84f, 0.96f);
+            var labelRt = _channelLabel.rectTransform;
+            labelRt.anchorMin = Vector2.zero;
+            labelRt.anchorMax = Vector2.one;
+            labelRt.offsetMin = Vector2.zero;
+            labelRt.offsetMax = Vector2.zero;
+            ConfigureChannelStyle(SceneManager.GetActiveScene().name.Contains("Residue"));
             _channelGroup.SetActive(false);
+        }
+
+        void ConfigureChannelStyle(bool residue)
+        {
+            var group = (RectTransform)_channelGroup.transform;
+            var fill = _channelFill.rectTransform;
+            if (residue)
+            {
+                group.sizeDelta = new Vector2(148f, 42f);
+                _channelBackground.color = new Color(0.04f, 0.035f, 0.055f, 0.88f);
+                _channelFill.color = new Color(0.86f, 0.7f, 0.35f, 0.72f);
+                _channelFill.fillMethod = Image.FillMethod.Horizontal;
+                _channelFill.fillOrigin = 0;
+                fill.offsetMin = new Vector2(4f, 4f);
+                fill.offsetMax = new Vector2(-4f, -4f);
+            }
+            else
+            {
+                // 응시·균열에서 되감기를 다시 사용할 때는 기존 원형 표시를 유지한다.
+                group.sizeDelta = new Vector2(84f, 84f);
+                _channelBackground.color = new Color(0.1f, 0.08f, 0.03f, 0.4f);
+                _channelFill.color = new Color(1f, 0.78f, 0.28f, 0.9f);
+                _channelFill.fillMethod = Image.FillMethod.Radial360;
+                _channelFill.fillOrigin = 2;
+                _channelFill.fillClockwise = false;
+                fill.offsetMin = new Vector2(6f, 6f);
+                fill.offsetMax = new Vector2(-6f, -6f);
+            }
+            _channelLabel.gameObject.SetActive(residue);
         }
 
         void BuildBossGroup(Transform parent)
@@ -585,8 +639,8 @@ namespace HiddenWeight.UI
             healthFill.transform.SetParent(healthBg.transform, false);
             _bossHealthFill = healthFill.AddComponent<Image>();
             _bossHealthFill.color = new Color(0.86f, 0.78f, 0.72f, 0.95f);
-            _bossHealthFill.type = Image.Type.Filled;
-            _bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
+            _bossHealthFill.type = Image.Type.Simple;
+            _bossHealthFill.raycastTarget = false;
             var fillRt = _bossHealthFill.rectTransform;
             fillRt.anchorMin = Vector2.zero;
             fillRt.anchorMax = Vector2.one;

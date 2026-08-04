@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -104,10 +105,15 @@ namespace HiddenWeight.Tests
 
             Assert.AreEqual(sceneName, SceneManager.GetActiveScene().name,
                 buttonName + "을 눌러도 해당 단계로 이동하지 않았다.");
-            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Rewind));
-            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Hush));
-            Assert.IsTrue(GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Foresight));
-            Assert.IsTrue(GameManager.Instance.Progress.HasAwareness);
+            bool residue = sceneName.Contains("Residue");
+            Assert.AreEqual(!residue,
+                GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Rewind),
+                "잔재는 R05 전까지 되감기가 잠겨 있어야 한다.");
+            Assert.AreEqual(!residue,
+                GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Hush));
+            Assert.AreEqual(!residue,
+                GameManager.Instance.Progress.HasSkill(HiddenWeight.Data.EmotionId.Foresight));
+            Assert.AreEqual(!residue, GameManager.Instance.Progress.HasAwareness);
         }
 
         [UnityTest]
@@ -251,6 +257,27 @@ namespace HiddenWeight.Tests
             log.Show("첫 기억", 0.1f);
             log.Show("두 번째 기억", 0.1f);
             Assert.GreaterOrEqual(log.PendingCount, 2);
+        }
+
+        [UnityTest]
+        public IEnumerator 보스_체력바는_현재체력_비율만큼_실제폭이_줄어든다()
+        {
+            yield return SceneManager.LoadSceneAsync("Zone_Residue_Full", LoadSceneMode.Single);
+            yield return null;
+
+            var hud = Object.FindAnyObjectByType<HUD>();
+            Assert.IsNotNull(hud);
+            var update = typeof(HUD).GetMethod("HandleBossHealthChanged",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(update);
+            update.Invoke(hud, new object[] { 4, 8 });
+
+            var fillField = typeof(HUD).GetField("_bossHealthFill",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var fill = fillField?.GetValue(hud) as Image;
+            Assert.IsNotNull(fill);
+            Assert.That(fill.rectTransform.anchorMax.x, Is.EqualTo(0.5f).Within(0.001f),
+                "보스 체력이 절반인데 하단 게이지 실제 폭이 줄지 않는다.");
         }
     }
 }

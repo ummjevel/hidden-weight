@@ -9,8 +9,11 @@ namespace HiddenWeight.World
     // "먼저 내려갔다가 올라가는" 역행 승강기가 된다(FRACTURE_LEVEL_DESIGN.md 4.8절).
     //
     // MovingPlatform과 나누는 이유: 저쪽은 시간만으로 위치가 정해지는 무한 왕복이고, 이쪽은
-    // 플레이어가 올라타야 시작해서 끝에서 멈추고 숏컷을 여는 1회성 장치다. 두 성질을 한
-    // 컴포넌트에 넣으면 예지 예측식이 상태에 의존하게 되어 고스트가 어긋난다.
+    // 플레이어가 올라타야 시작하는 장치다. 종점에서 숏컷을 연 뒤 기본은 그대로 멈추지만
+    // (returnDelay=0), returnDelay를 주면 그만큼 기다렸다가 출발점으로 돌아가 다시 탈 수
+    // 있다 — 숏컷은 첫 종점 도착 때 한 번만 연다. 시간만으로 움직이는 MovingPlatform과
+    // 합치지 않는 이유는 그대로다: 두 성질을 한 컴포넌트에 넣으면 예지 예측식이 상태에
+    // 의존하게 되어 고스트가 어긋난다.
     [RequireComponent(typeof(Rigidbody2D))]
     public class LiftPlatform : MonoBehaviour, IForeseeable
     {
@@ -18,7 +21,14 @@ namespace HiddenWeight.World
         [SerializeField] Vector2[] waypoints = { new Vector2(0f, 10f) };
         [SerializeField] float speed = 3f;
         [SerializeField] float startDelay = 0.6f;   // 올라탄 뒤 출발까지. 예지를 쓸 시간을 준다
+        // 0이면 편도(종점에 도착한 채로 영구히 멈춘다 — 기존 동작). 0보다 크면 종점 도착 후
+        // 이만큼 기다렸다가 출발점으로 되돌아가고, 도착하면 다시 탈 수 있게 초기화된다.
+        [SerializeField] float returnDelay = 0f;
         [SerializeField] Shortcut linkedShortcut;   // 종점에 닿으면 열린다(숏컷 B)
+        // 방이 씬으로 갈라진 뒤로 승강기와 숏컷은 서로 다른 씬에 산다(G08→G03). 유니티는
+        // 씬을 넘는 오브젝트 참조를 저장하지 못해 linkedShortcut이 null로 구워지므로,
+        // Rewindable과 같은 방식으로 id 기반 대안을 둔다.
+        [SerializeField] string linkedShortcutId;
 
         Rigidbody2D _rb;
         SpriteRenderer _sprite;
@@ -29,6 +39,8 @@ namespace HiddenWeight.World
         int _leg = -1;      // -1이면 아직 출발 전
         float _delayTimer;
         bool _finished;
+        bool _returning;     // 종점에서 출발점으로 되돌아가는 중
+        bool _shortcutOpened; // 왕복 중 종점에 다시 닿아도 숏컷을 또 열지 않기 위한 가드
 
         public bool IsRunning => _leg >= 0 && !_finished;
 
@@ -57,17 +69,23 @@ namespace HiddenWeight.World
 
         void Start()
         {
-            // 한 번 종점까지 운행해 숏컷을 연 뒤에는 재방문 때 같은 이동을 기다리게 하지 않는다.
-            // Shortcut.Start의 실행 순서에 기대지 않고 저장 상태를 직접 읽어 두 지역에서 동일하게 복원한다.
-            if (linkedShortcut == null || waypoints == null || waypoints.Length == 0) return;
-            if (GameManager.Instance == null
-                || !GameManager.Instance.Progress.IsShortcutOpen(linkedShortcut.Id)) return;
+            // 왕복 승강기(returnDelay > 0)는 매번 다시 탈 수 있어야 하므로 항상 출발점에서
+            // 시작한다 — "숏컷이 이미 열렸다"는 사실과 "승강기가 지금 어디 있는가"는 별개다.
+            // 편도 승강기만 아래 규칙을 적용한다: 한 번 종점까지 운행해 숏컷을 연 뒤에는
+            // 재방문 때 같은 이동을 기다리게 하지 않는다. Shortcut.Start의 실행 순서에
+            // 기대지 않고 저장 상태를 직접 읽어 두 지역에서 동일하게 복원한다.
+            if (returnDelay > 0f) return;
+
+            string id = linkedShortcut != null ? linkedShortcut.Id : linkedShortcutId;
+            if (string.IsNullOrEmpty(id) || waypoints == null || waypoints.Length == 0) return;
+            if (GameManager.Instance == null || !GameManager.Instance.Progress.IsShortcutOpen(id)) return;
 
             var destination = Target(waypoints.Length - 1);
             transform.position = destination;
             _rb.position = destination;
             _leg = waypoints.Length - 1;
             _finished = true;
+            _shortcutOpened = true;
         }
 
         // 발판 바로 위를 매 스텝 훑어 탑승자를 옮긴다.
@@ -101,7 +119,7 @@ namespace HiddenWeight.World
                 return;
             }
 
-            var target = Target(_leg);
+            var target = _returning ? _origin : Target(_leg);
             var next = Vector3.MoveTowards(transform.position, target, speed * Time.fixedDeltaTime);
             var delta = next - transform.position;
 
@@ -110,15 +128,51 @@ namespace HiddenWeight.World
 
             if ((next - target).sqrMagnitude > 0.0001f) return;
 
+            if (_returning)
+            {
+                // 출발점 복귀 완료. 다시 탈 수 있는 상태로 되돌린다.
+                _returning = false;
+                _leg = -1;
+                AudioManager.Instance?.PlaySfx(SfxCue.LiftStop, 0.55f);
+                return;
+            }
+
             _leg++;
             if (_leg < waypoints.Length) return;
 
             // 종점 도착. 여기서만 숏컷이 열린다 — 도중에 내려도 열리지 않아야
             // "승강기를 상층까지 작동시키면"이라는 조건이 성립한다.
-            _finished = true;
             _leg = waypoints.Length - 1;
             AudioManager.Instance?.PlaySfx(SfxCue.LiftStop, 0.55f);
-            if (linkedShortcut != null) linkedShortcut.Open();
+            OpenLinkedShortcut();
+
+            if (returnDelay > 0f)
+            {
+                // 편도로 멈추는 대신 이만큼 기다렸다가 출발점으로 되돌아간다.
+                _delayTimer = returnDelay;
+                _returning = true;
+            }
+            else
+            {
+                _finished = true;
+            }
+        }
+
+        void OpenLinkedShortcut()
+        {
+            if (_shortcutOpened) return;
+            _shortcutOpened = true;
+
+            if (linkedShortcut != null)
+            {
+                linkedShortcut.Open();
+            }
+            // 숏컷이 다른 방 씬에 있어 지금 메모리에 없는 경우다. 진행 상태에만 열림을 남긴다
+            // (Rewindable.TryOpenLinkedShortcut과 같은 이유).
+            else if (!string.IsNullOrEmpty(linkedShortcutId) && GameManager.Instance != null)
+            {
+                GameManager.Instance.Progress.MarkShortcutOpen(linkedShortcutId);
+            }
         }
 
         // 예지: 남은 경로를 그대로 따라가 lead초 뒤 위치를 계산한다. 아직 출발 전이면
@@ -129,6 +183,15 @@ namespace HiddenWeight.World
 
             var position = transform.position;
             float remaining = leadSeconds - Mathf.Max(0f, _delayTimer);
+
+            if (_returning)
+            {
+                if (remaining <= 0f) return position;
+                float distance = Vector3.Distance(position, _origin);
+                float travel = speed * remaining;
+                return travel < distance ? Vector3.MoveTowards(position, _origin, travel) : _origin;
+            }
+
             for (int leg = _leg; leg < waypoints.Length && remaining > 0f; leg++)
             {
                 var target = Target(leg);

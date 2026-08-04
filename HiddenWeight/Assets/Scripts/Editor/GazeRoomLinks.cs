@@ -32,15 +32,31 @@ namespace HiddenWeight.EditorTools
             Link("gaze_G11_G12", "G11", Side.E, new Vector2(28, 4), "G12", new Vector2(0, 4)),
 
             // 비밀방 3곳. 예전에는 수직 샤프트였고 셋 다 위쪽 방에서 아래로 내려간다.
-            // 잔재에서 겪었듯 샤프트 좌표는 벽만 세우고 타일을 뚫지 않아 그대로 문으로 쓰면
-            // 닿지 않을 수 있다 — 실제 도달 가능 여부는 씬을 구운 뒤 확인해야 한다.
-            Link("gaze_G04_GS1", "G04", Side.D, new Vector2(8, 0), "GS1", new Vector2(8, 2)),
-            Link("gaze_G06_GS2", "G06", Side.D, new Vector2(20, 0), "GS2", new Vector2(20, 2)),
-            Link("gaze_G11_GS3", "G11", Side.D, new Vector2(9, 1), "GS3", new Vector2(9, 2)),
+            //
+            // 도착 앵커(toAnchor) y가 세 곳 다 2로, 각 비밀방 바닥 표면(y=2)과 똑같았다.
+            // RoomDoor.DefaultArrivalOffset(Side.U)가 도착점에서 y를 1.5 더 내리므로(문
+            // 위에서 떨어져 들어오는 느낌을 주려는 것) 실제 도착 y는 0.5 — 바닥 아래에
+            // 박혀 캐릭터가 끼었다(GS1에서 실측 확인). y=4로 올려 도착 후에도 바닥(2)
+            // 위 0.5만큼 여유를 둔다.
+            //
+            // GS1은 G04의 지그재그 하강 주 동선(x=9 이후)과 물리적으로 분리하기 위해
+            // 맨 왼쪽(로컬 0~1)으로 옮겼다 — 일부러 왼쪽 끝까지 걸어가야만 찾는다.
+            Link("gaze_G04_GS1", "G04", Side.D, new Vector2(0.5f, 0), "GS1", new Vector2(4, 4)),
+            Link("gaze_G06_GS2", "G06", Side.D, new Vector2(20, 0), "GS2", new Vector2(20, 4)),
+            Link("gaze_G11_GS3", "G11", Side.D, new Vector2(9, 1), "GS3", new Vector2(9, 4)),
+
+            // 물리적 숏컷 C(G07↔G10)의 실제 통로. Shortcut 컴포넌트 자체는 "열림" 상태만
+            // 기록할 뿐 방과 방을 잇지 않는다(원래 한 씬 안에서 막힌 길을 트는 방식이었던
+            // BuildShortcut·ShortcutPassage가 방 단위 씬 분리 후에는 아무 곳에도 연결되지
+            // 않는 죽은 코드로 남았다) — 그래서 숏컷 C를 승리로 열어도 G07↔G10 사이를
+            // 오갈 방법이 전혀 없었다. requiredShortcutId로 gaze_shortcut_c가 열렸을 때만
+            // 반응하는 문 한 쌍을 정식 RoomLink로 추가해 실제 통로를 만든다.
+            Link("gaze_shortcut_c_passage", "G07", Side.S, new Vector2(33, 11.5f), "G10", new Vector2(2, 4.5f),
+                requiredShortcutId: "gaze_shortcut_c"),
         };
 
         static RoomLink Link(string id, string from, Side fromSide, Vector2 fromAnchor,
-            string to, Vector2 toAnchor) => new RoomLink
+            string to, Vector2 toAnchor, string requiredShortcutId = null) => new RoomLink
             {
                 linkId = id,
                 fromRoom = from,
@@ -49,6 +65,7 @@ namespace HiddenWeight.EditorTools
                 toSide = RoomLink.Opposite(fromSide),
                 fromAnchor = fromAnchor,
                 toAnchor = toAnchor,
+                requiredShortcutId = requiredShortcutId,
             };
 
         [MenuItem("Hidden Weight/Build Gaze Room Links")]

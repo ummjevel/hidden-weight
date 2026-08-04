@@ -14,7 +14,9 @@
 | TitleScreen.cs | 타이틀 화면(이어하기/새 게임/설정/제작진), `SaveService`와 연동 | 4장 씬 구성 |
 | PauseSectionPanel.cs | 스크롤 가능한 지역 노드 지도·기억 카드·조작·접근성 설정 | UI_UX_DESIGN |
 | StatusEmblem.cs | 지역 의미에 맞는 능력·노출·위험·진행 문양 | UI_UX_DESIGN |
-| TutorialHint.cs | 월드 공간 `TextMesh` 조작 안내 — 플레이어가 `showRadius`(5유닛) 안에 오면 페이드 인. 프롤로그 3곳(이동/점프·대시/벽점프) + 스킬 획득 지점 4곳에 `ZoneSceneBuilder`가 배치 (2026-07-26 추가) | WORLD_MAP 1.3 튜토리얼 UI |
+| TutorialHint.cs | 지역 스킬 획득 지점용 월드 공간 `TextMesh` 안내 — 플레이어가 가까이 오면 페이드 인 | UI_UX_DESIGN 7장 |
+| PrologueActionHint.cs | 프롤로그 T01~T03 전용 맥락형 안내. 이동·점프·벽점프·대시·공격을 실제 수행하면 해당 안내를 영구히 숨기고 키 리맵·게임패드 표기를 반영 | LEVEL_10_DREAM_TUTORIAL 1·4·5장 |
+| PrologueConceptHint.cs | 프롤로그 T01~T04 전용 세계·목표 안내. 안전 구간 진입 시 한 번만 페이드 인하고 이동이나 확인 입력을 막지 않음 | LEVEL_10_DREAM_TUTORIAL 0·1·4장 |
 
 ## 핵심 규칙 구현
 

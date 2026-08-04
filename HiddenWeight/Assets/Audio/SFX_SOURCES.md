@@ -1,5 +1,39 @@
 # HiddenWeight SFX sources
 
+## Generic gameplay foley replacement (2026-08-02)
+
+The 59 runtime WAV files in the cue groups below were replaced with short,
+ordinary foley built from the official Kenney CC0 packs. Existing Unity paths,
+filenames, and `.meta` files were preserved so the current `SfxCue` loading and
+serialized references continue to work without code changes.
+
+- [Kenney Impact Sounds](https://www.kenney.nl/assets/impact-sounds)
+- [Kenney RPG Audio](https://www.kenney.nl/assets/rpg-audio)
+- [Kenney asset license guidance](https://kenney.nl/support)
+
+Replaced cue groups: `Attack`, `AttackHit`, `Jump`, `Land`, `FootstepWalk`,
+`FootstepRun`, `WallGrab`, `Hurt`, `Death`, `EnemyHit`, `EnemyDeath`,
+`EnemyBlock`, `EnemyTelegraph`, `BossTelegraph`, `BossVictory`,
+`PlatformCrack`, `PlatformCollapse`, `GateOpen`, `GateClose`, `LiftStart`, and
+`LiftStop`. Player hurt and death are intentionally non-vocal cloth/body foley.
+The retained `Player_Land_Heavy_*` filenames now contain ordinary landing
+variations; their names remain only to preserve Unity asset identity.
+
+Signature and progression cues were not replaced: `Dash`, `WallSlide`,
+`WallJump`, `Respawn`, `Heal`, `Checkpoint`, `Fragment`, `ItemPickup`, `Reward`,
+`ShortcutOpen`, `RewindStart`, `RewindComplete`, `BossPhase`, `SecretReveal`,
+UI, ambience, and BGM remain as before.
+
+Build provenance and recovery files are stored outside the Unity project:
+
+- Original Kenney packs: `/Users/ksh/Desktop/sound/CC0_Kenney`
+- Staged masters and per-file report: `/Users/ksh/Desktop/sound/Generic_Foley_Replacement`
+- Pre-replacement backup and hash manifest: `/Users/ksh/Desktop/sound/Backups/Unity_SFX_PreGenericFoley_2026-08-02`
+
+For the replaced cue groups, this section supersedes the older source tables
+below. Those tables remain as historical provenance for previous iterations and
+for signature cues that were intentionally retained.
+
 ## User-created / AI-generated source assets
 
 Edited for gameplay use as 48 kHz, 16-bit mono WAV files:

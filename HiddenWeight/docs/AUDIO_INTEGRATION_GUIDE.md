@@ -75,18 +75,18 @@ public enum SfxCue
 
 | 기능 | 원본 음원 | Unity 목적지 | 이미 호출하는 코드와 시점 |
 |---|---|---|---|
-| 공격 휘두르기 | `sound/HiddenWeight_Unity_SFX/Player_Attack_Swing_01~03.wav` | `Assets/Resources/Audio/SFX/Attack/` | `PlayerAttack.Attack()` 공격 시작 |
-| 공격 적중 | `Selected_Refined/Player/SFX_PLAYER_ATTACK_HIT/...wav` | `Assets/Resources/Audio/SFX/AttackHit/` | `PlayerAttack.Attack()`에서 실제 적중 후 |
-| 점프 | `sound/HiddenWeight_Unity_SFX/Player_Jump_01.wav` | `Assets/Resources/Audio/SFX/Jump/` | `PlayerController.Jump()` |
+| 공격 휘두르기 | Kenney CC0 범용 칼날·천 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/Attack/` | `PlayerAttack.Attack()` 공격 시작 |
+| 공격 적중 | Kenney CC0 범용 타격 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/AttackHit/` | `PlayerAttack.Attack()`에서 실제 적중 후 |
+| 점프 | Kenney CC0 범용 천·가벼운 충격 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/Jump/` | `PlayerController.Jump()` |
 | 벽점프 | `Selected_Refined/Player/SFX_PLAYER_WALL_JUMP/...wav` | `Assets/Resources/Audio/SFX/WallJump/` | `PlayerController.Jump()`의 `isWallJump` 분기 |
 | 대시 | `sound/HiddenWeight_Unity_SFX/Player_Dash_01.wav` | `Assets/Resources/Audio/SFX/Dash/` | `PlayerController` 대시 시작 |
-| 일반 착지 | `sound/HiddenWeight_Unity_SFX/Player_Land_Normal_01.wav` | `Assets/Resources/Audio/SFX/Land/` | `PlayerController.SetState(Land)` |
-| 걷기 | `sound/HiddenWeight_Unity_SFX/Player_Walk_Stone_01.wav` | `Assets/Resources/Audio/SFX/FootstepWalk/` | `PlayerController` 이동 타이머 |
-| 달리기 | `sound/HiddenWeight_Unity_SFX/Player_Run_Stone_01.wav` | `Assets/Resources/Audio/SFX/FootstepRun/` | `PlayerController` 이동 타이머 |
-| 벽 잡기 | `Selected_Refined/Player/SFX_PLAYER_WALL_CLING/...wav` | `Assets/Resources/Audio/SFX/WallGrab/` | `PlayerController.SetState(WallCling)` 진입 |
+| 일반 착지 | Kenney CC0 범용 콘크리트·천 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/Land/` | `PlayerController.SetState(Land)` |
+| 걷기 | Kenney CC0 콘크리트 발소리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/FootstepWalk/` | `PlayerController` 이동 타이머 |
+| 달리기 | Kenney CC0 콘크리트 발소리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/FootstepRun/` | `PlayerController` 이동 타이머 |
+| 벽 잡기 | Kenney CC0 콘크리트·천 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/WallGrab/` | `PlayerController.SetState(WallCling)` 진입 |
 | 벽 미끄러짐 | `sound/HiddenWeight_Unity_SFX/Player_Wall_Slide_Loop_01.wav` | `Assets/Resources/Audio/SFX/WallSlide/` | `PlayerController` 벽 상태 진입/종료 |
-| 플레이어 피격 | `Selected_Refined/Player/SFX_PLAYER_HURT/...wav` | `Assets/Resources/Audio/SFX/Hurt/` | `PlayerHealth.TakeDamage()` |
-| 플레이어 사망 | `Selected_Refined/Player/SFX_PLAYER_DEATH/...wav` | `Assets/Resources/Audio/SFX/Death/` | `PlayerHealth.TakeDamage()`에서 체력 0 |
+| 플레이어 피격 | Kenney CC0 무음성 몸·천 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/Hurt/` | `PlayerHealth.TakeDamage()` |
+| 플레이어 사망 | Kenney CC0 무음성 몸·천·가죽 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/Death/` | `PlayerHealth.TakeDamage()`에서 체력 0 |
 | 부활 | `Selected_Refined/Player/SFX_PLAYER_RESPAWN/...wav` | `Assets/Resources/Audio/SFX/Respawn/` | `PlayerHealth.Respawn()` |
 | 회복 | `Selected_Refined/Player/SFX_PLAYER_HEAL/...wav` | `Assets/Resources/Audio/SFX/Heal/` | `HealingPickup.OnTriggerEnter2D()` |
 | 일반 아이템 | `Assets/Resources/Audio/SFX/ItemPickup/`의 기존 CC0 | 같은 폴더 유지 | `CurrencyPickup.OnTriggerEnter2D()` |
@@ -95,11 +95,11 @@ public enum SfxCue
 | 기억 파편 | `Selected_Refined/World/SFX_MEMORY_FRAGMENT_PICKUP/...wav` | `Assets/Resources/Audio/SFX/Fragment/` | `StoryFragment.OnTriggerEnter2D()` |
 | UI 확정 | `Assets/Resources/Audio/SFX/UiConfirm/`의 기존 CC0 | 같은 폴더 유지 | `UIBuilder.CreateButton()` 클릭 |
 | 숏컷 개방 | `Selected_Refined/World/SFX_GATE_UNLOCK/...wav` | `Assets/Resources/Audio/SFX/ShortcutOpen/` | `Shortcut.Open()` |
-| 일반 적 피격 | 우선 `SFX_WALKER_HIT` 사용 | `Assets/Resources/Audio/SFX/EnemyHit/` | `Enemy.TakeDamage()` |
-| 일반 적 사망 | 우선 `SFX_WALKER_DEATH` 사용 | `Assets/Resources/Audio/SFX/EnemyDeath/` | `Enemy.TakeDamage()` 체력 0 |
-| 보스 예고 | 보스별 `*_TELEGRAPH`, `*_WARNING` | `Assets/Resources/Audio/SFX/BossTelegraph/` | `BossController.PerformMove()` |
+| 일반 적 피격 | Kenney CC0 범용 타격 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/EnemyHit/` | `Enemy.TakeDamage()` |
+| 일반 적 사망 | Kenney CC0 범용 목재·둔탁 충격 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/EnemyDeath/` | `Enemy.TakeDamage()` 체력 0 |
+| 보스 예고 | Kenney CC0 짧은 천·기계 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/BossTelegraph/` | `BossController.PerformMove()` |
 | 보스 페이즈 | `SFX_INSTRUCTOR_PHASE_RUPTURE` | `Assets/Resources/Audio/SFX/BossPhase/` | `BossController.UpdatePhase()` |
-| 보스 승리 | 전용 신규 음원 또는 `SFX_INSTRUCTOR_DEATH`의 짧은 꼬리 | `Assets/Resources/Audio/SFX/BossVictory/` | `Encounter.Victory()` |
+| 보스 승리 | Kenney CC0 범용 붕괴 충격 폴리(2026-08-02 교체) | `Assets/Resources/Audio/SFX/BossVictory/` | `Encounter.Victory()` |
 
 `PlayerController`의 발소리는 현재 애니메이션 프레임이 아니라 시간 간격으로 재생된다. 우선은
 그대로 적용하고, 나중에 `SpriteAnimator.FrameDisplayed`를 구독해 발 접촉 프레임으로 옮기는
@@ -342,7 +342,7 @@ Random One-shot Volume: 0.05~0.14
 | 프롤로그 | `Assets/ScriptableObjects/Zone_Prologue.asset` | 미지정, 임시 절차음 |
 | 잔재 | `Assets/ScriptableObjects/Zone_Residue.asset` | `Assets/Audio/Residue_BGM.mp3` 연결됨 |
 | 응시 | `Assets/ScriptableObjects/Zone_Gaze.asset` | 미지정, 임시 절차음 |
-| 균열 | `Assets/ScriptableObjects/Zone_Fracture.asset` | 미지정, 임시 절차음 |
+| 균열 | `Assets/ScriptableObjects/Zone_Fracture.asset` | `Assets/Audio/Fracture_BGM.mp3` 연결됨 |
 | 엔딩 | Ending 씬의 `EndingSequence.endingBgm` | 전용 필드에 직접 할당 |
 
 타이틀 음악은 현재 `TitleScreen`에서 재생 요청을 하지 않는다. 타이틀 BGM을 만들면

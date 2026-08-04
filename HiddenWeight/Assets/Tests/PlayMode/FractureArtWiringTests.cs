@@ -158,6 +158,35 @@ namespace HiddenWeight.Tests
                 string.Join(", ", visibleCollisionPlaceholders));
         }
 
+        [UnityTest]
+        public IEnumerator 활성_방_배경이_카메라_화면을_모두_덮는다()
+        {
+            yield return LoadFracture();
+
+            var room = GameObject.Find("FractureRoom01");
+            Assert.IsNotNull(room, "F01 방을 찾지 못했다.");
+
+            var background = room.GetComponentInChildren<CameraLockedRoomBackground>(true);
+            var camera = Camera.main;
+            Assert.IsNotNull(background, "F01 카메라 추적 배경이 없다.");
+            Assert.IsNotNull(camera, "메인 카메라가 없다.");
+
+            background.gameObject.SetActive(true);
+            background.Refresh(camera);
+
+            Bounds bounds = background.GetComponent<SpriteRenderer>().bounds;
+            float halfHeight = camera.orthographicSize;
+            float halfWidth = halfHeight * camera.aspect;
+            Assert.LessOrEqual(bounds.min.x,
+                camera.transform.position.x - halfWidth + 0.01f, "왼쪽 검정 여백");
+            Assert.GreaterOrEqual(bounds.max.x,
+                camera.transform.position.x + halfWidth - 0.01f, "오른쪽 검정 여백");
+            Assert.LessOrEqual(bounds.min.y,
+                camera.transform.position.y - halfHeight + 0.01f, "아래 검정 여백");
+            Assert.GreaterOrEqual(bounds.max.y,
+                camera.transform.position.y + halfHeight - 0.01f, "위 검정 여백");
+        }
+
         // 같은 방의 고정 발판과 회전 발판이 같은 그림이어야 한다. 회전 발판만 플레이스홀더로
         // 남으면 "겉모습으로 구분되지 않는다"는 균열의 규칙이 깨진다.
         [UnityTest]

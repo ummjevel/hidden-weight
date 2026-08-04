@@ -1385,14 +1385,24 @@ namespace HiddenWeight.EditorTools
             boss.GetComponent<BossController>().ConfigureDifficulty(
                 1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
+            var watcherPresentation = boss.AddComponent<ResidueBossPresentationGuard>();
+            watcherPresentation.Configure("WatcherAnimIdle");
+            watcherPresentation.ConfigureArenaFloor(c.P(0f, 3f).y);
+            boss.AddComponent<ResidueFinalBossDeathCleanup>();
 
             var reward = BuildRewardChest(c.Root.transform, "residue_r10_boss", c.P(12f, 4.5f), 40, false);
             // R09 적 처치 여부와 무관하게 이 방에 도착하면 시작하는 필수 중간 보스.
             // 전투가 시작된 뒤에는 승리할 때까지 전장을 잠그고, 승리하면 큰 재화와 숏컷을 연다.
             // 숏컷 C를 여는 것은 이 보스의 승리다(LEVEL_21_RESIDUE_ROOMS.md R10 "승리 후 R07 숏컷").
             // 숏컷 자체는 R07 씬에 있으므로 오브젝트가 아니라 id로 연결한다.
-            BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
+            var midBossEncounter = BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
                 new[] { new[] { boss } }, new int[0], reward, _shortcutC, "residue_shortcut_c");
+            SetField(midBossEncounter, "victoryObjects", p =>
+            {
+                p.arraySize = 2;
+                p.GetArrayElementAtIndex(0).objectReferenceValue = exitStepLow;
+                p.GetArrayElementAtIndex(1).objectReferenceValue = exitStepHigh;
+            });
 
             c.Room("Room10", 24f, 18f);
         }
@@ -1505,6 +1515,9 @@ namespace HiddenWeight.EditorTools
                                    "InstructorSlam", "InstructorHook" },
                 phaseClip: "InstructorPhase");
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossNeedle");
+            var professorPresentation = boss.AddComponent<ResidueBossPresentationGuard>();
+            professorPresentation.Configure("InstructorHalo");
+            professorPresentation.ConfigureArenaFloor(c.P(0f, 3f).y);
             boss.AddComponent<ResidueFinalBossDeathCleanup>();
             // 첫 지역 최종 보스는 패턴을 읽는 시험에 집중한다. 체력과 압박 속도를 함께
             // 낮춰 한 번의 실수로 연속 피격되는 구간을 줄이고, 공격 전 예고를 충분히 준다.

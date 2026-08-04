@@ -125,18 +125,29 @@ namespace HiddenWeight.Tests
             var presentation = boss.GetComponent<ResidueBossPresentationGuard>();
             Assert.IsNotNull(presentation, "R10 중간보스의 잘린 공격 프레임 방지 보정이 없다.");
             Assert.AreEqual("WatcherAnimIdle", presentation.SafeClip);
+            Assert.IsNotNull(boss.GetComponent<ResidueBossHitFeedback>(),
+                "R10 중간보스에 피격 반동이 연결되지 않았다.");
+            Assert.IsTrue(boss.GetComponent<BossController>().AttackRangesVisible,
+                "R10 중간보스가 공격 전에 실제 판정 범위를 표시하지 않는다.");
+            Assert.IsNotNull(boss.GetComponent<ResidueFinalBossDeathCleanup>(),
+                "R10 중간보스를 처치해도 형체를 즉시 지우는 처리가 없다.");
             var bossAnimator = boss.GetComponentInChildren<SpriteAnimator>(true);
             Assert.IsNotNull(bossAnimator);
             yield return null;
             Assert.IsNotNull(bossAnimator.CurrentClip,
                 "R10 중간보스 애니메이션이 정지되어 있다.");
             yield return new WaitForFixedUpdate();
-            AssertBossGrounded(boss, "R10 중간보스");
+            AssertBossGrounded(boss, "R10 중간보스",
+                FindRoom("Room10").WorldBounds.min.y + 3f);
 
             var low = FindInactive("R10_ExitStep_Low")?.GetComponent<BoxCollider2D>();
             var high = FindInactive("R10_ExitStep_High")?.GetComponent<BoxCollider2D>();
             Assert.IsNotNull(low, "R10 출구의 낮은 계단이 없다.");
             Assert.IsNotNull(high, "R10 출구의 높은 계단이 없다.");
+            Assert.IsFalse(low.gameObject.activeSelf,
+                "R10 출구 계단이 전투 중부터 나타나 중간보스를 공중으로 밀어 올린다.");
+            Assert.IsFalse(high.gameObject.activeSelf,
+                "R10 출구 계단이 전투 중부터 나타나 중간보스를 공중으로 밀어 올린다.");
 
             float floorSurface = FindRoom("Room10").WorldBounds.min.y + 3f;
             Assert.That(low.bounds.max.y - floorSurface, Is.LessThanOrEqualTo(2.3f),
@@ -177,14 +188,31 @@ namespace HiddenWeight.Tests
             var presentation = boss.GetComponent<ResidueBossPresentationGuard>();
             Assert.IsNotNull(presentation, "R12 최종 보스의 잘린 공격 프레임 방지 보정이 없다.");
             Assert.AreEqual("InstructorHalo", presentation.SafeClip);
+            Assert.IsNotNull(boss.GetComponent<ResidueInstructorPoseDriver>(),
+                "R12 최종 보스가 동일한 셀 크기의 정규화 포즈 시트를 사용하지 않는다.");
+            Assert.IsNotNull(boss.GetComponent<ResidueBossHitFeedback>(),
+                "R12 최종 보스에 피격 반동이 연결되지 않았다.");
+            Assert.IsTrue(boss.GetComponent<BossController>().AttackRangesVisible,
+                "R12 최종 보스가 공격 전에 실제 판정 범위를 표시하지 않는다.");
+            var normalizedAtlas = Resources.Load<Texture2D>(
+                "Art/Residue/Bosses/MemoryInstructor_Poses_v5");
+            Assert.IsNotNull(normalizedAtlas, "중앙 정렬한 R12 최종 보스 이미지가 로드되지 않는다.");
+            Assert.AreEqual(1536, normalizedAtlas.width);
+            Assert.AreEqual(1024, normalizedAtlas.height);
 
             var animator = boss.GetComponentInChildren<SpriteAnimator>(true);
             Assert.IsNotNull(animator);
             yield return null;
             Assert.IsNotNull(animator.CurrentClip,
                 "R12 최종 보스 애니메이션이 정지되어 있다.");
+            Vector3 idleScale = animator.Renderer.transform.localScale;
+            animator.Play("InstructorHook", true);
+            yield return null;
+            Assert.That(animator.Renderer.transform.localScale, Is.EqualTo(idleScale),
+                "R12 최종 보스가 공격 포즈로 바뀔 때 그림 크기가 변한다.");
             yield return new WaitForFixedUpdate();
-            AssertBossGrounded(boss, "R12 최종 보스");
+            AssertBossGrounded(boss, "R12 최종 보스",
+                FindRoom("Room12").WorldBounds.min.y + 3f);
         }
 
         [UnityTest]
@@ -283,6 +311,11 @@ namespace HiddenWeight.Tests
             foreach (var candidate in Object.FindObjectsByType<ZoneTrigger>(FindObjectsSortMode.None))
                 if (candidate.RequiredEncounterId == "residue_r12_boss") { trigger = candidate; break; }
             Assert.IsNotNull(trigger, "R12 보스 클리어 조건이 연결된 출구가 없다.");
+            int exitLabelCount = 0;
+            foreach (var label in trigger.GetComponentsInChildren<TextMesh>(true))
+                if (label.text == "기억의 교수자를 처치하면 열립니다.") exitLabelCount++;
+            Assert.AreEqual(1, exitLabelCount,
+                "R12 출구의 '기억의 교수자를 처치하면 열립니다.' 문구가 중복 표시된다.");
             var player = PlayerController.Instance;
 
             // 보스를 잡기 전 출구 접촉은 무시돼야 한다.
@@ -331,7 +364,7 @@ namespace HiddenWeight.Tests
             return null;
         }
 
-        static void AssertBossGrounded(Enemy boss, string label)
+        static void AssertBossGrounded(Enemy boss, string label, float arenaFloorY)
         {
             Physics2D.SyncTransforms();
             var body = boss.GetComponent<Collider2D>();
@@ -344,6 +377,8 @@ namespace HiddenWeight.Tests
             Assert.IsNotNull(hit.collider, $"{label}가 바닥에서 떠 있다.");
             Assert.That(body.bounds.min.y - hit.point.y, Is.LessThanOrEqualTo(0.03f),
                 $"{label}의 물리 몸체가 바닥에 닿지 않았다.");
+            Assert.That(body.bounds.min.y, Is.EqualTo(arenaFloorY).Within(0.03f),
+                $"{label}가 전장 바닥이 아니라 계단이나 발판 위에 떠 있다.");
             Assert.That(Mathf.Abs(art.bounds.min.y - body.bounds.min.y), Is.LessThanOrEqualTo(0.05f),
                 $"{label} 그림의 발 기준과 몸체 바닥이 어긋났다.");
         }

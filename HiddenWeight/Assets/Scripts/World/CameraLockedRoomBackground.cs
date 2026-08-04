@@ -456,6 +456,9 @@ namespace HiddenWeight.World
             foreach (var zone in FindObjectsByType<ZoneTrigger>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (!string.IsNullOrEmpty(zone.RequiredEncounterId)
+                    // 잔재 출구는 ZoneTrigger가 문 위에 잠금 문구를 직접 표시한다.
+                    // BlockedHint까지 붙이면 같은 문장이 정확히 두 번 겹친다.
+                    && !zone.gameObject.scene.name.Contains("Residue")
                     && zone.GetComponent<BlockedHint>() == null)
                     BlockedHint.AttachTo(zone.gameObject, zoneTrigger: zone);
 
@@ -915,6 +918,11 @@ namespace HiddenWeight.World
                 fill.a = Mathf.Max(fill.a, 0.48f);
                 AddWallStrip(wall, root.transform, sprite, "WallClimbSurface",
                     wall.offset.x, wall.size.x, fill, 4);
+
+                // 프롤로그 벽은 전용 우주 결정 텍스처만으로 충분히 구분된다. 양옆에
+                // 순백 픽셀 띠를 덧대면 플레이 화면에서는 임시 콜라이더 선처럼 보인다.
+                // 잔재 등 다른 지역의 등반 가독성 표시는 그대로 유지한다.
+                if (sceneName.Contains("Prologue")) continue;
 
                 float scaleX = Mathf.Max(0.0001f, Mathf.Abs(wall.transform.lossyScale.x));
                 float edgeWidth = 0.22f / scaleX;

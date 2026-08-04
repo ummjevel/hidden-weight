@@ -67,9 +67,13 @@ namespace HiddenWeight.World
 
                 candidate.transform.localScale = Vector3.one * 1.25f;
                 candidate.ConfigureDifficulty(1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
+                candidate.ConfigureAttackReadability(true);
                 var animator = candidate.GetComponentInChildren<SpriteAnimator>(true);
                 animator?.LockReferenceCenterToLocalX(0f);
-                AttachBossPresentationGuard(candidate.gameObject, "WatcherAnimIdle");
+                AttachBossPresentationGuard(candidate.gameObject, "WatcherAnimIdle",
+                    room.WorldBounds.min.y + 3f);
+                if (candidate.GetComponent<ResidueFinalBossDeathCleanup>() == null)
+                    candidate.gameObject.AddComponent<ResidueFinalBossDeathCleanup>();
             }
 
             // 저장된 Full 씬의 두 y=9 발판을 재활용해 출구 계단으로 내린다. 별도 충돌체를
@@ -88,6 +92,17 @@ namespace HiddenWeight.World
 
             PlaceExitStep(platforms[0], "R10_ExitStep_Low", room, 19.25f, 5f);
             PlaceExitStep(platforms[platforms.Count - 1], "R10_ExitStep_High", room, 22f, 7f);
+
+            // 이 계단은 보스의 시작 위치와 겹친다. 전투 중부터 켜 두면 보스가 계단 위로
+            // 밀려 올라가 공중에 떠 보이므로, 승리한 뒤 출구 동선으로만 나타나게 한다.
+            foreach (var encounter in FindObjectsByType<Encounter>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (encounter.Id != "residue_r10_boss") continue;
+                encounter.RegisterVictoryObject(platforms[0].gameObject);
+                encounter.RegisterVictoryObject(platforms[platforms.Count - 1].gameObject);
+                break;
+            }
         }
 
         static void PlaceExitStep(BoxCollider2D platform, string name, Room room, float x, float y)
@@ -371,10 +386,12 @@ namespace HiddenWeight.World
                 boss.ConfigureArena(arena.ToArray());
                 // Full 씬이 다시 빌드되지 않아도 R12에만 완화된 첫 지역 난도를 적용한다.
                 boss.ConfigureDifficulty(2.2f, 6.5f, 1.1f, 1.4f, 1.6f, 1.45f, 3.8f);
+                boss.ConfigureAttackReadability(true);
                 boss.ConfigurePresentation("InstructorRecover", "InstructorSweep", "InstructorHook",
                     "InstructorSlam", "InstructorHook", "InstructorPhase");
                 boss.GetComponentInChildren<SpriteAnimator>(true)?.LockReferenceCenterToLocalX(0f);
-                AttachBossPresentationGuard(boss.gameObject, "InstructorHalo");
+                AttachBossPresentationGuard(boss.gameObject, "InstructorHalo",
+                    r12.WorldBounds.min.y + 3f);
                 if (boss.GetComponent<ResidueFinalBossDeathCleanup>() == null)
                     boss.gameObject.AddComponent<ResidueFinalBossDeathCleanup>();
             }
@@ -402,12 +419,16 @@ namespace HiddenWeight.World
             }
         }
 
-        static void AttachBossPresentationGuard(GameObject boss, string safeClip)
+        static void AttachBossPresentationGuard(GameObject boss, string safeClip, float arenaFloorY)
         {
             if (boss == null) return;
             var guard = boss.GetComponent<ResidueBossPresentationGuard>();
             if (guard == null) guard = boss.AddComponent<ResidueBossPresentationGuard>();
             guard.Configure(safeClip);
+            guard.ConfigureArenaFloor(arenaFloorY);
+            var hitFeedback = boss.GetComponent<ResidueBossHitFeedback>();
+            if (hitFeedback == null) hitFeedback = boss.AddComponent<ResidueBossHitFeedback>();
+            hitFeedback.Configure();
         }
 
         static Shortcut Get(Dictionary<string, Shortcut> values, string id)
@@ -486,6 +507,8 @@ namespace HiddenWeight.World
         Rigidbody2D _body;
         Collider2D _collider;
         int _groundMask;
+        bool _hasArenaFloor;
+        float _arenaFloorY;
 
         public string SafeClip => _safeClip;
 
@@ -500,6 +523,20 @@ namespace HiddenWeight.World
                 if (poses == null) poses = gameObject.AddComponent<ResidueWatcherPoseDriver>();
                 poses.Configure(_animator, _collider);
             }
+            else if (!string.IsNullOrEmpty(safeClip) && safeClip.StartsWith("Instructor"))
+            {
+                var poses = GetComponent<ResidueInstructorPoseDriver>();
+                if (poses == null) poses = gameObject.AddComponent<ResidueInstructorPoseDriver>();
+                poses.Configure(_animator, _collider);
+            }
+        }
+
+        public void ConfigureArenaFloor(float worldY)
+        {
+            _hasArenaFloor = true;
+            _arenaFloorY = worldY;
+            Cache();
+            SnapToGround();
         }
 
         void Awake()
@@ -531,9 +568,8 @@ namespace HiddenWeight.World
         void FixedUpdate()
         {
             if (_enemy == null || !_enemy.IsAlive || _body == null || _collider == null) return;
-            // 낙하 공격 중에는 건드리지 않는다. 착지가 끝나 속도가 거의 0이고 실제 바닥과의
-            // 간격이 1.25유닛 이하일 때만 내린다. 낙하 공격 직후 물리 속도가 0으로 정리됐지만
-            // 발밑 접촉이 한 프레임 비어 보스가 공중에 남는 경우까지 회수한다.
+            // 낙하 공격 중에는 건드리지 않는다. 착지가 끝나 수직 속도가 거의 0일 때만
+            // 전장 바닥을 다시 확인해, 계단이나 발판에 잘못 얹힌 상태를 회수한다.
             if (Mathf.Abs(_body.linearVelocity.y) > 0.1f) return;
 
             SnapToGround();
@@ -544,6 +580,21 @@ namespace HiddenWeight.World
             if (_enemy == null || !_enemy.IsAlive || _body == null || _collider == null) return;
 
             Bounds bounds = _collider.bounds;
+            // R10/R12 보스는 계단이나 복원 발판 위가 아니라 전장 주 바닥에서 싸운다.
+            // 낙하 공격의 정점(약 6유닛)은 건드리지 않고, 착지 뒤 계단에 얹힌 경우만
+            // 원래 바닥으로 내려서 공중에 떠 보이는 상태를 회수한다.
+            if (_hasArenaFloor)
+            {
+                float arenaGap = bounds.min.y - _arenaFloorY;
+                const float maxArenaCorrection = 5f;
+                if (arenaGap > 0.01f && arenaGap <= maxArenaCorrection)
+                {
+                    transform.position += Vector3.down * arenaGap;
+                    _body.linearVelocity = new Vector2(_body.linearVelocity.x, 0f);
+                    return;
+                }
+            }
+
             const float maxGroundGap = 2f;
             var hit = Physics2D.Raycast(bounds.center, Vector2.down,
                 bounds.extents.y + maxGroundGap, _groundMask);
@@ -558,8 +609,8 @@ namespace HiddenWeight.World
         }
     }
 
-    // R12는 사망 판정과 동시에 출구가 열린다. 사망 애니메이션을 기다리는 동안 보스 형체가
-    // 문 옆에 남지 않도록 최종 보스의 그림과 잔여 파티클만 즉시 정리한다.
+    // R10/R12는 사망 판정과 동시에 출구가 열린다. 사망 애니메이션을 기다리는 동안 보스
+    // 형체가 남지 않도록 그림과 잔여 파티클을 즉시 정리한다.
     public sealed class ResidueFinalBossDeathCleanup : MonoBehaviour
     {
         Enemy _enemy;
@@ -642,21 +693,187 @@ namespace HiddenWeight.World
             Transform parent = visual.parent;
             Vector3 feetWorld = new Vector3(_collider.bounds.center.x, _collider.bounds.min.y, 0f);
             Vector3 feetLocal = parent.InverseTransformPoint(feetWorld);
+            float contactInset = ContactInsetFor(pose);
             visual.localPosition = new Vector3(
                 feetLocal.x - sprite.bounds.center.x * scale,
-                feetLocal.y - sprite.bounds.min.y * scale,
+                feetLocal.y - (sprite.bounds.min.y + contactInset) * scale,
                 visual.localPosition.z);
+        }
+
+        // 512px 셀 안의 실제 불투명 픽셀 바닥까지 남은 투명 여백(100 PPU 기준).
+        // Sprite.bounds는 투명 셀 전체를 포함하므로 이 값을 빼지 않으면 사진처럼 떠 보인다.
+        static float ContactInsetFor(int pose)
+        {
+            float[] insets = { 0.68f, 0.72f, 0.70f, 1.54f, 1.54f, 1.53f };
+            return insets[Mathf.Clamp(pose, 0, insets.Length - 1)];
         }
 
         static int PoseFor(string clip)
         {
             if (string.IsNullOrEmpty(clip)) return 0;              // Idle
             if (clip.Contains("Sweep")) return 1;                 // Sweep anticipation
-            if (clip.Contains("Charge")) return 2;                // Charge anticipation
+            if (clip.Contains("Charge")) return 4;                // Grounded charge anticipation
             if (clip.Contains("Stun")) return 3;                  // Charge impact
             if (clip.Contains("Drop")) return 4;                  // Drop attack
             if (clip.Contains("Hit") || clip.Contains("Death")) return 5;
             return 0;
+        }
+    }
+
+    // 최종 보스의 원본 애니메이션 시트는 행마다 셀 크기가 달라 클립 전환 때 본체 크기가
+    // 변한다. 동일한 512x512 셀로 정리한 투명 포즈 원본만 사용해 크기와 중심을 고정한다.
+    public sealed class ResidueInstructorPoseDriver : MonoBehaviour
+    {
+        SpriteAnimator _animator;
+        Collider2D _collider;
+        SpriteRenderer _renderer;
+        Sprite[] _poses;
+
+        public void Configure(SpriteAnimator animator, Collider2D bodyCollider)
+        {
+            _animator = animator;
+            _collider = bodyCollider;
+            _renderer = animator != null ? animator.Renderer : null;
+            EnsurePoses();
+        }
+
+        void EnsurePoses()
+        {
+            if (_poses != null) return;
+            var texture = Resources.Load<Texture2D>("Art/Residue/Bosses/MemoryInstructor_Poses_v5");
+            if (texture == null || texture.width < 3 || texture.height < 2) return;
+
+            float cellWidth = texture.width / 3f;
+            float cellHeight = texture.height / 2f;
+            _poses = new Sprite[6];
+            for (int row = 0; row < 2; row++)
+            for (int column = 0; column < 3; column++)
+            {
+                var rect = new Rect(column * cellWidth, (1 - row) * cellHeight,
+                    cellWidth, cellHeight);
+                _poses[row * 3 + column] = Sprite.Create(texture, rect,
+                    new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.Tight);
+            }
+        }
+
+        void LateUpdate()
+        {
+            if (_animator == null || _renderer == null || _collider == null) return;
+            EnsurePoses();
+            if (_poses == null) return;
+
+            int pose = Mathf.Clamp(PoseFor(_animator.CurrentClip), 0, 5);
+            Sprite sprite = _poses[pose];
+            if (sprite == null) return;
+            _renderer.sprite = sprite;
+
+            // 모든 포즈가 같은 셀과 같은 본체 비율을 사용하므로 고정 배율을 유지한다.
+            // 효과가 큰 공격에서도 본체가 작아지거나 커지지 않는다.
+            Transform visual = _renderer.transform;
+            const float displayScale = 0.9f;
+            visual.localScale = Vector3.one * displayScale;
+
+            Transform parent = visual.parent;
+            Vector3 floorWorld = new Vector3(_collider.bounds.center.x, _collider.bounds.min.y, 0f);
+            Vector3 floorLocal = parent.InverseTransformPoint(floorWorld);
+            float contactInset = ContactInsetFor(pose);
+            visual.localPosition = new Vector3(
+                floorLocal.x - sprite.bounds.center.x * displayScale,
+                floorLocal.y - (sprite.bounds.min.y + contactInset) * displayScale,
+                visual.localPosition.z);
+        }
+
+        static float ContactInsetFor(int pose)
+        {
+            // v5는 모든 포즈의 실제 접지선을 셀 아래 56px 지점으로 통일했다.
+            float[] insets = { 0.56f, 0.56f, 0.56f, 0.56f, 0.56f, 0.56f };
+            return insets[Mathf.Clamp(pose, 0, insets.Length - 1)];
+        }
+
+        static int PoseFor(string clip)
+        {
+            if (string.IsNullOrEmpty(clip) || clip.Contains("Halo")) return 0;
+            if (clip.Contains("Sweep") || clip.Contains("Core") || clip.Contains("Overload")) return 1;
+            if (clip.Contains("Hook")) return 2;
+            if (clip.Contains("Slam")) return 3;
+            if (clip.Contains("Death")) return 5;
+            return 4; // Recover, Hit, Phase
+        }
+    }
+
+    // 잔재 보스 전용 피격 피드백. Enemy의 흰색 점멸과 Hit 포즈에 짧은 회전 반동을 더해
+    // 플레이어 공격이 실제로 들어갔다는 것을 큰 보스 실루엣에서도 즉시 읽게 한다.
+    public sealed class ResidueBossHitFeedback : MonoBehaviour
+    {
+        Enemy _enemy;
+        SpriteRenderer _renderer;
+        Quaternion _restRotation;
+        int _lastHealth;
+        float _hitUntil;
+        int _hitDirection = 1;
+
+        public void Configure()
+        {
+            Cache();
+            _lastHealth = _enemy != null ? _enemy.Health : 0;
+        }
+
+        void Awake() => Cache();
+
+        void Cache()
+        {
+            if (_enemy == null) _enemy = GetComponent<Enemy>();
+            if (_renderer == null)
+            {
+                var animator = GetComponentInChildren<SpriteAnimator>(true);
+                _renderer = animator != null ? animator.Renderer : GetComponentInChildren<SpriteRenderer>(true);
+                if (_renderer != null) _restRotation = _renderer.transform.localRotation;
+            }
+        }
+
+        void OnEnable()
+        {
+            Cache();
+            if (_enemy == null) return;
+            _lastHealth = _enemy.Health;
+            _enemy.HealthChanged -= HandleHealthChanged;
+            _enemy.HealthChanged += HandleHealthChanged;
+        }
+
+        void OnDisable()
+        {
+            if (_enemy != null) _enemy.HealthChanged -= HandleHealthChanged;
+            RestoreRotation();
+        }
+
+        void HandleHealthChanged(int current, int _)
+        {
+            if (current < _lastHealth)
+            {
+                _hitDirection *= -1;
+                _hitUntil = Time.unscaledTime + 0.18f;
+            }
+            _lastHealth = current;
+        }
+
+        void LateUpdate()
+        {
+            if (_renderer == null) return;
+            float remaining = _hitUntil - Time.unscaledTime;
+            if (remaining <= 0f)
+            {
+                RestoreRotation();
+                return;
+            }
+
+            float progress = 1f - remaining / 0.18f;
+            float angle = Mathf.Sin(progress * Mathf.PI) * 7f * _hitDirection;
+            _renderer.transform.localRotation = _restRotation * Quaternion.Euler(0f, 0f, angle);
+        }
+
+        void RestoreRotation()
+        {
+            if (_renderer != null) _renderer.transform.localRotation = _restRotation;
         }
     }
 

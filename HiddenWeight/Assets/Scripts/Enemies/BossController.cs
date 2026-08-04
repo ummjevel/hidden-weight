@@ -84,6 +84,9 @@ namespace HiddenWeight.Enemies
         SpriteRenderer _sprite;
         HiddenWeight.World.SpriteAnimator _animator;
         int _moveIndex;
+        bool _showAttackRanges;
+        GameObject _activeRangeIndicator;
+        static Material _rangeMaterial;
 
         [Header("보스 애니메이션")]
         [SerializeField] string idleClip = "WatcherAnimIdle";
@@ -95,6 +98,7 @@ namespace HiddenWeight.Enemies
         [SerializeField] Rewindable[] arenaRewindables;
 
         public int Phase { get; private set; }
+        public bool AttackRangesVisible => _showAttackRanges;
 
         void Awake()
         {
@@ -130,6 +134,9 @@ namespace HiddenWeight.Enemies
             => _animator != null && _animator.Has(requested) ? requested : fallback;
 
         public void ConfigureArena(params Rewindable[] rewindables) => arenaRewindables = rewindables;
+
+        // 현재는 잔재의 R10/R12에서만 켠다. 다른 지역 보스의 기존 연출에는 영향을 주지 않는다.
+        public void ConfigureAttackReadability(bool showRanges) => _showAttackRanges = showRanges;
 
         // 개별 보스의 난도 튜닝용이다. 기본 직렬화 값은 건드리지 않고 호출된 인스턴스에만
         // 적용하므로, R10을 완화해도 R12와 다른 지역 보스의 속도는 그대로 유지된다.
@@ -228,16 +235,23 @@ namespace HiddenWeight.Enemies
             // 낙하 계열은 떨어질 자리를 바닥 그림자로 먼저 보여준다 — 좌우로 비키면 피할 수
             // 있어야 한다. 시간 건너뛰기는 예고 시점의 위치를 그대로 쓴다(균열 7.2절:
             // 고스트가 보여준 위치와 실제가 항상 일치한다).
+            Vector3 lockedTarget = player.transform.position;
+            int lockedDirection = lockedTarget.x >= transform.position.x ? 1 : -1;
             GameObject shadow = null;
             if (move == Move.Slam || move == Move.TimeSkip)
-                shadow = ShowDropShadow(player.transform.position);
-            Vector3 skipTarget = player.transform.position;
+                shadow = ShowDropShadow(lockedTarget);
+            Vector3 skipTarget = lockedTarget;
+
+            ClearAttackRange();
+            if (_showAttackRanges)
+                _activeRangeIndicator = ShowAttackRange(move, lockedTarget, lockedDirection);
 
             Telegraph(true);
             AudioManager.Instance?.PlaySfx(SfxCue.BossTelegraph, 0.45f);
             PlayMoveClip(move);
             yield return new WaitForSeconds(telegraph);
             Telegraph(false);
+            ClearAttackRange();
             if (shadow != null) Destroy(shadow);
 
             switch (move)
@@ -253,7 +267,7 @@ namespace HiddenWeight.Enemies
                 case Move.Charge:
                 {
                     // 감시탑 돌진 — 복원벽 뒤로 피하면 벽에 박고 큰 빈틈이 생긴다.
-                    int dir = player.transform.position.x >= transform.position.x ? 1 : -1;
+                    int dir = lockedDirection;
                     float elapsed = 0f;
                     while (elapsed < 1.2f)
                     {
@@ -276,7 +290,7 @@ namespace HiddenWeight.Enemies
                 case Move.Slam:
                 {
                     // 상부 낙하 — 그림자를 보고 좌우로 비킨다. 예고 동안 위치가 고정이라 확실히 피할 수 있다.
-                    var target = new Vector3(player.transform.position.x, transform.position.y + slamHeight, 0f);
+                    var target = new Vector3(lockedTarget.x, transform.position.y + slamHeight, 0f);
                     transform.position = target;
                     yield return new WaitForSeconds(0.6f);
                     _body.linearVelocity = new Vector2(0f, -18f);
@@ -289,7 +303,7 @@ namespace HiddenWeight.Enemies
                 case Move.Projectile:
                 {
                     // 예고가 끝난 방향으로 쏜다. 쏜 뒤에는 따라오지 않으므로 옆으로 비키면 피한다.
-                    int dir = player.transform.position.x >= transform.position.x ? 1 : -1;
+                    int dir = lockedDirection;
                     int shots = Phase == 0 ? 1 : 2;
 
                     for (int i = 0; i < shots; i++)
@@ -438,6 +452,76 @@ namespace HiddenWeight.Enemies
             renderer.sortingOrder = 4;
             return go;
         }
+
+        GameObject ShowAttackRange(Move move, Vector3 target, int direction)
+        {
+            switch (move)
+            {
+                case Move.GroundSweep:
+                case Move.Charge:
+                case Move.Projectile:
+                    // 직사각형 선은 실제 게임 화면에서 디버그 판정처럼 보인다. 방향성 공격은
+                    // 보스의 준비 자세와 점멸로만 예고하고, 정확한 지점이 필요한 낙하만 남긴다.
+                    return null;
+
+                case Move.Slam:
+                case Move.TimeSkip:
+                    return CreateRangeCircle("BossSlamRange", target, sweepRange * 0.8f);
+
+                default:
+                    return null;
+            }
+        }
+
+        static LineRenderer CreateRangeLine(string name, int pointCount)
+        {
+            var go = new GameObject(name);
+            var line = go.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.positionCount = pointCount;
+            line.startWidth = 0.1f;
+            line.endWidth = 0.1f;
+            line.startColor = new Color(1f, 0.58f, 0.16f, 0.92f);
+            line.endColor = line.startColor;
+            line.numCornerVertices = 2;
+            line.numCapVertices = 2;
+            line.sortingOrder = 35;
+            if (_rangeMaterial == null)
+            {
+                Shader shader = Shader.Find("Sprites/Default");
+                if (shader != null)
+                {
+                    _rangeMaterial = new Material(shader)
+                    {
+                        name = "BossAttackRange_Runtime",
+                        hideFlags = HideFlags.HideAndDontSave
+                    };
+                }
+            }
+            if (_rangeMaterial != null) line.sharedMaterial = _rangeMaterial;
+            return line;
+        }
+
+        static GameObject CreateRangeCircle(string name, Vector2 center, float radius)
+        {
+            const int points = 48;
+            var line = CreateRangeLine(name, points);
+            line.loop = true;
+            for (int i = 0; i < points; i++)
+            {
+                float angle = Mathf.PI * 2f * i / points;
+                line.SetPosition(i, center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius);
+            }
+            return line.gameObject;
+        }
+
+        void ClearAttackRange()
+        {
+            if (_activeRangeIndicator != null) Destroy(_activeRangeIndicator);
+            _activeRangeIndicator = null;
+        }
+
+        void OnDisable() => ClearAttackRange();
 
         void HitPlayersInBox(Vector2 center, Vector2 size)
         {

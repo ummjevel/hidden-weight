@@ -54,11 +54,33 @@ namespace HiddenWeight.EditorTools
             const string fractureSheet =
                 "Assets/Art/Fracture/Environment/Terrain/Fracture_TerrainTiles_v2.png";
             palette.fractureSurface = FindSprite(fractureSheet, "FractureTerrain_r1_c3");
+            const string fractureTerrainRoot = "Assets/Art/Fracture/Environment/Terrain";
+            string FractureModulePath(string role) =>
+                $"{fractureTerrainRoot}/Fracture_Traversal{role}_v3.png";
+            foreach (string role in new[]
+                     {
+                         "SurfaceLeft", "SurfaceMiddle", "SurfaceRight",
+                         "WallTop", "WallMiddle", "WallBottom",
+                     })
+                ConfigureTraversalSurfaceImport(FractureModulePath(role));
+            ConfigureTraversalFillImport(FractureModulePath("Fill"));
+
+            palette.fractureContinuous = new ContinuousTerrainSet
+            {
+                surfaceLeft = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceLeft")),
+                surfaceMiddle = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceMiddle")),
+                surfaceRight = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceRight")),
+                wallTop = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallTop")),
+                wallMiddle = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallMiddle")),
+                wallBottom = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallBottom")),
+                fill = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("Fill")),
+            };
 
             if (palette.prologueSurface == null || palette.prologueWall == null || palette.prologueFill == null
                 || palette.residueSurface == null
                 || palette.gazeSurface == null
-                || palette.fractureSurface == null || !palette.HasResidueModularV3)
+                || palette.fractureSurface == null || !palette.HasResidueModularV3
+                || palette.fractureContinuous == null || !palette.fractureContinuous.IsComplete)
                 throw new InvalidOperationException("지역별 보행 바닥 스프라이트를 찾지 못했다.");
 
             palette.fractureTiles = BuildFractureTileSet(fractureSheet);

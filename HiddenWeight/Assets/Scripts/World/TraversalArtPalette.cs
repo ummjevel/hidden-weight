@@ -26,6 +26,7 @@ namespace HiddenWeight.World
         // 역할별 타일셋. 있으면 끝단·중간·벽 켜·천장을 구분해 그리고, 형광 테두리 밴드를
         // 그리지 않는다 — 그림 자체가 네 면을 마감하기 때문이다.
         public TerrainTileSet fractureTiles;
+        public ContinuousTerrainSet fractureContinuous;
 
         public Sprite SurfaceFor(string sceneName)
         {
@@ -41,6 +42,17 @@ namespace HiddenWeight.World
         {
             if (sceneName.Contains("Fracture") && fractureTiles != null && fractureTiles.IsComplete)
                 return fractureTiles;
+            return null;
+        }
+
+        // 긴 표면·벽 모듈은 균열만 쓴다. 세트가 하나라도 비면 null을 반환해 호출부가
+        // 역할별 v2 타일셋으로 안전하게 되돌아가게 한다.
+        public ContinuousTerrainSet ContinuousSetFor(string sceneName)
+        {
+            if (sceneName.Contains("Fracture")
+                && fractureContinuous != null
+                && fractureContinuous.IsComplete)
+                return fractureContinuous;
             return null;
         }
 
@@ -96,6 +108,28 @@ namespace HiddenWeight.World
             }
             return new Color(0.18f, 0.13f, 0.08f, 0.46f);
         }
+    }
+
+    // 짧은 칸을 반복하지 않고, 실제로 끊기는 곳에만 캡을 두는 연속형 지형 세트.
+    [System.Serializable]
+    public sealed class ContinuousTerrainSet
+    {
+        [Header("수평 바닥")]
+        public Sprite surfaceLeft;
+        public Sprite surfaceMiddle;
+        public Sprite surfaceRight;
+
+        [Header("세로 벽")]
+        public Sprite wallTop;
+        public Sprite wallMiddle;
+        public Sprite wallBottom;
+
+        [Header("내부 채움")]
+        public Sprite fill;
+
+        public bool IsComplete => surfaceLeft != null && surfaceMiddle != null
+            && surfaceRight != null && wallTop != null && wallMiddle != null
+            && wallBottom != null && fill != null;
     }
 
     // 지형을 역할별로 나눠 든다. 한 장을 모든 면에 늘여 쓰면 끝단도 모서리도 없어 공간이

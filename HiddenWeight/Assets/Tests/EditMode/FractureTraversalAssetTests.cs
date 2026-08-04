@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using HiddenWeight.World;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace HiddenWeight.Tests
@@ -35,6 +37,22 @@ namespace HiddenWeight.Tests
             Assert.AreEqual(expectedHeight, texture.height, assetPath);
             Assert.IsTrue(texture.GetPixels32().Any(pixel => pixel.a > 0), assetPath + " is empty");
             Object.DestroyImmediate(texture);
+        }
+
+        [Test]
+        public void Fracture_팔레트가_v3_모듈을_전부_참조한다()
+        {
+            var palette = AssetDatabase.LoadAssetAtPath<TraversalArtPalette>(
+                "Assets/Resources/TraversalArtPalette.asset");
+
+            Assert.IsNotNull(palette);
+            Assert.IsNotNull(palette.fractureContinuous);
+            Assert.IsTrue(palette.fractureContinuous.IsComplete);
+            Assert.AreSame(
+                palette.fractureContinuous,
+                palette.ContinuousSetFor("Room_Fracture_F01"));
+            Assert.IsNull(palette.ContinuousSetFor("Room_Gaze_G01"));
+            Assert.IsNull(palette.ContinuousSetFor("Zone_Prologue"));
         }
     }
 }

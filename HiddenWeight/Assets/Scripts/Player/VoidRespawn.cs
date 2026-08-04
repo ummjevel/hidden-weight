@@ -22,10 +22,18 @@ namespace HiddenWeight.Player
         float _lastGroundedY;
         bool _hasGrounded;
 
+        // 한 번도 땅을 밟지 않은 채 떨어질 수도 있다(방 밖으로 나갔거나, 로드 직후
+        // 발밑이 비어 있었거나). 그때 _hasGrounded만 보면 판단을 영원히 미루게 되어
+        // 플레이어가 끝없이 떨어진다 — 실제로 y=-420까지 내려간 기록이 있다.
+        // 시작 높이에서 이만큼 아래면 접지 이력과 무관하게 되돌린다.
+        const float AbsoluteFallLimit = 100f;
+        float _startY;
+
         void Awake()
         {
             _controller = GetComponent<PlayerController>();
             _lastGroundedY = transform.position.y;
+            _startY = transform.position.y;
         }
 
         void Update()
@@ -37,8 +45,16 @@ namespace HiddenWeight.Player
                 return;
             }
 
-            // 한 번도 땅을 밟은 적 없으면 판단하지 않는다(스폰 직후 낙하 중일 수 있다).
-            if (!_hasGrounded) return;
+            // 한 번도 땅을 밟은 적 없으면 보통은 판단하지 않는다(스폰 직후 낙하 중일 수
+            // 있다). 다만 그 상태로 한없이 떨어지는 것은 진행 불가이므로 절대 한계를 둔다.
+            if (!_hasGrounded)
+            {
+                if (transform.position.y >= _startY - AbsoluteFallLimit) return;
+                if (GameManager.Instance == null) return;
+                GameManager.Instance.RespawnPlayer();
+                _startY = transform.position.y;
+                return;
+            }
             if (transform.position.y >= _lastGroundedY - fallLimit) return;
             if (GameManager.Instance == null) return;
 

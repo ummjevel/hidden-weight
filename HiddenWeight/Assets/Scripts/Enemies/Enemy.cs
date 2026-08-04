@@ -61,6 +61,13 @@ namespace HiddenWeight.Enemies
         {
             Health = data.maxHealth;
             HealthChanged?.Invoke(Health, data.maxHealth);
+
+            // 조우가 다시 세우는 동안 반동이 돌고 있었으면 그림이 밀린 자리에 남는다.
+            if (_recoilRoutine != null) { StopCoroutine(_recoilRoutine); _recoilRoutine = null; }
+            if (_artTransform != null) _artTransform.localPosition = _artHome;
+
+            // 죽을 때 멈춰 둔 행동을 되살린다. 빠뜨리면 되살아난 적이 가만히 서 있다.
+            SetBehavioursEnabled(true);
             foreach (var col in GetComponentsInChildren<Collider2D>()) col.enabled = true;
             if (_rb != null)
             {
@@ -68,6 +75,11 @@ namespace HiddenWeight.Enemies
                 _rb.linearVelocity = Vector2.zero;
             }
             if (_sprite != null) _sprite.color = data.tint;
+
+            // 조우에 묶인 적은 방이 열릴 때 꺼져 있어 Start가 돌지 않는다. 그대로 두면
+            // 전투가 시작되는 순간 적이 공중에서 떨어지며 등장한다 — 조우의 첫 인상이
+            // 그것이 되어서는 안 된다.
+            SnapToGround();
         }
 
         public void PlayClip(string action)
@@ -97,9 +109,45 @@ namespace HiddenWeight.Enemies
             Health = data.maxHealth;
             if (_sprite != null) _sprite.color = data.tint;
             if (_sprite != null && outlineMaterial != null) _sprite.material = outlineMaterial;
+
+            // 피격 반동은 **그림에만** 준다. 루트를 움직이면 콜라이더가 같이 가서 판정이 어긋난다.
+            if (_sprite != null && _sprite.transform != transform)
+            {
+                _artTransform = _sprite.transform;
+                _artHome = _artTransform.localPosition;
+            }
+
             _spawnPosition = transform.position;
             _spawnRotation = transform.rotation;
             _instances.Add(this);
+        }
+
+        void Start() => SnapToGround();
+
+        // 배치 좌표는 정수로 잡혀 있는데 지형 윗면은 그렇지 않다. 그래서 방에 들어서는
+        // 순간 적이 발밑 빈 자리만큼 툭 떨어졌다 — 균열 12개 방의 적이 전부 0.55~2.0
+        // 떠 있었다(FractureEnemyAuditTool). 첫인상이 "허공에서 떨어지는 것"이 되면
+        // 적이 그 자리에 살고 있었다는 느낌이 사라진다.
+        //
+        // 걸어 다니는 적만, 그리고 틈이 작을 때만 붙인다. 크게 뜬 것은 공중 배치가
+        // 의도인 경우(보스 전장·비행체)와 구분할 수 없으므로 건드리지 않는다.
+        const float MaxSnapGap = 1.2f;
+
+        void SnapToGround()
+        {
+            if (_bodyCollider == null || GetComponent<EnemyPatrol>() == null) return;
+
+            float bottom = _bodyCollider.bounds.min.y;
+            var hit = Physics2D.Raycast(new Vector2(transform.position.x, bottom + 0.02f),
+                                        Vector2.down, MaxSnapGap + 0.5f, groundMask);
+            if (hit.collider == null) return;
+
+            float gap = bottom - hit.point.y;
+            if (gap <= 0.02f || gap > MaxSnapGap) return;
+
+            transform.position -= new Vector3(0f, gap, 0f);
+            // 복귀 지점도 같이 옮긴다. 안 그러면 체크포인트 복귀 때 다시 떠서 시작한다.
+            _spawnPosition = transform.position;
         }
 
         void OnEnable() => _all.Add(this);
@@ -178,6 +226,7 @@ namespace HiddenWeight.Enemies
                 AudioManager.Instance?.PlaySfx(SfxCue.EnemyBlock, 0.45f);
                 if (_flashRoutine != null) StopCoroutine(_flashRoutine);
                 _flashRoutine = StartCoroutine(FlashRoutine());
+                PlayRecoil(sourcePosition);
                 return;
             }
 
@@ -191,6 +240,7 @@ namespace HiddenWeight.Enemies
 
             if (_flashRoutine != null) StopCoroutine(_flashRoutine);
             _flashRoutine = StartCoroutine(FlashRoutine());
+            PlayRecoil(sourcePosition);
             PlayClip("Hit");
 
             if (Health <= 0)
@@ -222,10 +272,32 @@ namespace HiddenWeight.Enemies
             foreach (var col in GetComponentsInChildren<Collider2D>()) col.enabled = false;
             if (_rb != null) _rb.simulated = false;
 
+            // 행동 모듈을 먼저 멈춘다.
+            //
+            // 순찰은 매 프레임 PlayClip("Walk")를 부른다. 그대로 두면 방금 튼 사망 클립이
+            // 곧바로 걷기(루프)로 바뀌고, IsFinished는 루프 클립에서 영원히 false다 —
+            // 아래 while이 끝나지 않아 **죽은 적이 화면에 그대로 남는다**. 균열에 사망
+            // 클립을 새로 넣자마자 실제로 그렇게 됐다(그전에는 사망 클립이 없어서 즉시
+            // 사라지는 경로를 탔고, 그래서 이 문제가 드러나지 않았다).
+            StopBehaviours();
+
             _animator.Play(clipPrefix + "Death", true);
-            while (_animator != null && !_animator.IsFinished) yield return null;
+
+            // 연출이 어떤 이유로든 끝나지 않아도 적이 영원히 남지는 않게 한다.
+            float deadline = Time.time + 2f;
+            while (_animator != null && !_animator.IsFinished && Time.time < deadline)
+                yield return null;
 
             FinishDeath();
+        }
+
+        void StopBehaviours() => SetBehavioursEnabled(false);
+
+        void SetBehavioursEnabled(bool enabled)
+        {
+            foreach (var behavior in GetComponents<EnemyBehavior>()) behavior.enabled = enabled;
+            var patrol = GetComponent<EnemyPatrol>();
+            if (patrol != null) patrol.enabled = enabled;
         }
 
         IEnumerator FlashRoutine()
@@ -233,11 +305,70 @@ namespace HiddenWeight.Enemies
             if (_sprite != null)
             {
                 var original = data.tint;
-                _sprite.color = UISettings.ReduceFlash ? Color.Lerp(original, Color.white, 0.25f) : Color.white;
-                yield return new WaitForSeconds(0.1f);
+                _sprite.color = FlashColor(original);
+                yield return new WaitForSeconds(0.14f);
                 _sprite.color = original;
             }
             _flashRoutine = null;
+        }
+
+        // 맞은 쪽으로 흠칫 물러났다 돌아오는 반동.
+        //
+        // 번쩍임과 짧은 피격 클립만으로는 "맞았다"가 잘 안 읽힌다 — 색이 바뀌는 것은
+        // 그림이 하는 일이고, 몸이 움직이는 것은 사건이 하는 일이다. 넉백은 있지만
+        // 그건 체공/지형에 따라 거의 안 보일 때가 많다.
+        //
+        // **크기가 아니라 위치**를 움직인다. SpriteAnimator가 normalizedHeight로 매 프레임
+        // 자식의 localScale을 다시 계산하므로 스케일 반동은 한 프레임 만에 지워진다.
+        // 루트를 건드리는 것은 더 안 된다 — 콜라이더가 같이 움직여 판정이 어긋난다.
+        Transform _artTransform;
+        Vector3 _artHome;
+        Coroutine _recoilRoutine;
+
+        void PlayRecoil(Vector2 sourcePosition)
+        {
+            if (_artTransform == null) return;
+            if (_recoilRoutine != null) StopCoroutine(_recoilRoutine);
+            _recoilRoutine = StartCoroutine(RecoilRoutine(sourcePosition));
+        }
+
+        IEnumerator RecoilRoutine(Vector2 sourcePosition)
+        {
+            var away = (Vector2)transform.position - sourcePosition;
+            away = away.sqrMagnitude < 0.0001f ? Vector2.right : away.normalized;
+
+            float distance = UISettings.ReduceMotion ? 0.14f : 0.32f;
+            const float backSeconds = 0.16f;
+
+            // 밀리는 것은 **즉시**다. 타격은 순간이므로 나가는 동안 보간하면 그 프레임들이
+            // 오히려 밀린 느낌을 지운다. 첫 프레임에 끝까지 밀어 두고 천천히 돌아온다.
+            _artTransform.localPosition = _artHome + (Vector3)(away * distance);
+            yield return null;
+
+            for (float t = 0f; t < backSeconds; t += Time.deltaTime)
+            {
+                _artTransform.localPosition =
+                    _artHome + (Vector3)(away * (distance * (1f - t / backSeconds)));
+                yield return null;
+            }
+
+            _artTransform.localPosition = _artHome;
+            _recoilRoutine = null;
+        }
+
+        // 피격 번쩍임의 색. 원래 색에서 **멀어지는** 방향으로 간다.
+        //
+        // 예전에는 무조건 흰색이었다. 잔재의 적은 어두운 앰버라 흰색이 확 튀지만, 균열의
+        // 적은 원래 색이 연한 민트(0.62, 0.86, 0.72)·연보라라 흰색으로 바꿔도 거의 그대로다
+        // — 때렸는데 아무 반응이 없는 것처럼 보이던 이유가 이것이다. 밝은 적은 반대로
+        // 짙게 눌러 실루엣만 남긴다. 어느 쪽이든 "한 번 다른 것이 됐다"가 읽힌다.
+        static Color FlashColor(Color tint)
+        {
+            float luminance = tint.r * 0.299f + tint.g * 0.587f + tint.b * 0.114f;
+            var strong = luminance > 0.55f
+                ? new Color(0.30f, 0.08f, 0.20f, tint.a)
+                : new Color(1f, 1f, 1f, tint.a);
+            return UISettings.ReduceFlash ? Color.Lerp(tint, strong, 0.35f) : strong;
         }
     }
 }

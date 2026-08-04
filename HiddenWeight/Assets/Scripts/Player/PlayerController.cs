@@ -318,6 +318,9 @@ namespace HiddenWeight.Player
         public void TeleportTo(Vector3 position)
         {
             transform.position = position;
+            // 리지드바디 보간이 켜져 있으면 트랜스폼만 옮겼을 때 이전 자세에서 끌려오는
+            // 한 프레임이 남는다. 리지드바디 좌표까지 같이 옮겨 그 잔상을 없앤다.
+            _rb.position = position;
             _rb.linearVelocity = Vector2.zero;
         }
     }

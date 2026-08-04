@@ -941,6 +941,16 @@ namespace HiddenWeight.EditorTools
                 ? new Vector2(3f, 1.2f)
                 : new Vector2(1.2f, 3.5f);
 
+            // _Full에서는 R05와 R06이 한 지형으로 이어져 속도와 무관하게 넘어간다.
+            // 룸형 R05의 끝은 y=4까지 솟은 발판인데 문 중심은 y=2에 있고 판정도 얇아,
+            // 달리기·대시 중 한 물리 프레임에 문을 건너뛰거나 발판 위로 스칠 수 있었다.
+            // 이 정방향 문만 방 안쪽으로 넓혀 _Full과 같은 확실한 경계 통과로 만든다.
+            if (doorId == "residue_R05_R06:E")
+            {
+                col.size = new Vector2(3.5f, 5f);
+                col.offset = new Vector2(-1.15f, 0f);
+            }
+
             var door = go.AddComponent<RoomDoor>();
             door.Configure(doorId, side, targetRoom, targetDoorId, RoomDoor.DefaultArrivalOffset(side),
                 requiredShortcutId);
@@ -1188,7 +1198,8 @@ namespace HiddenWeight.EditorTools
             BuildResidueEnemy(c.Root.transform, c.P(12f, 7f), ResidueEnemyKind.Walker, "WalkerR06");
 
             // 선택 대상: 복원하면 S2 입구가 열린다. 주 동선 문은 닫히지 않는다.
-            ResidueRewindable(c.Root.transform, c.P(21f, 6f));
+            var secretRoute = ResidueRewindable(c.Root.transform, c.P(21f, 6f));
+            LinkRewindToShortcut(secretRoute, "residue_secret_s2");
             BuildDecor(c.Root.transform, "R06_S2_Hint", c.P(20f, 1f), new Vector2(3f, 0.4f),
                 "Tile", new Color(0.3f, 0.26f, 0.34f));
 
@@ -1384,6 +1395,7 @@ namespace HiddenWeight.EditorTools
             boss.GetComponentInChildren<SpriteAnimator>()?.LockReferenceCenterToLocalX(0f);
             boss.GetComponent<BossController>().ConfigureDifficulty(
                 1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
+            boss.GetComponent<BossController>().ConfigureAttackReadability(false);
             SetField(boss.GetComponent<BossController>(), "projectileName", p => p.stringValue = "BossWave");
             var watcherPresentation = boss.AddComponent<ResidueBossPresentationGuard>();
             watcherPresentation.Configure("WatcherAnimIdle");
@@ -1523,6 +1535,7 @@ namespace HiddenWeight.EditorTools
             // 낮춰 한 번의 실수로 연속 피격되는 구간을 줄이고, 공격 전 예고를 충분히 준다.
             boss.GetComponent<BossController>().ConfigureDifficulty(
                 2.2f, 6.5f, 1.1f, 1.4f, 1.6f, 1.45f, 3.8f);
+            boss.GetComponent<BossController>().ConfigureAttackReadability(false);
 
             // 3단계에서 보스가 다시 부수는 전장 발판. 예전에는 Full 씬 전용 런타임 보정
             // (ResidueLoopRuntime)이 방 경계로 찾아 넣어 줬는데, 그 보정은 방 씬에서 돌지

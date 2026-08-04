@@ -271,7 +271,10 @@ namespace HiddenWeight.World
                 renderer.enabled = false;
         }
 
-        static void ConfigureR08ChimneyExit()
+        // 포탈형 Zone_Residue에서는 방이 additive 로드된다. 배경의 Awake가 이동 발판이나
+        // RoomLoader의 초기화보다 먼저 실행될 수 있으므로, 방 로드 완료 뒤에도 같은 보정을
+        // 안전하게 다시 적용할 수 있게 열어 둔다.
+        internal static void ConfigureR08ChimneyExit()
         {
             var left = GameObject.Find("R08_Chimney_L")?.GetComponent<BoxCollider2D>();
             var right = GameObject.Find("R08_Chimney_R")?.GetComponent<BoxCollider2D>();
@@ -279,6 +282,8 @@ namespace HiddenWeight.World
             if (left == null || right == null || room == null
                 || !IsResidue(left.gameObject.scene.name))
                 return;
+
+            FixR08ChimneyTiles(room);
 
             // 왼쪽은 왕복 벽점프 높이를 확보하고, 오른쪽은 착지대 보행면(local y=13)과
             // 정확히 이어 붙인다. 오른쪽 벽이 더 낮으면 꼭대기에 붙은 캐릭터가 착지대의
@@ -290,7 +295,46 @@ namespace HiddenWeight.World
             SetWallVerticalSpan(right, bottomY, rightTopY);
             InvalidateMismatchedWallVisual(left);
             InvalidateMismatchedWallVisual(right);
+
+            // 방 로드 뒤 벽 높이를 다시 맞추면 위의 무효화가 예전 높이의 그림을 제거한다.
+            // 여기서 새 높이의 모듈을 즉시 다시 만들지 않으면 충돌만 남은 투명벽이 된다.
+            BuildWallClimbSurfaces(Resources.Load<TraversalArtPalette>("TraversalArtPalette"));
             ConfigureR08LiftRoute(room);
+        }
+
+        static void FixR08ChimneyTiles(Room room)
+        {
+            Tilemap tilemap = null;
+            foreach (var candidate in FindObjectsByType<Tilemap>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject.scene != room.gameObject.scene) continue;
+                tilemap = candidate;
+                break;
+            }
+            if (tilemap == null) return;
+
+            // 예전 R08 씬에는 x=2~10, y=10 타일이 굴뚝을 가로질러 천장처럼 남아 있다.
+            // 최신 _Full/빌더 구조는 굴뚝을 끝까지 비우고, 오른쪽 밖 x=8~11, y=12에만
+            // 착지대를 둔다. 저장 씬을 다시 빌드하지 않아도 같은 구조가 되게 동기화한다.
+            Vector3Int origin = tilemap.WorldToCell(new Vector3(
+                room.WorldBounds.min.x + 0.05f,
+                room.WorldBounds.min.y + 0.05f,
+                0f));
+            TileBase landingTile = tilemap.GetTile(origin + new Vector3Int(16, 20, 0))
+                                   ?? tilemap.GetTile(origin + new Vector3Int(0, 1, 0));
+            for (int x = 2; x <= 10; x++)
+                tilemap.SetTile(origin + new Vector3Int(x, 10, 0), null);
+
+            if (landingTile != null)
+                for (int x = 8; x <= 11; x++)
+                    tilemap.SetTile(origin + new Vector3Int(x, 12, 0), landingTile);
+
+            tilemap.RefreshAllTiles();
+            var tileCollider = tilemap.GetComponent<TilemapCollider2D>();
+            if (tileCollider != null && tileCollider.hasTilemapChanges)
+                tileCollider.ProcessTilemapChanges();
+            Physics2D.SyncTransforms();
         }
 
         static void ConfigureR08LiftRoute(Room room)
@@ -316,17 +360,22 @@ namespace HiddenWeight.World
                     new Vector2(4f, 0f), 4f);
             }
 
-            if (GameObject.Find("R08_UpperStep") != null
-                || GameObject.Find("R08_UpperStep_Runtime") != null)
-                return;
-
             // 낮춘 두 번째 이동 발판과 y=21 고정 바닥 사이에도 안전 점프 높이를 유지한다.
-            var step = new GameObject("R08_UpperStep_Runtime");
-            step.transform.SetParent(room.transform, true);
+            var step = GameObject.Find("R08_UpperStep")
+                ?? GameObject.Find("R08_UpperStep_Runtime");
+            if (step == null)
+            {
+                step = new GameObject("R08_UpperStep_Runtime");
+                step.transform.SetParent(room.transform, true);
+            }
             step.transform.position = origin + new Vector3(14.25f, 18f, 0f);
             step.layer = LayerMask.NameToLayer("Ground");
-            var collider = step.AddComponent<BoxCollider2D>();
+            var collider = step.GetComponent<BoxCollider2D>();
+            if (collider == null) collider = step.AddComponent<BoxCollider2D>();
             collider.size = new Vector2(3f, 0.5f);
+
+            // 이미 정식 그림이 붙은 빌더 결과에는 런타임 그림을 중복 생성하지 않는다.
+            if (step.transform.Find("Art") != null) return;
 
             var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
             Sprite sprite = palette != null ? palette.ResiduePlatformFor(3f) : null;

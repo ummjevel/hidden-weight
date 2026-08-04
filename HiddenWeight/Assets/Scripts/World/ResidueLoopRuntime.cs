@@ -12,9 +12,12 @@ namespace HiddenWeight.World
     // 숏컷과 비밀방이 실제 통로가 되고, 지역 출구가 보스 승리를 요구한다.
     public sealed class ResidueLoopRuntime : MonoBehaviour
     {
+        RoomLoader _roomLoader;
+
         public static void Install(Transform parent)
         {
-            if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Residue_Full")) return;
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (sceneName != "Zone_Residue" && !sceneName.Contains("Residue_Full")) return;
             if (FindFirstObjectByType<ResidueLoopRuntime>() != null) return;
             var go = new GameObject("ResidueLoopRuntime");
             if (parent != null) go.transform.SetParent(parent, false);
@@ -23,12 +26,33 @@ namespace HiddenWeight.World
 
         IEnumerator Start()
         {
-            if (GetComponent<ResidueAmbientAudio>() == null) gameObject.AddComponent<ResidueAmbientAudio>();
+            // 포탈 셸은 환경음을 이미 소유한다. _Full처럼 없는 경우에만 보충해야 방형 맵에서
+            // 같은 환경음이 두 겹으로 재생되지 않는다.
+            if (FindFirstObjectByType<ResidueAmbientAudio>() == null)
+                gameObject.AddComponent<ResidueAmbientAudio>();
+
+            // 룸형 잔재에서는 한 번에 한 방만 additive 로드된다. Full 씬처럼 모든 방을
+            // 동시에 찾으려 하면 아무 보정도 적용되지 않으므로, 방 로드가 끝날 때마다 그
+            // 방에 필요한 보정만 적용한다. _Full은 비교·백업용으로 기존 동작을 유지한다.
+            if (gameObject.scene.name == "Zone_Residue")
+            {
+                while (RoomLoader.Instance == null) yield return null;
+                _roomLoader = RoomLoader.Instance;
+                _roomLoader.RoomLoaded += OnRoomLoaded;
+
+                // ZoneMarker와 ResidueEntryPoint의 Start 순서에 따라 첫 방 이벤트를 먼저
+                // 놓칠 수도 있다. 이미 로드된 방이 있으면 한 번 직접 보정한다.
+                if (!string.IsNullOrEmpty(_roomLoader.CurrentRoom))
+                    StartCoroutine(ConfigureRoomAfterStart(_roomLoader.CurrentRoom));
+                yield break;
+            }
+
             // 각 컴포넌트의 Start가 초기 상태를 적용한 다음 연결한다.
             yield return null;
             ConfigureR05PrimaryRestore();
             ConfigureR05OptionalRestoreAndRewards();
             ConfigureR07Stability();
+            CameraLockedRoomBackground.ConfigureR08ChimneyExit();
             ConfigureR08Pulleys();
             ConfigureR10ArenaEntrance();
             ConfigureR10MidBoss();
@@ -36,6 +60,162 @@ namespace HiddenWeight.World
             ConfigureOptionalMainPathEncounters();
             ConfigurePassages();
             ConfigureFinalEncounter();
+        }
+
+        void OnDestroy()
+        {
+            if (_roomLoader != null) _roomLoader.RoomLoaded -= OnRoomLoaded;
+        }
+
+        void OnRoomLoaded(string roomName)
+            => StartCoroutine(ConfigureRoomAfterStart(roomName));
+
+        IEnumerator ConfigureRoomAfterStart(string roomName)
+        {
+            // additive 씬의 Awake/OnEnable뿐 아니라 Start까지 끝난 뒤 덮어써야 빌더의
+            // 초기화가 보정값을 다시 되돌리지 않는다.
+            yield return null;
+            if (_roomLoader == null || _roomLoader.CurrentRoom != roomName) yield break;
+
+            // 현재 저장된 방 씬이 빌더보다 한 버전 이전이어도 포탈 경로가 빠지지 않게 한다.
+            // 생성한 문은 additive 방 씬으로 옮기므로 방을 나갈 때 함께 언로드된다.
+            ConfigurePortalDoors(roomName);
+
+            switch (roomName)
+            {
+                case "R05":
+                    ConfigureR05PrimaryRestore();
+                    ConfigureR05OptionalRestoreAndRewards();
+                    break;
+                case "R06":
+                    ConfigureR06RequiredStepEscape();
+                    ConfigureR06SecretRoute();
+                    break;
+                case "R07":
+                    ConfigureR07Stability();
+                    break;
+                case "R08":
+                    // additive 방의 모든 Start가 끝난 다음 벽·이동 발판·중간 안전 발판을
+                    // 다시 맞춘다. 배경 Awake의 실행 순서에 따라 R08 상행 경로가 빠지는
+                    // 경우를 막는다.
+                    CameraLockedRoomBackground.ConfigureR08ChimneyExit();
+                    ConfigureR08Pulleys();
+                    break;
+                case "R09":
+                    ConfigureOptionalMainPathEncounters();
+                    break;
+                case "R10":
+                    ConfigureR10ArenaEntrance();
+                    ConfigureR10MidBoss();
+                    break;
+                case "R12":
+                    ConfigureR10ArenaEntrance();
+                    ConfigureFinalEncounter();
+                    break;
+            }
+        }
+
+        void ConfigurePortalDoors(string roomName)
+        {
+            var room = FindRoom(RoomObjectName(roomName));
+            if (room == null) return;
+
+            switch (roomName)
+            {
+                case "R03":
+                    EnsureRoomDoor(room, "residue_shortcut_A:S", Side.S, new Vector2(6f, 3f),
+                        "R05", "residue_shortcut_A:S", "residue_shortcut_a");
+                    EnsureRoomDoor(room, "residue_shortcut_B:S", Side.S, new Vector2(23f, 2f),
+                        "R08", "residue_shortcut_B:S", "residue_shortcut_b");
+                    break;
+                case "R05":
+                    EnsureRoomDoor(room, "residue_shortcut_A:S", Side.S, new Vector2(2f, 3f),
+                        "R03", "residue_shortcut_A:S", "residue_shortcut_a");
+                    break;
+                case "R06":
+                    EnsureRoomDoor(room, "residue_R06_S2:D", Side.D, new Vector2(21f, 7.2f),
+                        "S2", "residue_R06_S2:U", "residue_secret_s2");
+                    break;
+                case "S2":
+                    EnsureRoomDoor(room, "residue_R06_S2:U", Side.U, new Vector2(4f, 4.25f),
+                        "R06", "residue_R06_S2:D", "residue_secret_s2");
+                    break;
+                case "R07":
+                    EnsureRoomDoor(room, "residue_shortcut_C:S", Side.S, new Vector2(25f, 9f),
+                        "R10", "residue_shortcut_C:S", "residue_shortcut_c");
+                    break;
+                case "R08":
+                    EnsureRoomDoor(room, "residue_shortcut_B:S", Side.S, new Vector2(21f, 26.5f),
+                        "R03", "residue_shortcut_B:S", "residue_shortcut_b");
+                    break;
+                case "R10":
+                    EnsureRoomDoor(room, "residue_shortcut_C:S", Side.S, new Vector2(3.5f, 4f),
+                        "R07", "residue_shortcut_C:S", "residue_shortcut_c");
+                    break;
+            }
+        }
+
+        static string RoomObjectName(string roomName)
+            => roomName.StartsWith("S") ? "Secret0" + roomName.Substring(1) : "Room" + roomName.Substring(1);
+
+        static void EnsureRoomDoor(Room room, string id, Side side, Vector2 localAnchor,
+                                   string targetRoom, string targetDoorId, string shortcutId)
+        {
+            RoomDoor door = null;
+            foreach (var candidate in FindObjectsByType<RoomDoor>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject.scene != room.gameObject.scene || candidate.DoorId != id) continue;
+                door = candidate;
+                break;
+            }
+
+            if (door == null)
+            {
+                var go = new GameObject("Door_" + id.Replace(':', '_'));
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, room.gameObject.scene);
+                go.transform.SetParent(room.transform, true);
+                var collider = go.AddComponent<BoxCollider2D>();
+                collider.isTrigger = true;
+                collider.size = side == Side.U || side == Side.D
+                    ? new Vector2(3f, 1.2f) : new Vector2(1.2f, 3.5f);
+                door = go.AddComponent<RoomDoor>();
+                BlockedHint.AttachTo(go, door: door);
+            }
+
+            door.transform.position = (Vector2)room.WorldBounds.min + localAnchor;
+            door.Configure(id, side, targetRoom, targetDoorId,
+                RoomDoor.DefaultArrivalOffset(side), shortcutId);
+        }
+
+        void ConfigureR06SecretRoute()
+        {
+            var room = FindRoom("Room06");
+            if (room == null) return;
+
+            Vector2 desired = (Vector2)room.WorldBounds.min + new Vector2(21f, 6f);
+            Rewindable selected = null;
+            float best = float.MaxValue;
+            foreach (var candidate in FindObjectsByType<Rewindable>(FindObjectsSortMode.None))
+            {
+                if (!room.WorldBounds.Contains(candidate.transform.position)) continue;
+                float distance = Vector2.Distance(candidate.transform.position, desired);
+                if (distance >= best) continue;
+                best = distance;
+                selected = candidate;
+            }
+            if (selected != null && best < 1f)
+                selected.ConfigureLinkedShortcut("residue_secret_s2");
+        }
+
+        void ConfigureR06RequiredStepEscape()
+        {
+            // _Full과 같은 계단 위치·크기를 유지한다. additive 로드 직후 플레이어가 복원
+            // 위치 안으로 들어간 경우에만, 계단 왼쪽의 기존 안전 바닥으로 되돌린다.
+            var room = FindRoom("Room06");
+            var step = GameObject.Find("R06_RequiredStep")?.GetComponent<Rewindable>();
+            if (room == null || step == null || step.gameObject.scene != room.gameObject.scene) return;
+            step.ConfigureSafeRestoreEscape((Vector2)room.WorldBounds.min + new Vector2(4f, 2f));
         }
 
         void ConfigureR10ArenaEntrance()
@@ -67,7 +247,9 @@ namespace HiddenWeight.World
 
                 candidate.transform.localScale = Vector3.one * 1.25f;
                 candidate.ConfigureDifficulty(1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
-                candidate.ConfigureAttackReadability(true);
+                // 주황색 판정 도형은 디버그 범위처럼 보여 보스 연출을 가린다. 공격은
+                // 준비 자세와 피격 모션으로만 읽히게 한다.
+                candidate.ConfigureAttackReadability(false);
                 var animator = candidate.GetComponentInChildren<SpriteAnimator>(true);
                 animator?.LockReferenceCenterToLocalX(0f);
                 AttachBossPresentationGuard(candidate.gameObject, "WatcherAnimIdle",
@@ -386,7 +568,7 @@ namespace HiddenWeight.World
                 boss.ConfigureArena(arena.ToArray());
                 // Full 씬이 다시 빌드되지 않아도 R12에만 완화된 첫 지역 난도를 적용한다.
                 boss.ConfigureDifficulty(2.2f, 6.5f, 1.1f, 1.4f, 1.6f, 1.45f, 3.8f);
-                boss.ConfigureAttackReadability(true);
+                boss.ConfigureAttackReadability(false);
                 boss.ConfigurePresentation("InstructorRecover", "InstructorSweep", "InstructorHook",
                     "InstructorSlam", "InstructorHook", "InstructorPhase");
                 boss.GetComponentInChildren<SpriteAnimator>(true)?.LockReferenceCenterToLocalX(0f);

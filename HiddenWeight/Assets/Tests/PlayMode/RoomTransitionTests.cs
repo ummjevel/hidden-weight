@@ -132,6 +132,54 @@ namespace HiddenWeight.Tests
             Assert.That(RoomLoader.Instance.CurrentRoom, Is.EqualTo("R12"));
         }
 
+        [UnityTest]
+        public IEnumerator PortalShell_PreservesFullMapShortcutsAndSecretRoute()
+        {
+            yield return RoomTestHarness.EnterRoom("Residue", "R03");
+            Assert.That(FindDoor("residue_shortcut_A:S"), Is.Not.Null,
+                "_Full의 숏컷 A가 룸형 잔재에 이식되지 않았다.");
+            Assert.That(FindDoor("residue_shortcut_B:S"), Is.Not.Null,
+                "_Full의 숏컷 B가 룸형 잔재에 이식되지 않았다.");
+
+            yield return RoomLoader.Instance.LoadRoom("R07", null);
+            while (RoomLoader.Instance.IsTransitioning) yield return null;
+            yield return null;
+            Assert.That(FindDoor("residue_shortcut_C:S"), Is.Not.Null,
+                "_Full의 숏컷 C가 룸형 잔재에 이식되지 않았다.");
+
+            yield return RoomLoader.Instance.LoadRoom("R06", null);
+            while (RoomLoader.Instance.IsTransitioning) yield return null;
+            yield return null;
+            Assert.That(FindDoor("residue_R06_S2:D"), Is.Not.Null,
+                "R06 선택 되감기 뒤 열리는 S2 포탈이 없다.");
+        }
+
+        [UnityTest]
+        public IEnumerator PortalR06_RestoreDoesNotTrapPlayerInsideRequiredStep()
+        {
+            yield return RoomTestHarness.EnterRoom("Residue", "R06");
+            yield return null; // ResidueLoopRuntime의 방별 보정 완료
+
+            var step = GameObject.Find("R06_RequiredStep");
+            Assert.That(step, Is.Not.Null);
+            var rewindable = step.GetComponent<Rewindable>();
+            var stepCollider = step.GetComponent<Collider2D>();
+            var player = PlayerController.Instance;
+            var playerCollider = player.GetComponent<Collider2D>();
+            Vector3 restoredPosition = step.transform.position;
+
+            step.transform.position = restoredPosition + Vector3.down * 3f;
+            player.TeleportTo(restoredPosition);
+            Physics2D.SyncTransforms();
+            rewindable.Rewind();
+            yield return new WaitForFixedUpdate();
+
+            Assert.That(stepCollider.bounds.Intersects(playerCollider.bounds), Is.False,
+                "R06 필수 복원 계단 내부에 플레이어가 끼었다.");
+            Assert.That(player.transform.position.x, Is.LessThan(stepCollider.bounds.min.x),
+                "R06 복원 시 플레이어가 왼쪽 안전 바닥으로 빠져나오지 못했다.");
+        }
+
         // Task 3의 문 무장/해제 수명주기(OnTriggerEnter2D가 실제로 전환을 발동시키는지,
         // 무장 해제 중엔 눌러도 안 튕기는지, OnTriggerExit2D가 재무장하는지)는 EditMode에
         // 물리가 없어 한 번도 실행된 적이 없다. 위의 테스트들은 전부 RequestTransition을

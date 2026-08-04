@@ -31,6 +31,16 @@ namespace HiddenWeight.EditorTools
             Link("residue_R10_R11", "R10", Side.E, new Vector2(24, 7), "R11", new Vector2(0, 3)),
             Link("residue_R11_R12", "R11", Side.E, new Vector2(28, 4), "R12", new Vector2(0, 3)),
 
+            // _Full에서 ShortcutPassage가 잇던 A/B/C 지름길. 룸형에서는 두 방이 동시에
+            // 존재하지 않으므로 같은 좌표에 잠긴 RoomDoor 쌍을 두고 진행 id로 개방한다.
+            // 숏컷 장치의 그림과 개방 조건은 기존 R03/R07 오브젝트가 그대로 담당한다.
+            Link("residue_shortcut_A", "R05", Side.S, new Vector2(2f, 3f),
+                "R03", new Vector2(6f, 3f), "residue_shortcut_a"),
+            Link("residue_shortcut_B", "R08", Side.S, new Vector2(21f, 26.5f),
+                "R03", new Vector2(23f, 2f), "residue_shortcut_b"),
+            Link("residue_shortcut_C", "R10", Side.S, new Vector2(3.5f, 4f),
+                "R07", new Vector2(25f, 9f), "residue_shortcut_c"),
+
             // 비밀방 3곳. 예전에는 수직 샤프트였는데, 그 샤프트는 벽만 세우고 바닥 타일을
             // 뚫지 않았다 — 실제 출입은 ResidueLoopRuntime이 심던 텔레포트 쌍이 맡았다.
             // 그래서 샤프트 좌표를 그대로 문으로 쓰면 지형에 파묻히거나 점프로 닿지 않는다.
@@ -46,7 +56,8 @@ namespace HiddenWeight.EditorTools
             // 지나가는 플레이어를 낚아채지 않고, 그 자리에서 점프해야만 들어가게 한다.
             // S2 쪽도 같은 이유로 바닥 위 점프 높이에 둔다 — 관측 발판(y=10)에 두면 전투 뒤
             // 바닥에서 8을 올라갈 방법이 없어 갇힌다.
-            Link("residue_R06_S2", "R06", Side.D, new Vector2(21f, 7.2f), "S2", new Vector2(4f, 4.25f)),
+            Link("residue_R06_S2", "R06", Side.D, new Vector2(21f, 7.2f),
+                "S2", new Vector2(4f, 4.25f), "residue_secret_s2"),
 
             // R11: R12 동선을 피해 서쪽에 오름 계단(발판 3,5 → 7,7.2)을 새로 놓고 그 위에 문을
             // 둔다. 문은 2단 윗면(7.45)에서만 닿는다 — 뛰면 발이 10.17까지 올라 몸통이 판정
@@ -61,7 +72,7 @@ namespace HiddenWeight.EditorTools
         };
 
         static RoomLink Link(string id, string from, Side fromSide, Vector2 fromAnchor,
-            string to, Vector2 toAnchor) => new RoomLink
+            string to, Vector2 toAnchor, string requiredShortcutId = null) => new RoomLink
             {
                 linkId = id,
                 fromRoom = from,
@@ -70,6 +81,7 @@ namespace HiddenWeight.EditorTools
                 toSide = RoomLink.Opposite(fromSide),
                 fromAnchor = fromAnchor,
                 toAnchor = toAnchor,
+                requiredShortcutId = requiredShortcutId,
             };
 
         [MenuItem("Hidden Weight/Build Residue Room Links")]

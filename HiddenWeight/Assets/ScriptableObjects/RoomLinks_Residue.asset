@@ -91,6 +91,30 @@ MonoBehaviour:
     toSide: 0
     fromAnchor: {x: 28, y: 4}
     toAnchor: {x: 0, y: 3}
+  - linkId: residue_shortcut_A
+    fromRoom: R05
+    toRoom: R03
+    fromSide: 8
+    toSide: 8
+    fromAnchor: {x: 2, y: 3}
+    toAnchor: {x: 6, y: 3}
+    requiredShortcutId: residue_shortcut_a
+  - linkId: residue_shortcut_B
+    fromRoom: R08
+    toRoom: R03
+    fromSide: 8
+    toSide: 8
+    fromAnchor: {x: 21, y: 26.5}
+    toAnchor: {x: 23, y: 2}
+    requiredShortcutId: residue_shortcut_b
+  - linkId: residue_shortcut_C
+    fromRoom: R10
+    toRoom: R07
+    fromSide: 8
+    toSide: 8
+    fromAnchor: {x: 3.5, y: 4}
+    toAnchor: {x: 25, y: 9}
+    requiredShortcutId: residue_shortcut_c
   - linkId: residue_R04_S1
     fromRoom: R04
     toRoom: S1
@@ -105,6 +129,7 @@ MonoBehaviour:
     toSide: 6
     fromAnchor: {x: 21, y: 7.2}
     toAnchor: {x: 4, y: 4.25}
+    requiredShortcutId: residue_secret_s2
   - linkId: residue_R11_S3
     fromRoom: R11
     toRoom: S3

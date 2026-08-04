@@ -27,6 +27,8 @@ namespace HiddenWeight.World
         Vector2 _restoredColliderSize;
         Vector2 _restoredColliderOffset;
         float _restoredSurfaceInsetNormalized;
+        bool _hasSafeRestoreEscape;
+        Vector2 _safeRestoreEscape;
 
         public Transform Transform => transform;
         public float RestoredSurfaceInsetNormalized => _restoredSurfaceInsetNormalized;
@@ -64,6 +66,15 @@ namespace HiddenWeight.World
             _restoredSurfaceInsetNormalized = Mathf.Clamp01(surfaceInsetNormalized);
             if (_started && _rb != null && _rb.bodyType == RigidbodyType2D.Static && !CanRewind)
                 ApplyRestoredPlatformPresentation();
+        }
+
+        // 포탈형 방처럼 복원 대상이 플레이어와 같은 순간에 막 생성되는 구간에서만 쓴다.
+        // 평소 배치와 복원 위치는 바꾸지 않고, 복원 직후 몸이 콜라이더 안에 든 경우에만
+        // 설계된 안전 바닥으로 빼낸다.
+        public void ConfigureSafeRestoreEscape(Vector2 worldPoint)
+        {
+            _hasSafeRestoreEscape = true;
+            _safeRestoreEscape = worldPoint;
         }
 
         void ApplyLink(Shortcut shortcut, string shortcutId, Rewindable[] siblings)
@@ -125,6 +136,7 @@ namespace HiddenWeight.World
             gameObject.SetActive(_initialActive);
             if (_sprite != null) _sprite.sprite = _initialSprite;
             Freeze();
+            EscapePlayerIfRestoredInside();
             ApplyRestoredPlatformPresentation();
 
             if (GameManager.Instance != null) GameManager.Instance.Progress.MarkRewound(persistentId);
@@ -133,6 +145,21 @@ namespace HiddenWeight.World
 
             if (_bounceRoutine != null) StopCoroutine(_bounceRoutine);
             _bounceRoutine = StartCoroutine(BounceRoutine());
+        }
+
+        void EscapePlayerIfRestoredInside()
+        {
+            if (!_hasSafeRestoreEscape) return;
+            var player = HiddenWeight.Player.PlayerController.Instance;
+            var restoredCollider = GetComponent<Collider2D>();
+            var playerCollider = player != null ? player.GetComponent<Collider2D>() : null;
+            if (playerCollider == null || restoredCollider == null) return;
+
+            Physics2D.SyncTransforms();
+            if (!restoredCollider.bounds.Intersects(playerCollider.bounds)) return;
+
+            player.TeleportTo(_safeRestoreEscape);
+            Physics2D.SyncTransforms();
         }
 
         // 묶인 대상이 전부 복원됐을 때만 숏컷을 연다.

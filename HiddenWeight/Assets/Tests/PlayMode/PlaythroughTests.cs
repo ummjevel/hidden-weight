@@ -173,7 +173,7 @@ namespace HiddenWeight.Tests
         // 떨어졌을 때 체크포인트로 되돌려 보내는지 확인한다.
         [UnityTest]
         public IEnumerator 깊은_구덩이에_떨어지면_체크포인트로_복귀한다(
-            [Values("Zone_Residue", "Zone_Fracture")] string zone,
+            [Values("Zone_Residue_Full", "Zone_Fracture")] string zone,
             [Values(36.5f, 38f)] float pitX)
         {
             yield return SceneManager.LoadSceneAsync(zone, LoadSceneMode.Single);

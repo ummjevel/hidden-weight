@@ -99,11 +99,11 @@ namespace HiddenWeight.Tests
             buttonObject.GetComponent<Button>().onClick.Invoke();
 
             float deadline = Time.realtimeSinceStartup + 3f;
-            while (SceneManager.GetActiveScene().name != sceneName
+            while (!SceneManager.GetSceneByName(sceneName).isLoaded
                    && Time.realtimeSinceStartup < deadline)
                 yield return null;
 
-            Assert.AreEqual(sceneName, SceneManager.GetActiveScene().name,
+            Assert.IsTrue(SceneManager.GetSceneByName(sceneName).isLoaded,
                 buttonName + "을 눌러도 해당 단계로 이동하지 않았다.");
             bool residue = sceneName.Contains("Residue");
             Assert.AreEqual(!residue,

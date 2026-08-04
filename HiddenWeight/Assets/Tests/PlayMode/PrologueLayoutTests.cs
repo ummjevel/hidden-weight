@@ -416,7 +416,8 @@ namespace HiddenWeight.Tests
                 && Time.realtimeSinceStartup < deadline)
                 yield return null;
 
-            Assert.AreEqual("Zone_Residue_Full", SceneManager.GetActiveScene().name);
+            Assert.AreEqual("Zone_Residue_Full", SceneManager.GetActiveScene().name,
+                "튜토리얼 출구가 잔재 Full 씬으로 전환되지 않았다.");
         }
 
         static IEnumerator LoadPrologue()

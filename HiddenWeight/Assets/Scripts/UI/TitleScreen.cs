@@ -153,13 +153,8 @@ namespace HiddenWeight.UI
 
             var zones = new (string label, string scene)[]
             {
-                // 방별 additive 로딩용 셸(Zone_Residue)은 화면을 암전하고 로컬 좌표로
-                // 순간이동하므로 테스트 플레이에서 방과 방이 끊겨 보인다. 잔재·균열은 정식
-                // 진행 데이터(ZoneData.sceneName)와 동일한 전체 연결 씬을 써야 연속 카메라
-                // 이동으로 검수된다. 응시는 ZoneData.sceneName이 이미 방 단위 포탈 셸
-                // (Zone_Gaze)을 정식으로 가리키므로, 테스트 버튼도 같은 씬으로 맞춘다 —
-                // 실제로 플레이어가 타는 경로와 다른 씬을 검수해 봐야 의미가 없다.
-                ("1단계 · 잔재", "Zone_Residue_Full"),
+                // 현재 QA가 완료된 한 장짜리 잔재 씬을 실제 진행과 테스트 진입 모두에서 쓴다.
+                ("1단계 · 잔재", SceneFlow.Residue),
                 ("2단계 · 응시", "Zone_Gaze"),
                 ("3단계 · 균열", "Zone_Fracture_Full"),
             };

@@ -48,9 +48,9 @@ namespace HiddenWeight.EditorTools
             palette.residuePlatformLong = FindSprite(residueTerrainV3, "ResiduePlatformLong");
             palette.residueWallMiddle = FindSprite(residueWallsV3, "ResidueWallMiddle");
             palette.residueClimbPillar = FindSprite(residueWallsV3, "ResidueClimbPillar");
-            palette.gazeSurface = FindSprite(
-                "Assets/Art/Gaze/Environment/Terrain/Gaze_TerrainTiles_v1.png",
-                "GazeTerrain_r1_c3");
+            const string gazeSheet =
+                "Assets/Art/Gaze/Environment/Terrain/Gaze_TerrainTiles_v1.png";
+            palette.gazeSurface = FindSprite(gazeSheet, "GazeTerrain_r1_c3");
             const string fractureSheet =
                 "Assets/Art/Fracture/Environment/Terrain/Fracture_TerrainTiles_v2.png";
             palette.fractureSurface = FindSprite(fractureSheet, "FractureTerrain_r1_c3");
@@ -62,6 +62,7 @@ namespace HiddenWeight.EditorTools
                 throw new InvalidOperationException("지역별 보행 바닥 스프라이트를 찾지 못했다.");
 
             palette.fractureTiles = BuildFractureTileSet(fractureSheet);
+            palette.gazeTiles = BuildGazeTileSet(gazeSheet);
 
             EditorUtility.SetDirty(palette);
             AssetDatabase.SaveAssets();
@@ -104,6 +105,57 @@ namespace HiddenWeight.EditorTools
                     if (asset is Sprite sprite) names.Add(sprite.name);
                 throw new InvalidOperationException(
                     $"균열 지형 타일셋이 불완전하다: {sheet}\n"
+                    + $"  못 찾은 칸: {string.Join(", ", missing)}\n"
+                    + $"  시트가 실제로 가진 스프라이트 {names.Count}개: "
+                    + string.Join(", ", names));
+            }
+
+            return set;
+        }
+
+        // 응시 시트(6x4)는 균열과 달리 역할별로 깔끔하게 나뉘어 있지 않다 — 모서리·기둥·
+        // 계단·아치가 뒤섞여 있다. 바닥 윗면(꺾이지 않는 순수 평판)과 코너(옆이 무너져
+        // 내려가는 모서리)만 골라 topLeft/topMid/topRight로 쓰고, 세로 창살판을 벽 켜로,
+        // 물방울이 늘어지는 조각을 천장 밑면으로 재사용한다. r1_c3/r1_c4는 원래 2칸짜리
+        // 장식 하나가 6칸 그리드에 반으로 잘려 들어간 조각이라 반복용에서 제외했다.
+        //
+        // topMid은 2행(r2c*) 안에서만 고른다 — 셀 크기는 전부 8x8유닛으로 같지만 그림이
+        // 셀 안에서 시작하는 위치(위쪽 여백)는 조각마다 다르고, Sprite.bounds는 알파를
+        // 무시한 셀 전체 크기라 이 여백 차이가 그대로 반영된다. 1행 조각(예: r1_c1은
+        // 위쪽 여백이 2행보다 약 2유닛 더 크다)을 섞으면 코너와 중간 조각의 바닥면이
+        // 어긋나 보인다. 2행은 전부 여백이 53px 안팎으로 같아서 이 안에서만 고르면
+        // 이음매가 맞는다 — 대신 "꺾이지 않는" 평판은 r2_c5/r2_c6 두 개뿐이라 반복
+        // 무늬 종류가 균열(4종)보다 적다.
+        static TerrainTileSet BuildGazeTileSet(string sheet)
+        {
+            var all = AssetDatabase.LoadAllAssetsAtPath(sheet);
+            var missing = new System.Collections.Generic.List<string>();
+            Sprite At(int row, int column)
+            {
+                string wanted = $"GazeTerrain_r{row}_c{column}";
+                foreach (var asset in all)
+                    if (asset is Sprite sprite && sprite.name == wanted)
+                        return sprite;
+                missing.Add(wanted);
+                return null;
+            }
+
+            var set = new TerrainTileSet
+            {
+                topLeft = At(2, 1),
+                topMid = new[] { At(2, 5), At(2, 6) },
+                topRight = At(2, 4),
+                wallCourse = new[] { At(3, 1), At(3, 2), At(3, 3) },
+                ceilingMid = At(2, 6),
+            };
+
+            if (!set.IsComplete)
+            {
+                var names = new System.Collections.Generic.List<string>();
+                foreach (var asset in all)
+                    if (asset is Sprite sprite) names.Add(sprite.name);
+                throw new InvalidOperationException(
+                    $"응시 지형 타일셋이 불완전하다: {sheet}\n"
                     + $"  못 찾은 칸: {string.Join(", ", missing)}\n"
                     + $"  시트가 실제로 가진 스프라이트 {names.Count}개: "
                     + string.Join(", ", names));

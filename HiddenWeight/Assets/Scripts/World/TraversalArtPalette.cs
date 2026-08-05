@@ -26,6 +26,7 @@ namespace HiddenWeight.World
         // 역할별 타일셋. 있으면 끝단·중간·벽 켜·천장을 구분해 그리고, 형광 테두리 밴드를
         // 그리지 않는다 — 그림 자체가 네 면을 마감하기 때문이다.
         public TerrainTileSet fractureTiles;
+        public TerrainTileSet gazeTiles;
 
         public Sprite SurfaceFor(string sceneName)
         {
@@ -36,11 +37,13 @@ namespace HiddenWeight.World
         }
 
         // 타일셋을 가진 지역만 새 경로를 탄다. null이면 호출부가 옛 방식으로 되돌아가므로
-        // 잔재·응시의 화면은 이 변경으로 달라지지 않는다.
+        // 잔재의 화면은 이 변경으로 달라지지 않는다.
         public TerrainTileSet TileSetFor(string sceneName)
         {
             if (sceneName.Contains("Fracture") && fractureTiles != null && fractureTiles.IsComplete)
                 return fractureTiles;
+            if (sceneName.Contains("Gaze") && gazeTiles != null && gazeTiles.IsComplete)
+                return gazeTiles;
             return null;
         }
 

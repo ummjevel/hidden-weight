@@ -58,13 +58,15 @@ namespace HiddenWeight.UI
         }
 
         // 지역으로 바로 들어가는 QA용 입구. 정식 빌드에는 절대 노출하지 않는다.
-        // 잔재는 R05에서 되감기를 처음 배우는 흐름까지 검수해야 하므로 선해금하지 않는다.
-        // 응시·균열 바로가기는 기존 QA 편의를 유지한다(이번 작업 범위 밖).
+        // 잔재는 R05에서 되감기를, 응시는 G05(숨죽이기)·G11(자각)에서 실제로 걸어가
+        // 얻는 흐름을 검수해야 하므로 선해금하지 않는다 — 미리 열어 두면 해금 전
+        // 구간(G02 등)이 스킬 없이도 통과되는지 확인할 수 없다. 균열 바로가기는
+        // 기존 QA 편의를 유지한다.
         void StartZoneTest(string sceneName)
         {
             var progress = GameManager.Instance.Progress;
             progress.ResetAll();
-            if (!sceneName.Contains("Residue"))
+            if (!sceneName.Contains("Residue") && !sceneName.Contains("Gaze"))
             {
                 progress.UnlockSkill(EmotionId.Rewind);
                 progress.UnlockSkill(EmotionId.Hush);
@@ -155,7 +157,7 @@ namespace HiddenWeight.UI
             {
                 // 현재 QA가 완료된 한 장짜리 잔재 씬을 실제 진행과 테스트 진입 모두에서 쓴다.
                 ("1단계 · 잔재", SceneFlow.Residue),
-                ("2단계 · 응시", "Zone_Gaze"),
+                ("2단계 · 응시", "Zone_Gaze_Full"),
                 ("3단계 · 균열", "Zone_Fracture_Full"),
             };
 

@@ -1115,7 +1115,10 @@ namespace HiddenWeight.EditorTools
             BuildGazeEnemy(c.Root.transform, c.P(16f, 3f), GazeEnemyKind.Pilgrim);
             PlaceGaze(c.Root.transform, c.P(12f, 8f), 270f, 0f, 3f, 2f, 0f);
 
-            BuildRewardChest(c.Root.transform, "gaze_gs2_shard", c.P(22f, 3f), 0, true);
+            // 입구는 오른쪽(NE, gaze_G06_GS2 링크 로컬 x=20)이다. 보상은 문서 2.8절대로
+            // 반대쪽 끝에 둬서, 입구에서 바로 줍는 게 아니라 우리 두 개와 매달린 관객을
+            // 지나 역행해야 닿게 한다.
+            BuildRewardChest(c.Root.transform, "gaze_gs2_shard", c.P(2.5f, 3f), 0, true);
 
             c.Room("GazeSecret02", 24f, 16f);
         }
@@ -1365,6 +1368,11 @@ namespace HiddenWeight.EditorTools
         static void BuildG12(RoomCtx c)
         {
             c.Floor(0, 30, 4);
+
+            // 체크포인트는 전장(조우 상자 x=2~28) 밖 입구 쪽에 둔다 — G10과 같은 이유다.
+            // 이게 없으면 죽었을 때 LastCheckpoint가 이 방 이전에 마지막으로 밟은 체크포인트
+            // (G10)로 남아 있어, 지역 보스에게 죽어도 G12가 아니라 G10으로 되돌아갔다.
+            BuildCheckpoint(c.Root.transform, c.P(1.5f, 5.2f));
 
             // 전장을 가두는 벽은 조우(Encounter)가 전투 중에만 세운다. 상시 벽을 방 양끝에
             // 두면 입구와 출구를 그대로 막아 버린다 — 봇이 왼쪽 벽을 벽점프로 넘어야만

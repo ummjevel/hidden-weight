@@ -84,12 +84,30 @@ guard-breaking hit recoil, irreversible kneel and collapse.
 
 ### 5. Iris Gatekeeper Combat
 
+개정(v2): 스킬 이펙트(빔)를 프레임 안에 함께 그리려다 몬스터가 칸마다 다른 크기로
+찌그러졌고, Hurt·Death 행은 갈수록 작아지다 마지막 몇 칸이 형체를 알아볼 수 없게
+뭉개졌다. 이펙트는 별도로 합성하므로 프롬프트에서 아예 빼고, 모든 칸이 같은
+스케일을 유지하도록, 죽음은 재로 흩어지는 것으로 명시해 다시 생성한다.
+
 ```text
 Create an exactly 8-column by 7-row side-view boss sheet for Iris Gatekeeper:
 a tall gothic iris-door guardian with eyelid armor, rotating violet iris core,
 hooked stone limbs and teal gaze seams.
-Rows: idle, iris sweep, eyelid close, charge judgment, dual gaze, hurt, death.
-Every attack must show warning, active state and recovery.
+
+Do not draw any beam, particle, light trail, glow spike or other skill/attack VFX
+in any cell — those are composited separately in-engine. Every cell shows only the
+boss body itself in a readable action pose, at one fixed scale. Keep the exact same
+silhouette height, width and anchor position in every single frame across all seven
+rows — no cell may shrink, stretch or crop the body to make room for an effect that
+isn't there.
+
+Rows: idle breathing loop; iris sweep telegraph pose (the eye core opens and aims,
+no beam); eyelid closing shut; charge wind-up coil and forward lunge recovery, same
+scale throughout, no crouch that shrinks the silhouette; dual gaze telegraph pose
+(both eyes widen and aim outward, no beam); hurt recoil flinch, same scale as idle;
+irreversible death — the armored body cracks along its seams, crumbles into violet-grey
+ash and embers that drift and scatter, ending on an empty stage with no leftover
+fragments, gore or illegible debris.
 ```
 
 ### 6. Iris Gatekeeper Transitions

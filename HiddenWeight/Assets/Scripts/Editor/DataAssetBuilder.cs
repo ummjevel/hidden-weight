@@ -94,7 +94,7 @@ namespace HiddenWeight.EditorTools
                 d.id = ZoneId.Residue;
                 d.displayName = "잔재";
                 d.sceneName = "Zone_Residue_Full";
-                d.nextSceneName = "Zone_Gaze";
+                d.nextSceneName = "Zone_Gaze_Full";
                 d.grantedSkill = EmotionId.Rewind;
                 d.grantsAwareness = false;
                 d.awarenessStable = true;
@@ -105,7 +105,7 @@ namespace HiddenWeight.EditorTools
             {
                 d.id = ZoneId.Gaze;
                 d.displayName = "응시";
-                d.sceneName = "Zone_Gaze";
+                d.sceneName = "Zone_Gaze_Full";
                 d.nextSceneName = "Zone_Fracture";
                 d.grantedSkill = EmotionId.Hush;
                 d.grantsAwareness = true;

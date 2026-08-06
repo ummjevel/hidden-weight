@@ -882,6 +882,13 @@ namespace HiddenWeight.World
                                          TraversalArtPalette palette, BoundsInt bounds,
                                          int x, int side)
         {
+            // 균열 바닥의 맨 오른쪽 끝은 다음 방으로 이어지는 화면 가장자리다. 여기에
+            // 세로 장식벽을 세우면 길을 막는 기둥처럼 보인다. 충돌 타일은 그대로 두고
+            // 오른쪽 최외곽 노출면의 그림만 생략한다.
+            if (side > 0 && x == bounds.xMax - 1
+                && palette != null
+                && palette.ContinuousSetFor(tilemap.gameObject.scene.name) != null)
+                return;
 
             int runStart = int.MinValue;
             for (int y = bounds.yMin; y <= bounds.yMax; y++)

@@ -16,7 +16,7 @@ namespace HiddenWeight.Tests
         static IEnumerable<TestCaseData> Modules()
         {
             yield return new TestCaseData("SurfaceLeft", 256, 256);
-            yield return new TestCaseData("SurfaceMiddle", 1024, 256);
+            yield return new TestCaseData("SurfaceMiddle", 2560, 256);
             yield return new TestCaseData("SurfaceRight", 256, 256);
             yield return new TestCaseData("WallTop", 256, 192);
             yield return new TestCaseData("WallMiddle", 256, 768);
@@ -73,13 +73,13 @@ namespace HiddenWeight.Tests
                 && pixel.g >= 175
                 && pixel.b >= 200);
             int warmMetal = pixels.Count(pixel => pixel.a > 0
-                && pixel.r >= 130
-                && pixel.r - pixel.g <= 35
-                && pixel.g - pixel.b >= 18);
+                && pixel.r >= 120
+                && pixel.r >= pixel.g
+                && pixel.g >= pixel.b + 5);
 
             Assert.Greater(brightCyan, 1500,
                 assetPath + " has too little cyan crystal glow");
-            Assert.Greater(warmMetal, 1000,
+            Assert.Greater(warmMetal, 3000,
                 assetPath + " has no readable ruined-gothic metal arcade");
             Object.DestroyImmediate(texture);
         }

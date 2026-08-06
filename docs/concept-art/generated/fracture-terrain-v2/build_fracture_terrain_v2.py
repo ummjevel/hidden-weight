@@ -30,6 +30,7 @@ PLATFORMS = ART / "Environment/Terrain/Fracture_Platforms_v1.png"
 ROOMS = ART / "Rooms4K"
 OUT = ART / "Environment/Terrain/Fracture_TerrainTiles_v2.png"
 MODULE_OUT = ART / "Environment/Terrain"
+CURATED_SURFACE = Path(__file__).resolve().parent / "source/Fracture_ThirdPlatform_Source.png"
 MODULE_NAMES = {
     "SurfaceLeft": "Fracture_TraversalSurfaceLeft_v3.png",
     "SurfaceMiddle": "Fracture_TraversalSurfaceMiddle_v3.png",
@@ -554,15 +555,31 @@ def make_low_contrast_fill(wall_middle):
     return feather_repeat_edges(fill, 12)
 
 
+def make_curated_surface_modules():
+    """승인된 3번 시안을 연속형 좌·중·우 모듈로 분리한다."""
+    source = Image.open(CURATED_SURFACE).convert("RGBA")
+    scaled_width = round(source.width * 256 / source.height)
+    source = source.resize((scaled_width, 256), Image.Resampling.LANCZOS)
+
+    left = source.crop((0, 0, 256, 256))
+    right = source.crop((source.width - 256, 0, source.width, 256))
+
+    # 완성형 끝장식을 제외한 긴 내부 아케이드. 10:1 비율이라 런타임 반복 간격도
+    # 기존 4유닛에서 약 10유닛으로 늘어나 짧은 블록 패턴으로 읽히지 않는다.
+    middle_source = source.crop((180, 0, source.width - 180, 256))
+    middle = middle_source.resize((2560, 256), Image.Resampling.LANCZOS)
+    return left, middle, right
+
+
 def build_continuous_modules(graded_tiles):
     """v2의 역할별 셀에서 긴 수평·수직 v3 모듈을 파생한다."""
-    surface_middle = make_calm_surface_strip(graded_tiles[1:5])
+    surface_left, surface_middle, surface_right = make_curated_surface_modules()
 
     wall_middle = make_calm_wall_strip(graded_tiles[6:10])
     modules = {
-        "SurfaceLeft": graded_tiles[0],
+        "SurfaceLeft": surface_left,
         "SurfaceMiddle": surface_middle,
-        "SurfaceRight": graded_tiles[5],
+        "SurfaceRight": surface_right,
         "WallTop": make_wall_cap(graded_tiles[10], top=True),
         "WallMiddle": wall_middle,
         "WallBottom": make_wall_cap(graded_tiles[14], top=False),
@@ -571,7 +588,7 @@ def build_continuous_modules(graded_tiles):
 
     expected = {
         "SurfaceLeft": (256, 256),
-        "SurfaceMiddle": (1024, 256),
+        "SurfaceMiddle": (2560, 256),
         "SurfaceRight": (256, 256),
         "WallTop": (256, 192),
         "WallMiddle": (256, 768),

@@ -66,11 +66,20 @@ hit recoil, irreversible cage-and-mouth dissolution.
 
 ### 3. Hanging Audience
 
+개정(v2): Hit 행의 두 번째 칸 하나만 나머지 칸보다 확연히 작게 나와 재생 중 눈에 띄게
+깜빡였다. 모든 칸이 같은 스케일을 유지하도록 명시해 다시 생성한다.
+
 ```text
 Create an exactly 8-column by 6-row side-view enemy sprite sheet for Hanging Audience:
 a ceiling cage containing pale audience masks and ragged violet cloth.
-Rows: hanging idle, ceiling crawl and sway, projected shadow telegraph, sudden drop and recovery,
-hit shudder, irreversible fall and break.
+
+Keep the exact same silhouette height, width and anchor position in every single frame
+across all six rows — no cell may shrink or shrink-and-recover within a row. The hit
+reaction is a small shudder in place, not a size change.
+
+Rows: hanging idle; ceiling crawl and sway; projected shadow telegraph; sudden drop and
+recovery, cage impact spikes stay separate from the body silhouette; hit shudder at the
+same scale as idle; irreversible fall and break.
 ```
 
 ### 4. Faceless Judge
@@ -129,11 +138,23 @@ Rows: idle, fixed gaze, rotating gaze, eye projectile, true strike, hurt, irreve
 
 ### 8. Gaze of All Deceptions
 
+개정(v2): 마지막 행에서 가면이 빠진 "빈 새장" 두 칸이 앞뒤 칸보다 눈에 띄게 작게 나와서,
+가면이 돌아오는 순간 크기가 툭 튀었다. 빈 새장도 같은 스케일을 유지하도록 명시해 다시
+생성한다.
+
 ```text
-Create an exactly 8-column by 4-row sheet for the same Gaze of All.
-Rows: many magenta masks create a false telegraph; false eyes dim and the cyan true eye appears;
-a translucent delayed imitation repeats the prior attack; masks and curtains fold into an empty cage
-and begin to return.
+Create an exactly 8-column by 4-row sheet for the same Gaze of All:
+a floating gothic theater idol made from pale audience masks, a central hanging cage,
+violet-black drapery, magenta false eyes and one hidden cyan-teal true eye.
+
+Keep the exact same silhouette height, width and anchor position in every single frame
+across all four rows. When masks or drapery are removed or folded away in the last row,
+the remaining empty cage must stay at the same overall scale as the fully masked body —
+it may lose detail, never size.
+
+Rows: many magenta masks create a false telegraph; false eyes dim and the cyan true eye
+appears; a translucent delayed imitation repeats the prior attack; masks and curtains fold
+away to reveal the empty cage at unchanged scale, then the masks return to close the loop.
 ```
 
 ### 9. Gaze of All Reactions

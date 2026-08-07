@@ -592,8 +592,14 @@ namespace HiddenWeight.EditorTools
                 BuildCorridor(parent, map, link.name, exitX, entryX, Mathf.RoundToInt(exitY));
             }
 
-            // GS1 — G04 하층 바닥의 뚫린 자리(로컬 8~9) 아래. 스킬 없이 관찰만으로 찾는다.
-            BuildShaft(parent, map, "Shaft_GS1", G04.x + 8, G04.y + 0, GS1.y + 2);
+            // GS1 — G04 하층 바닥의 뚫린 자리(로컬 0~1, 맨 왼쪽) 아래. 스킬 없이 관찰만으로
+            // 찾는다. 이 값은 BuildG04의 실제 구멍 위치(c.Floor(1,24,2,2)가 왼쪽 0~1을
+            // 비워 만든다), GazeRoomLinks.cs의 gaze_G04_GS1 링크 앵커(로컬 0.5)와 반드시
+            // 일치해야 한다 — 예전엔 여기가 로컬 8을 가리켜서, 벽점프용 벽 두 짝이 실제
+            // 구멍과 8유닛 떨어진 멀쩡한 바닥 위에 떠 있었고, 정작 진짜 구멍(0~1)에는
+            // 벽이 없어 지그재그 하강 중 왼쪽으로 살짝만 벗어나도 곧장 GS1까지 뚫려
+            // 떨어졌다.
+            BuildShaft(parent, map, "Shaft_GS1", G04.x, G04.y + 0, GS1.y + 2);
 
             // GS2 — G06 바닥의 좁은 틈(로컬 20~21) 아래. 틈 폭이 숨죽인 몸만 통과시킨다.
             BuildShaft(parent, map, "Shaft_GS2", G06.x + 20, G06.y + 0, GS2.y + 2);

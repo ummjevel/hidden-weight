@@ -621,36 +621,11 @@ namespace HiddenWeight.World
             if (a == Vector2.negativeInfinity || b == Vector2.negativeInfinity) return;
             var anchorA = Passage(name + "_A", a);
             var anchorB = Passage(name + "_B", b);
-            AddPassageVisual(anchorA, shortcut);
-            AddPassageVisual(anchorB, shortcut);
+            // 지름길 표식이 적절한 전용 아트 대신 단색 플레이스홀더 스프라이트를
+            // 금색으로 확대해, 잔재 전역에 불투명한 노란 네모로 보였다. 입구의
+            // 이동 트리거는 그대로 유지하고 오해를 만드는 임시 표식만 생성하지 않는다.
             anchorA.GetComponent<ShortcutPassage>().Configure(shortcut, anchorB.transform, new Vector2(1.1f, 0.8f));
             anchorB.GetComponent<ShortcutPassage>().Configure(shortcut, anchorA.transform, new Vector2(1.1f, 0.8f));
-        }
-
-        void AddPassageVisual(GameObject passage, Shortcut shortcut)
-        {
-            Sprite sprite = null;
-            if (shortcut != null)
-            {
-                var source = shortcut.GetComponentInChildren<SpriteRenderer>(true);
-                if (source != null) sprite = source.sprite;
-            }
-            if (sprite == null)
-            {
-                var fragment = FindFirstObjectByType<StoryFragment>();
-                var source = fragment != null ? fragment.GetComponentInChildren<SpriteRenderer>() : null;
-                if (source != null) sprite = source.sprite;
-            }
-            if (sprite == null) return;
-
-            var visual = new GameObject("PassageVisual");
-            visual.transform.SetParent(passage.transform, false);
-            var renderer = visual.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(0.86f, 0.72f, 0.42f, 0.72f);
-            renderer.sortingOrder = 6;
-            float height = sprite.bounds.size.y;
-            if (height > 0f) visual.transform.localScale = Vector3.one * (1.4f / height);
         }
 
         GameObject Passage(string name, Vector2 position)

@@ -20,14 +20,26 @@ v1(`build_fracture_gameplay_art.py`의 `terrain_tiles()`)은 PIL 다각형에 fi
 """
 
 from pathlib import Path
+import random
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageStat
 
 ROOT = Path(__file__).resolve().parents[4]
 ART = ROOT / "HiddenWeight/Assets/Art/Fracture"
 PLATFORMS = ART / "Environment/Terrain/Fracture_Platforms_v1.png"
 ROOMS = ART / "Rooms4K"
 OUT = ART / "Environment/Terrain/Fracture_TerrainTiles_v2.png"
+MODULE_OUT = ART / "Environment/Terrain"
+CURATED_SURFACE = Path(__file__).resolve().parent / "source/Fracture_ThirdPlatform_Source.png"
+MODULE_NAMES = {
+    "SurfaceLeft": "Fracture_TraversalSurfaceLeft_v3.png",
+    "SurfaceMiddle": "Fracture_TraversalSurfaceMiddle_v3.png",
+    "SurfaceRight": "Fracture_TraversalSurfaceRight_v3.png",
+    "WallTop": "Fracture_TraversalWallTop_v3.png",
+    "WallMiddle": "Fracture_TraversalWallMiddle_v3.png",
+    "WallBottom": "Fracture_TraversalWallBottom_v3.png",
+    "Fill": "Fracture_TraversalFill_v3.png",
+}
 
 COLUMNS, ROWS = 6, 4
 # 셀은 정사각이고 시트는 1536x1024다. 크기를 2의 거듭제곱에서 벗어나게 하면 유니티가 늘려
@@ -252,6 +264,348 @@ def crack(im, seed_x):
     return out
 
 
+def smooth_vertical_seam(im, seam_x, radius=10):
+    """서로 다른 원화 조각이 만나는 세로 경계를 좁은 구간에서 보간한다."""
+    out = im.copy()
+    px = out.load()
+    left_x = max(0, seam_x - radius)
+    right_x = min(out.width - 1, seam_x + radius)
+    span = max(1, right_x - left_x)
+    for y in range(out.height):
+        left = px[left_x, y]
+        right = px[right_x, y]
+        for x in range(left_x + 1, right_x):
+            t = (x - left_x) / span
+            px[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(left, right))
+    return out
+
+
+def feather_repeat_edges(im, radius=10):
+    """반복되는 중앙 모듈의 마지막·첫 픽셀을 같게 만들고 안쪽으로 부드럽게 푼다."""
+    out = im.copy()
+    px = out.load()
+    radius = min(radius, out.width // 4)
+    for y in range(out.height):
+        for distance in range(radius):
+            lx = distance
+            rx = out.width - 1 - distance
+            left, right = px[lx, y], px[rx, y]
+            average = tuple(round((a + b) * 0.5) for a, b in zip(left, right))
+            t = distance / max(1, radius - 1)
+            px[lx, y] = tuple(round(a + (b - a) * t) for a, b in zip(average, left))
+            px[rx, y] = tuple(round(a + (b - a) * t) for a, b in zip(average, right))
+    return out
+
+
+def make_calm_wall_strip(wall_tiles, size=(256, 768)):
+    """기존 벽 팔레트를 저주파 질감으로 바꿔 블록 문양의 반복을 숨긴다."""
+    # 실제 원화에서 평균 팔레트만 가져온다. 문양을 흐리게 남기면 결국 흐릿한 블록이
+    # 반복되므로, 중앙 면은 재질만 말하고 장식은 상·하단 캡에 맡긴다.
+    means = [ImageStat.Stat(tile.convert("RGB")).mean[:3] for tile in wall_tiles]
+    base = tuple(round(sum(values) / len(values)) for values in zip(*means))
+    top = tuple(min(255, round(value * 1.07)) for value in base)
+    bottom = (
+        max(0, round(base[0] * 0.82)),
+        min(255, round(base[1] * 0.94)),
+        min(255, round(base[2] * 1.08)),
+    )
+
+    rng = random.Random(314159)
+    noise = Image.new("L", (32, 96))
+    noise.putdata([rng.randrange(72, 184) for _ in range(32 * 96)])
+    noise = noise.filter(ImageFilter.GaussianBlur(2.2)).resize(
+        size, Image.Resampling.BICUBIC)
+
+    opaque = Image.new("RGBA", size, (0, 0, 0, 255))
+    pixels = opaque.load()
+    noise_pixels = noise.load()
+    for y in range(size[1]):
+        t = y / max(1, size[1] - 1)
+        color = tuple(round(a + (b - a) * t) for a, b in zip(top, bottom))
+        for x in range(size[0]):
+            variation = (noise_pixels[x, y] - 128) * 0.10
+            pixels[x, y] = tuple(
+                min(255, max(0, round(channel + variation))) for channel in color
+            ) + (255,)
+
+    # 가장자리의 얇은 세로 몰딩은 벽을 하나의 구조물로 묶되, 칸마다 반복되는 문양은 만들지 않는다.
+    rails = Image.new("RGBA", size, (0, 0, 0, 0))
+    rail_draw = ImageDraw.Draw(rails)
+    for x in (13, size[0] - 14):
+        rail_draw.line((x, 0, x, size[1]), fill=(238, 229, 244, 44), width=2)
+    for x in (17, size[0] - 18):
+        rail_draw.line((x, 0, x, size[1]), fill=(76, 88, 128, 38), width=2)
+    opaque.alpha_composite(rails)
+
+    # 긴 대리석 결. 규칙적인 타일 경계가 아니라 전체 높이를 가로지르는 낮은 대비의 선이다.
+    veins = Image.new("RGBA", size, (0, 0, 0, 0))
+    vein_draw = ImageDraw.Draw(veins)
+    for _ in range(7):
+        x = rng.randrange(28, size[0] - 28)
+        points = []
+        for y in range(-20, size[1] + 80, 80):
+            x = min(size[0] - 24, max(24, x + rng.randrange(-18, 19)))
+            points.append((x, y))
+        vein_draw.line(points, fill=(92, 91, 132, 18), width=2)
+    opaque.alpha_composite(veins.filter(ImageFilter.GaussianBlur(0.7)))
+
+    dark = tuple(max(0, round(value * 0.72)) for value in base) + (30,)
+    light = tuple(min(255, round(value * 1.08)) for value in base) + (22,)
+    joints = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(joints)
+    for y in range(256, size[1], 256):
+        draw.line((0, y, size[0], y), fill=dark, width=2)
+        draw.line((0, y + 2, size[0], y + 2), fill=light, width=1)
+    opaque.alpha_composite(joints)
+
+    # 결정 강조형 세로벽: 단색 충돌 기둥처럼 보이지 않도록 하나의 긴 청록 코어를 세우고
+    # 바깥에 금속 프레임을 두른다. 가로 칸막이는 만들지 않아 세로 흐름이 끊기지 않는다.
+    crystal = Image.new("RGBA", size, (0, 0, 0, 0))
+    crystal_draw = ImageDraw.Draw(crystal)
+    for x in range(76, 181):
+        edge = abs(x - 128) / 52
+        color = (
+            round(64 + 30 * edge),
+            round(190 + 22 * (1 - edge)),
+            round(228 + 24 * (1 - edge)),
+            round(176 + 50 * (1 - edge)),
+        )
+        crystal_draw.line((x, 0, x, size[1]), fill=color, width=1)
+
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.rectangle((96, 0, 160, size[1]), fill=(45, 194, 255, 104))
+    glow = glow.filter(ImageFilter.GaussianBlur(18))
+    opaque.alpha_composite(glow)
+    opaque.alpha_composite(crystal)
+
+    frame = Image.new("RGBA", size, (0, 0, 0, 0))
+    frame_draw = ImageDraw.Draw(frame)
+    metal_shadow = (64, 70, 102, 168)
+    metal = (190, 170, 126, 226)
+    metal_light = (232, 220, 182, 172)
+    for x in (70, 185):
+        frame_draw.line((x, 0, x, size[1]), fill=metal_shadow, width=11)
+        frame_draw.line((x, 0, x, size[1]), fill=metal, width=6)
+        frame_draw.line((x - 1, 0, x - 1, size[1]), fill=metal_light, width=1)
+
+    # 폭이 다른 길쭉한 마름모를 이어 고딕 창살을 만든다. 핵심 결정 세 개만 밝게 하여
+    # 타일 장식보다 하나의 건축 기둥으로 읽히게 한다.
+    anchors = (0, 126, 294, 455, 628, 768)
+    for index in range(len(anchors) - 1):
+        top_y, bottom_y = anchors[index], anchors[index + 1]
+        mid_y = (top_y + bottom_y) // 2
+        left = 81 + (index % 2) * 7
+        right = 175 - (index % 2) * 7
+        diamond = ((128, top_y), (right, mid_y), (128, bottom_y), (left, mid_y), (128, top_y))
+        frame_draw.line(diamond, fill=metal_shadow, width=8)
+        frame_draw.line(diamond, fill=metal, width=4)
+        frame_draw.line(diamond, fill=metal_light, width=1)
+
+    for cy, half_height in ((145, 34), (382, 43), (624, 36)):
+        frame_draw.polygon(
+            ((128, cy - half_height), (148, cy), (128, cy + half_height), (108, cy)),
+            fill=(58, 184, 240, 250), outline=metal)
+        frame_draw.line((128, cy - half_height + 4, 128, cy + half_height - 4),
+                        fill=(152, 236, 255, 228), width=4)
+    opaque.alpha_composite(frame)
+    return feather_repeat_edges(opaque, 8)
+
+
+def make_wall_cap(tile, top):
+    """연속 벽의 시작과 끝에만 쓰는 256x192 마감 조각."""
+    fitted = cover(tile, (256, 256), ay="top" if top else "bottom")
+    return fitted.crop((0, 0, 256, 192) if top else (0, 64, 256, 256))
+
+
+def opaque_mean(im, box):
+    """투명 여백을 제외한 지정 영역의 평균 RGBA 색."""
+    pixels = [pixel for pixel in im.crop(box).getdata() if pixel[3] > 16]
+    if not pixels:
+        return (150, 150, 180, 255)
+    return tuple(round(sum(pixel[i] for pixel in pixels) / len(pixels)) for i in range(4))
+
+
+def make_calm_surface_strip(surface_tiles, size=(1024, 256)):
+    """끝단 사이를 잇는 결정 강조형 대리석·유리 장경간."""
+    source = Image.new("RGBA", size, (0, 0, 0, 0))
+    for index, tile in enumerate(surface_tiles):
+        source.alpha_composite(tile, (index * CELL_W, 0))
+
+    stone_top = opaque_mean(source, (0, 8, size[0], 62))[:3]
+    stone_side = opaque_mean(source, (0, 64, size[0], 142))[:3]
+    glass = opaque_mean(source, (0, 142, size[0], 205))[:3]
+    rng = random.Random(271828)
+
+    out = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(out)
+    # 한 장의 연속 상판. 큰 문양 대신 위→아래 재질 위계만 유지한다.
+    for y in range(0, 142):
+        t = y / 141
+        color = tuple(round(a + (b - a) * t) for a, b in zip(stone_top, stone_side))
+        draw.line((0, y, size[0], y), fill=color + (255,))
+    for y in range(142, 205):
+        t = (y - 142) / 62
+        target = (
+            max(54, round(glass[0] * 0.72)),
+            min(255, max(184, round(glass[1] * 1.22))),
+            min(255, max(224, round(glass[2] * 1.28))),
+        )
+        color = tuple(round(a + (b - a) * t) for a, b in zip(stone_side, target))
+        draw.line((0, y, size[0], y), fill=color + (255,))
+
+    # 저주파 대리석 결. 반복 타일의 사각 경계가 아니라 전체 장경간을 가로지른다.
+    noise = Image.new("L", (64, 16))
+    noise.putdata([rng.randrange(78, 178) for _ in range(64 * 16)])
+    noise = noise.filter(ImageFilter.GaussianBlur(1.6)).resize((size[0], 142), Image.Resampling.BICUBIC)
+    texture = Image.new("RGBA", (size[0], 142), (255, 255, 255, 0))
+    texture.putalpha(noise.point(lambda value: max(0, min(22, (value - 96) // 3))))
+    out.alpha_composite(texture, (0, 0))
+
+    detail = Image.new("RGBA", size, (0, 0, 0, 0))
+    detail_draw = ImageDraw.Draw(detail)
+    # 상판과 유리의 긴 수평 몰딩. 세로 칸막이는 약하게, 256px마다만 둔다.
+    detail_draw.line((0, 48, size[0], 48), fill=(245, 239, 252, 82), width=3)
+    detail_draw.line((0, 62, size[0], 62), fill=(89, 88, 129, 64), width=3)
+    detail_draw.line((0, 140, size[0], 140), fill=(90, 94, 137, 92), width=4)
+    detail_draw.line((0, 146, size[0], 146), fill=(230, 219, 235, 70), width=2)
+    for x in range(256, size[0], 256):
+        detail_draw.line((x, 68, x, 137), fill=(104, 101, 144, 24), width=2)
+
+    # 유리 안쪽의 청록 발광. 넓은 번짐 위에 밝은 코어를 겹쳐, 배경의 물빛과 같은
+    # 광원으로 읽히게 한다. 긴 한 줄이라 짧은 블록 반복으로 보이지 않는다.
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.line((0, 176, size[0], 176), fill=(38, 190, 255, 104), width=24)
+    glow = glow.filter(ImageFilter.GaussianBlur(13))
+    out.alpha_composite(glow)
+    detail_draw.line((0, 176, size[0], 176), fill=(92, 214, 248, 132), width=3)
+
+    # 유리 면의 큰 패싯. 밝은 코어를 충분히 남겨 결정 강조형의 청록광이 실제 플레이
+    # 화면에서도 죽지 않게 한다.
+    for x in range(-64, size[0] + 128, 128):
+        detail_draw.line((x, 204, x + 64, 146), fill=(112, 220, 252, 176), width=3)
+        detail_draw.line((x + 64, 146, x + 128, 204), fill=(68, 190, 238, 154), width=3)
+    out.alpha_composite(detail)
+
+    # 폐허 온실을 연상시키는 금빛 고딕 아케이드. 균등한 타일 칸 대신 폭이 다른 아치를
+    # 한 장경간 안에 배치하고, 중간 기둥은 성기게 남긴다.
+    arcade = Image.new("RGBA", size, (0, 0, 0, 0))
+    arcade_draw = ImageDraw.Draw(arcade)
+    metal_shadow = (65, 72, 104, 152)
+    metal = (190, 170, 126, 222)
+    metal_light = (230, 218, 180, 166)
+    x = -18
+    bay_index = 0
+    while x < size[0] + 20:
+        bay = (132, 157, 119, 146, 128, 163, 121)[bay_index % 7]
+        right = x + bay
+        crown_y = 151 + (bay_index % 3) * 3
+        points = []
+        for step in range(17):
+            t = step / 16
+            px = x + bay * t
+            py = 202 - (202 - crown_y) * (4 * t * (1 - t))
+            points.append((round(px), round(py)))
+        arcade_draw.line(points, fill=metal_shadow, width=7)
+        arcade_draw.line(points, fill=metal, width=4)
+        arcade_draw.line(points, fill=metal_light, width=1)
+        if bay_index % 2 == 0:
+            arcade_draw.line((right, 149, right, 204), fill=metal_shadow, width=7)
+            arcade_draw.line((right, 149, right, 204), fill=metal, width=4)
+            arcade_draw.line((right - 1, 150, right - 1, 203), fill=metal_light, width=1)
+        x = right
+        bay_index += 1
+    out.alpha_composite(arcade)
+
+    # 세 개뿐인 결정형 버팀대가 긴 바닥에 불규칙한 초점을 만든다. 캡 장식과 경쟁하지
+    # 않도록 상판 위로는 올라오지 않고 유리 띠와 하단 실루엣만 끊는다.
+    crystal_posts = Image.new("RGBA", size, (0, 0, 0, 0))
+    post_draw = ImageDraw.Draw(crystal_posts)
+    for cx, depth in ((184, 34), (523, 46), (842, 38)):
+        post_draw.polygon(
+            ((cx, 147), (cx + 15, 169), (cx + 8, 205 + depth),
+             (cx, 217 + depth), (cx - 8, 205 + depth), (cx - 15, 169)),
+            fill=(62, 184, 238, 246), outline=metal)
+        post_draw.line((cx, 151, cx, 216 + depth), fill=(145, 232, 255, 226), width=3)
+        post_draw.line((cx - 13, 169, cx + 13, 169), fill=metal_light, width=2)
+    out.alpha_composite(crystal_posts)
+
+    # 성긴 크리스탈 하단. 동일한 삼각형을 매 칸 붙이지 않고 길이와 간격을 결정적으로 바꾼다.
+    fringe = Image.new("RGBA", size, (0, 0, 0, 0))
+    fringe_draw = ImageDraw.Draw(fringe)
+    x = -24
+    while x < size[0] + 24:
+        width = rng.randrange(52, 88)
+        depth = rng.randrange(18, 39)
+        mid = x + width // 2
+        color = (70, 190 + rng.randrange(0, 25), 232 + rng.randrange(0, 23), 246)
+        fringe_draw.polygon(((x, 203), (x + width, 203), (mid, 203 + depth)), fill=color)
+        fringe_draw.line(((x, 203), (mid, 203 + depth), (x + width, 203)),
+                         fill=(160, 235, 255, 182), width=2)
+        x += width + rng.randrange(18, 42)
+    out.alpha_composite(fringe)
+    return feather_repeat_edges(out, 12)
+
+
+def make_low_contrast_fill(wall_middle):
+    """두꺼운 충돌 덩어리 안쪽을 위한, 장식 없는 저대비 재질."""
+    fill = wall_middle.resize((512, 512), Image.Resampling.BICUBIC)
+    fill = ImageEnhance.Contrast(fill).enhance(0.28)
+    return feather_repeat_edges(fill, 12)
+
+
+def make_curated_surface_modules():
+    """승인된 3번 시안을 연속형 좌·중·우 모듈로 분리한다."""
+    source = Image.open(CURATED_SURFACE).convert("RGBA")
+    scaled_width = round(source.width * 256 / source.height)
+    source = source.resize((scaled_width, 256), Image.Resampling.LANCZOS)
+
+    left = source.crop((0, 0, 256, 256))
+    right = source.crop((source.width - 256, 0, source.width, 256))
+
+    # 완성형 끝장식을 제외한 긴 내부 아케이드. 10:1 비율이라 런타임 반복 간격도
+    # 기존 4유닛에서 약 10유닛으로 늘어나 짧은 블록 패턴으로 읽히지 않는다.
+    middle_source = source.crop((180, 0, source.width - 180, 256))
+    middle = middle_source.resize((2560, 256), Image.Resampling.LANCZOS)
+    return left, middle, right
+
+
+def build_continuous_modules(graded_tiles):
+    """v2의 역할별 셀에서 긴 수평·수직 v3 모듈을 파생한다."""
+    surface_left, surface_middle, surface_right = make_curated_surface_modules()
+
+    wall_middle = make_calm_wall_strip(graded_tiles[6:10])
+    modules = {
+        "SurfaceLeft": surface_left,
+        "SurfaceMiddle": surface_middle,
+        "SurfaceRight": surface_right,
+        "WallTop": make_wall_cap(graded_tiles[10], top=True),
+        "WallMiddle": wall_middle,
+        "WallBottom": make_wall_cap(graded_tiles[14], top=False),
+        "Fill": make_low_contrast_fill(wall_middle),
+    }
+
+    expected = {
+        "SurfaceLeft": (256, 256),
+        "SurfaceMiddle": (2560, 256),
+        "SurfaceRight": (256, 256),
+        "WallTop": (256, 192),
+        "WallMiddle": (256, 768),
+        "WallBottom": (256, 192),
+        "Fill": (512, 512),
+    }
+    MODULE_OUT.mkdir(parents=True, exist_ok=True)
+    for role, image in modules.items():
+        image = image.convert("RGBA")
+        if image.size != expected[role] or image.getbbox() is None:
+            raise ValueError(f"invalid {role}: size={image.size} bbox={image.getbbox()}")
+        path = MODULE_OUT / MODULE_NAMES[role]
+        image.save(path)
+        print(f"wrote {path} {image.size}")
+    return modules
+
+
 def build():
     sheet = load_platforms()
     # 폭이 다른 세 종류를 모두 쓴다. 좁은 칸은 끝단, 넓은 칸은 중간 반복에 적합하다.
@@ -333,14 +687,18 @@ def build():
         lambda t: grade(t, 1.0, 0.86, 0.92, SAT),   # r4 특수
     ]
 
+    graded_tiles = []
     out = Image.new("RGBA", (COLUMNS * CELL_W, ROWS * CELL_H), (0, 0, 0, 0))
     for index, tile in enumerate(tiles):
         col, row = index % COLUMNS, index // COLUMNS
-        out.alpha_composite(graders[row](tile), (col * CELL_W, row * CELL_H))
+        graded = graders[row](tile)
+        graded_tiles.append(graded)
+        out.alpha_composite(graded, (col * CELL_W, row * CELL_H))
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out.save(OUT)
     print(f"wrote {OUT} {out.size}")
+    build_continuous_modules(graded_tiles)
     return out
 
 

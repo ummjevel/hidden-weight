@@ -7,6 +7,12 @@ namespace HiddenWeight.EditorTools
 {
     public static class SingleRoomBackgroundBuilder
     {
+        public enum BackgroundSizing
+        {
+            RoomFixed,
+            CameraFollow,
+        }
+
         const string TraversalPalettePath = "Assets/Resources/TraversalArtPalette.asset";
 
         [MenuItem("Hidden Weight/Art/Build Traversal Art Palette")]
@@ -54,11 +60,33 @@ namespace HiddenWeight.EditorTools
             const string fractureSheet =
                 "Assets/Art/Fracture/Environment/Terrain/Fracture_TerrainTiles_v2.png";
             palette.fractureSurface = FindSprite(fractureSheet, "FractureTerrain_r1_c3");
+            const string fractureTerrainRoot = "Assets/Art/Fracture/Environment/Terrain";
+            string FractureModulePath(string role) =>
+                $"{fractureTerrainRoot}/Fracture_Traversal{role}_v3.png";
+            foreach (string role in new[]
+                     {
+                         "SurfaceLeft", "SurfaceMiddle", "SurfaceRight",
+                         "WallTop", "WallMiddle", "WallBottom",
+                     })
+                ConfigureTraversalSurfaceImport(FractureModulePath(role));
+            ConfigureTraversalFillImport(FractureModulePath("Fill"));
+
+            palette.fractureContinuous = new ContinuousTerrainSet
+            {
+                surfaceLeft = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceLeft")),
+                surfaceMiddle = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceMiddle")),
+                surfaceRight = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("SurfaceRight")),
+                wallTop = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallTop")),
+                wallMiddle = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallMiddle")),
+                wallBottom = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("WallBottom")),
+                fill = AssetDatabase.LoadAssetAtPath<Sprite>(FractureModulePath("Fill")),
+            };
 
             if (palette.prologueSurface == null || palette.prologueWall == null || palette.prologueFill == null
                 || palette.residueSurface == null
                 || palette.gazeSurface == null
-                || palette.fractureSurface == null || !palette.HasResidueModularV3)
+                || palette.fractureSurface == null || !palette.HasResidueModularV3
+                || palette.fractureContinuous == null || !palette.fractureContinuous.IsComplete)
                 throw new InvalidOperationException("지역별 보행 바닥 스프라이트를 찾지 못했다.");
 
             palette.fractureTiles = BuildFractureTileSet(fractureSheet);
@@ -206,7 +234,8 @@ namespace HiddenWeight.EditorTools
             importer.SaveAndReimport();
         }
 
-        public static void Build(Room room, string artRoot)
+        public static void Build(Room room, string artRoot,
+            BackgroundSizing sizing = BackgroundSizing.RoomFixed)
         {
             if (room == null)
                 throw new ArgumentNullException(nameof(room));
@@ -238,10 +267,13 @@ namespace HiddenWeight.EditorTools
             renderer.sprite = sprite;
             renderer.sortingOrder = -30;
             var locked = background.AddComponent<CameraLockedRoomBackground>();
-            // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
-            // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
-            var size = room.WorldBounds.size;
-            locked.ConfigureWorldSize(new Vector2(size.x, size.y));
+            if (sizing == BackgroundSizing.RoomFixed)
+            {
+                // 카메라를 따라 매 프레임 다시 스케일하는 대신 방 크기에 한 번만 맞춘다 —
+                // 그래야 그림이 방 안에서 고정되어 실제 오브젝트와의 크기 관계가 일정해진다.
+                var size = room.WorldBounds.size;
+                locked.ConfigureWorldSize(new Vector2(size.x, size.y));
+            }
             if (artRoot.EndsWith("/Prologue", StringComparison.Ordinal))
             {
                 var serialized = new SerializedObject(locked);

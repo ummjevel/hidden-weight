@@ -10,11 +10,11 @@ using HiddenWeight.World;
 
 namespace HiddenWeight.Tests
 {
-    // 균열의 **정식 경로**(포탈 셸 + 방 씬)를 봇이 처음부터 보스방까지 걸어 본다.
+    // 제작·회귀 검사용으로 남겨 둔 균열의 분리 방 씬(포탈 셸용)을 봇이 걸어 본다.
     //
     // 기존 `GazeFracturePlaythroughTests.균열_봇이_열두_방을_모두_통과한다`는 통로판
-    // (`Zone_Fracture_Full`)을 걷는다. 그런데 게임이 실제로 로드하는 것은 포탈 셸이므로,
-    // 그 검사가 통과해도 "지금 배포되는 경로가 걸어지는가"는 아무도 확인하지 않는 상태였다.
+    // 정식 배포 경로는 다시 `Zone_Fracture_Full` 연속 맵을 쓴다. 분리 방 씬은 정식 동선은
+    // 아니지만 제작 도구가 계속 생성하므로, 포탈 링크가 조용히 깨지지 않았는지만 확인한다.
     //
     // 손으로 F12까지 몰고 가는 것은 이동 발판 타이밍·정예·중간 보스 때문에 사실상 불가능하다.
     // 봇은 그 대신 "각 방에서 출구까지 갈 수 있는가"만 본다 — 진행 불가(소프트락)를 잡는 것이
@@ -51,12 +51,12 @@ namespace HiddenWeight.Tests
             yield return RoomTestHarness.EnterRoom("Fracture", "F01");
             Time.timeScale = 1f;
 
-            // 정식 진입 경로가 통로판(_Full)으로 되돌아가면 방 씬 15개와 포탈 문이
-            // 다시 고아가 된다 — 걷기 시작 전에 그것부터 확인한다.
+            // 정식 진입 경로는 연속형 _Full 씬이어야 한다. 아래 포탈 문 검사는 제작용으로
+            // 남은 분리 방 씬의 링크가 유효한지만 보는 별도 회귀 검사다.
             var zone = GameManager.Instance != null ? GameManager.Instance.CurrentZoneData : null;
             Assert.IsNotNull(zone, "균열 지역 데이터가 잡히지 않았다.");
-            Assert.AreEqual("Zone_Fracture", zone.sceneName,
-                "균열의 정식 씬이 포탈 셸이 아니다.");
+            Assert.AreEqual("Zone_Fracture_Full", zone.sceneName,
+                "균열의 정식 씬이 연속형 전체 맵이 아니다.");
             Assert.IsNotEmpty(Object.FindObjectsByType<RoomDoor>(FindObjectsInactive.Exclude),
                 "첫 방에 포탈 문이 없다.");
 

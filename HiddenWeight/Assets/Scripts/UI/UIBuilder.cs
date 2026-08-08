@@ -11,6 +11,14 @@ namespace HiddenWeight.UI
     public static class UIBuilder
     {
         public static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
+        static Font _menuRegular;
+        static Font _menuBold;
+        static Sprite _menuGradient;
+
+        public static Font MenuRegular => _menuRegular ??= Resources.Load<Font>("Fonts/NanumMyeongjo-Regular")
+            ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        public static Font MenuBold => _menuBold ??= Resources.Load<Font>("Fonts/NanumMyeongjo-Bold")
+            ?? MenuRegular;
         // 화면마다 따로 하드코딩돼 있던 색을 한 곳으로 모은 것 — 값 자체는 기존 화면들이
         // 이미 쓰던 것 중 하나로 통일했을 뿐, 새로운 톤을 도입한 게 아니다. 실제 아트(커스텀
         // 폰트·아이콘)는 별도 작업으로 미루고, 지금은 색·형태의 일관성만 맞춘다.
@@ -74,6 +82,127 @@ namespace HiddenWeight.UI
         public static readonly Color HoverTint = new Color(1.08f, 1.06f, 1.02f, 1f);
         public static readonly Color PressedTint = new Color(0.82f, 0.80f, 0.76f, 1f);
 
+        public static readonly Color MenuInk = new Color(0.025f, 0.027f, 0.045f, 0.97f);
+        public static readonly Color MenuGlass = new Color(0.075f, 0.065f, 0.105f, 0.94f);
+        public static readonly Color MenuEdge = new Color(0.62f, 0.57f, 0.82f, 0.62f);
+        public static readonly Color MenuEdgeSoft = new Color(0.52f, 0.62f, 0.80f, 0.22f);
+        public static readonly Color MenuTextMuted = new Color(0.74f, 0.72f, 0.80f, 0.82f);
+
+        // 비인게임 화면 전용 서체. HUD는 기존 CreateText를 그대로 사용하므로 영향을 받지 않는다.
+        public static Text CreateMenuText(Transform parent, string name, string content, int fontSize,
+            TextAnchor alignment = TextAnchor.MiddleCenter, bool bold = false)
+        {
+            var text = CreateText(parent, name, fontSize, alignment);
+            text.text = content;
+            StyleMenuText(text, bold);
+            return text;
+        }
+
+        public static void StyleMenuText(Text text, bool bold = false)
+        {
+            if (text == null) return;
+            text.font = bold ? MenuBold : MenuRegular;
+            text.color = TextPrimary;
+        }
+
+        // 반투명 유리판과 얇은 이중 테두리. 9-slice 그림 대신 앵커로 조립해 어떤 비율에서도
+        // 모서리와 선 두께가 유지된다.
+        public static Image CreateMenuPanel(Transform parent, string name, Color color, bool ornament = true)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var image = go.AddComponent<Image>();
+            image.color = color;
+
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = MenuEdge;
+            outline.effectDistance = new Vector2(1.5f, -1.5f);
+            outline.useGraphicAlpha = true;
+
+            if (ornament)
+            {
+                AddEdge(go.transform, "FrameTop", new Vector2(0f, 1f), new Vector2(1f, 1f),
+                    new Vector2(18f, -2f), new Vector2(-18f, 0f), MenuEdgeSoft);
+                AddEdge(go.transform, "FrameBottom", new Vector2(0f, 0f), new Vector2(1f, 0f),
+                    new Vector2(18f, 0f), new Vector2(-18f, 2f), MenuEdgeSoft);
+                AddDiamond(go.transform, "CornerTL", new Vector2(0f, 1f), new Vector2(12f, -12f), 12f);
+                AddDiamond(go.transform, "CornerTR", new Vector2(1f, 1f), new Vector2(-12f, -12f), 12f);
+                AddDiamond(go.transform, "CornerBL", new Vector2(0f, 0f), new Vector2(12f, 12f), 12f);
+                AddDiamond(go.transform, "CornerBR", new Vector2(1f, 0f), new Vector2(-12f, 12f), 12f);
+            }
+            return image;
+        }
+
+        public static void AddDivider(Transform parent, Vector2 anchor, Vector2 size, Vector2 position)
+        {
+            var line = new GameObject("MemoryDivider", typeof(RectTransform));
+            line.transform.SetParent(parent, false);
+            var rt = (RectTransform)line.transform;
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.sizeDelta = size;
+            rt.anchoredPosition = position;
+            line.AddComponent<Image>().color = MenuEdgeSoft;
+            AddDiamond(line.transform, "DividerGem", new Vector2(0.5f, 0.5f), Vector2.zero, 10f);
+        }
+
+        public static Sprite MenuGradient
+        {
+            get
+            {
+                if (_menuGradient != null) return _menuGradient;
+                const int height = 256;
+                var texture = new Texture2D(2, height, TextureFormat.RGBA32, false)
+                {
+                    name = "RuntimeMenuGradient",
+                    wrapMode = TextureWrapMode.Clamp,
+                    filterMode = FilterMode.Bilinear,
+                    hideFlags = HideFlags.HideAndDontSave,
+                };
+                var bottom = new Color(0.018f, 0.020f, 0.040f, 1f);
+                var middle = new Color(0.075f, 0.060f, 0.105f, 1f);
+                var top = new Color(0.025f, 0.055f, 0.085f, 1f);
+                for (int y = 0; y < height; y++)
+                {
+                    float t = y / (height - 1f);
+                    Color color = t < 0.55f
+                        ? Color.Lerp(bottom, middle, t / 0.55f)
+                        : Color.Lerp(middle, top, (t - 0.55f) / 0.45f);
+                    texture.SetPixel(0, y, color);
+                    texture.SetPixel(1, y, color);
+                }
+                texture.Apply(false, true);
+                _menuGradient = Sprite.Create(texture, new Rect(0f, 0f, 2f, height), new Vector2(0.5f, 0.5f), 100f);
+                _menuGradient.name = "RuntimeMenuGradientSprite";
+                _menuGradient.hideFlags = HideFlags.HideAndDontSave;
+                return _menuGradient;
+            }
+        }
+
+        static void AddEdge(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax,
+            Vector2 offsetMin, Vector2 offsetMax, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.offsetMin = offsetMin;
+            rt.offsetMax = offsetMax;
+            go.AddComponent<Image>().color = color;
+        }
+
+        static void AddDiamond(Transform parent, string name, Vector2 anchor, Vector2 position, float size)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.sizeDelta = Vector2.one * size;
+            rt.anchoredPosition = position;
+            rt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            go.AddComponent<Image>().color = MenuEdge;
+        }
+
         // HUD.cs가 쓰던 버전: GameObject 이름을 그대로 받고, 정렬을 지정하며, 텍스트는 빈 채로 시작한다.
         public static Text CreateText(Transform parent, string name, int fontSize, TextAnchor alignment)
         {
@@ -115,6 +244,10 @@ namespace HiddenWeight.UI
             var img = go.AddComponent<Image>();
             img.color = ButtonIdle;
 
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = MenuEdgeSoft;
+            outline.effectDistance = new Vector2(1f, -1f);
+
             var button = go.AddComponent<Button>();
             button.onClick.AddListener(() => AudioManager.Instance?.PlaySfx(SfxCue.UiConfirm, 0.35f));
             button.onClick.AddListener(onClick);
@@ -134,11 +267,21 @@ namespace HiddenWeight.UI
             button.colors = colors;
 
             var text = CreateText(go.transform, label, 24);
+            StyleMenuText(text, true);
             var textRt = text.rectTransform;
             textRt.anchorMin = Vector2.zero;
             textRt.anchorMax = Vector2.one;
             textRt.offsetMin = Vector2.zero;
             textRt.offsetMax = Vector2.zero;
+
+            var accent = new GameObject("SelectionGem", typeof(RectTransform));
+            accent.transform.SetParent(go.transform, false);
+            var accentRt = (RectTransform)accent.transform;
+            accentRt.anchorMin = accentRt.anchorMax = new Vector2(0f, 0.5f);
+            accentRt.sizeDelta = new Vector2(10f, 10f);
+            accentRt.anchoredPosition = new Vector2(16f, 0f);
+            accentRt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            accent.AddComponent<Image>().color = new Color(AccentColor.r, AccentColor.g, AccentColor.b, 0.72f);
 
             return button;
         }

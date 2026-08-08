@@ -662,7 +662,8 @@ namespace HiddenWeight.EditorTools
             BuildFractureRoomEdges(c);
 
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
-                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture");
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture",
+                    SingleRoomBackgroundBuilder.BackgroundSizing.CameraFollow);
 
             ClotheCollisionPlaceholderRenderers(c.Root);
         }
@@ -1021,7 +1022,8 @@ namespace HiddenWeight.EditorTools
 
             // 방마다 원본 콘셉트 한 장만 카메라에 고정한다.
             foreach (var room in Object.FindObjectsByType<Room>(FindObjectsSortMode.None))
-                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture");
+                SingleRoomBackgroundBuilder.Build(room, "Assets/Art/Fracture",
+                    SingleRoomBackgroundBuilder.BackgroundSizing.CameraFollow);
 
             ClotheCollisionPlaceholderRenderers(root);
             SaveScene(scene, "Zone_Fracture_Full");

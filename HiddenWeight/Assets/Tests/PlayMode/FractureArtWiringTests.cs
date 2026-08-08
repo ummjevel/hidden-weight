@@ -158,6 +158,35 @@ namespace HiddenWeight.Tests
                 string.Join(", ", visibleCollisionPlaceholders));
         }
 
+        [UnityTest]
+        public IEnumerator 활성_방_배경이_카메라_화면을_모두_덮는다()
+        {
+            yield return LoadFracture();
+
+            var room = GameObject.Find("FractureRoom01");
+            Assert.IsNotNull(room, "F01 방을 찾지 못했다.");
+
+            var background = room.GetComponentInChildren<CameraLockedRoomBackground>(true);
+            var camera = Camera.main;
+            Assert.IsNotNull(background, "F01 카메라 추적 배경이 없다.");
+            Assert.IsNotNull(camera, "메인 카메라가 없다.");
+
+            background.gameObject.SetActive(true);
+            background.Refresh(camera);
+
+            Bounds bounds = background.GetComponent<SpriteRenderer>().bounds;
+            float halfHeight = camera.orthographicSize;
+            float halfWidth = halfHeight * camera.aspect;
+            Assert.LessOrEqual(bounds.min.x,
+                camera.transform.position.x - halfWidth + 0.01f, "왼쪽 검정 여백");
+            Assert.GreaterOrEqual(bounds.max.x,
+                camera.transform.position.x + halfWidth - 0.01f, "오른쪽 검정 여백");
+            Assert.LessOrEqual(bounds.min.y,
+                camera.transform.position.y - halfHeight + 0.01f, "아래 검정 여백");
+            Assert.GreaterOrEqual(bounds.max.y,
+                camera.transform.position.y + halfHeight - 0.01f, "위 검정 여백");
+        }
+
         // 같은 방의 고정 발판과 회전 발판이 같은 그림이어야 한다. 회전 발판만 플레이스홀더로
         // 남으면 "겉모습으로 구분되지 않는다"는 균열의 규칙이 깨진다.
         [UnityTest]
@@ -350,7 +379,10 @@ namespace HiddenWeight.Tests
             foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (renderer.name != "TraversalSurface" && renderer.name != "PlatformSurface")
+                bool legacySurface = renderer.name == "TraversalSurface"
+                    || renderer.name == "PlatformSurface";
+                bool continuousSurface = renderer.name.StartsWith("FractureSurface");
+                if (!legacySurface && !continuousSurface)
                     continue;
                 if (renderer.sprite != null) used.Add(renderer.sprite.name);
             }
@@ -358,6 +390,49 @@ namespace HiddenWeight.Tests
             Assert.Greater(used.Count, 2,
                 "지형이 사실상 한 그림으로 그려지고 있다. 쓰인 타일: " +
                 string.Join(", ", used));
+        }
+
+        [UnityTest]
+        public IEnumerator 바닥과_벽이_v3_연속형_모듈로_그려진다()
+        {
+            yield return LoadFracture();
+
+            int surfaceMiddle = 0;
+            int surfaceLeft = 0;
+            int surfaceRight = 0;
+            int wallMiddle = 0;
+            var legacy = new List<string>();
+            var misaligned = new List<string>();
+
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                switch (renderer.name)
+                {
+                    case "FractureSurfaceMiddle": surfaceMiddle++; break;
+                    case "FractureSurfaceCapLeft": surfaceLeft++; break;
+                    case "FractureSurfaceCapRight": surfaceRight++; break;
+                    case "FractureWallMiddle": wallMiddle++; break;
+                }
+
+                if ((renderer.name == "TraversalSurface" || renderer.name == "PlatformSurface")
+                    && renderer.sprite != null
+                    && renderer.sprite.name.StartsWith("FractureTerrain_r1"))
+                    legacy.Add(renderer.name + ":" + renderer.sprite.name);
+
+                if (renderer.name.StartsWith("FractureSurface")
+                    && renderer.GetComponentInParent<Tilemap>() != null
+                    && Mathf.Abs(renderer.bounds.max.y - Mathf.Round(renderer.bounds.max.y)) > 0.06f)
+                    misaligned.Add(renderer.name + " @ " + renderer.bounds.max.y.ToString("F3"));
+            }
+
+            Assert.Greater(surfaceMiddle, 0, "긴 바닥 중앙 모듈이 없다.");
+            Assert.Greater(surfaceLeft, 0, "실제 바닥 시작점의 왼쪽 캡이 없다.");
+            Assert.Greater(surfaceRight, 0, "실제 바닥 끝점의 오른쪽 캡이 없다.");
+            Assert.Greater(wallMiddle, 0, "긴 세로벽 중앙 모듈이 없다.");
+            Assert.IsEmpty(legacy, "v2 짧은 바닥 타일이 남아 있다: " + string.Join(", ", legacy));
+            Assert.IsEmpty(misaligned,
+                "연속형 바닥 윗면이 실제 타일 경계와 어긋난다: " + string.Join(", ", misaligned));
         }
 
         // 형광 테두리 밴드는 "안 보이는데 부딪히는 벽"을 막으려던 응급처치였다. 지형 그림이

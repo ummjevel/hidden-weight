@@ -9,6 +9,7 @@ namespace HiddenWeight.UI
     // 타이틀 화면. 제목 "Hidden Weight" + 부제 "눈뜨는 꿈", 버튼 "시작하기"/"종료".
     public class TitleScreen : MonoBehaviour
     {
+        [SerializeField] Sprite backdropArt;
         Button _newGameButton;
         Button _continueButton;
         Button _creditsButton;
@@ -113,33 +114,131 @@ namespace HiddenWeight.UI
             UIBuilder.ConfigureScaler(canvasGO.AddComponent<CanvasScaler>());
             canvasGO.AddComponent<GraphicRaycaster>();
 
-            var title = UIBuilder.CreateText(canvasGO.transform, "Hidden Weight", 56);
+            BuildBackdrop(canvasGO.transform);
+
+            var brand = UIBuilder.CreateMenuPanel(canvasGO.transform, "TitleBrandPanel",
+                new Color(0.040f, 0.036f, 0.068f, 0.90f));
+            var brandRt = brand.rectTransform;
+            brandRt.anchorMin = brandRt.anchorMax = new Vector2(0.33f, 0.54f);
+            brandRt.sizeDelta = new Vector2(720f, 500f);
+            brandRt.anchoredPosition = Vector2.zero;
+
+            var eyebrow = UIBuilder.CreateMenuText(brand.transform, "TitleEyebrow",
+                "A DREAM OF MEMORY", 17, TextAnchor.MiddleLeft, true);
+            var eyebrowRt = eyebrow.rectTransform;
+            eyebrowRt.anchorMin = eyebrowRt.anchorMax = new Vector2(0.5f, 0.5f);
+            eyebrowRt.sizeDelta = new Vector2(570f, 36f);
+            eyebrowRt.anchoredPosition = new Vector2(0f, 154f);
+            eyebrow.color = new Color(UIBuilder.MenuEdge.r, UIBuilder.MenuEdge.g, UIBuilder.MenuEdge.b, 0.88f);
+
+            var title = UIBuilder.CreateMenuText(brand.transform, "Title_Main", "Hidden Weight", 76,
+                TextAnchor.MiddleLeft, true);
             var titleRt = title.rectTransform;
-            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.65f);
-            titleRt.sizeDelta = new Vector2(700f, 100f);
-            titleRt.anchoredPosition = Vector2.zero;
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.5f);
+            titleRt.sizeDelta = new Vector2(570f, 112f);
+            titleRt.anchoredPosition = new Vector2(0f, 82f);
 
-            var subtitle = UIBuilder.CreateText(canvasGO.transform, "눈뜨는 꿈", 24);
+            UIBuilder.AddDivider(brand.transform, new Vector2(0.5f, 0.5f), new Vector2(540f, 2f),
+                new Vector2(0f, 16f));
+
+            var subtitle = UIBuilder.CreateMenuText(brand.transform, "Title_Subtitle", "눈뜨는 꿈", 30,
+                TextAnchor.MiddleLeft, true);
             var subRt = subtitle.rectTransform;
-            subRt.anchorMin = subRt.anchorMax = new Vector2(0.5f, 0.55f);
-            subRt.sizeDelta = new Vector2(500f, 50f);
-            subRt.anchoredPosition = Vector2.zero;
+            subRt.anchorMin = subRt.anchorMax = new Vector2(0.5f, 0.5f);
+            subRt.sizeDelta = new Vector2(570f, 52f);
+            subRt.anchoredPosition = new Vector2(0f, -36f);
 
-            float firstY = -20f;
+            var copy = UIBuilder.CreateMenuText(brand.transform, "Title_Copy",
+                "흩어진 기억의 끝에서,\n비로소 나를 마주하는 이야기", 21, TextAnchor.UpperLeft);
+            copy.lineSpacing = 1.35f;
+            copy.color = UIBuilder.MenuTextMuted;
+            var copyRt = copy.rectTransform;
+            copyRt.anchorMin = copyRt.anchorMax = new Vector2(0.5f, 0.5f);
+            copyRt.sizeDelta = new Vector2(570f, 90f);
+            copyRt.anchoredPosition = new Vector2(0f, -116f);
+
+            var menu = UIBuilder.CreateMenuPanel(canvasGO.transform, "TitleMenuPanel", UIBuilder.MenuGlass);
+            var menuRt = menu.rectTransform;
+            menuRt.anchorMin = menuRt.anchorMax = new Vector2(0.77f, 0.52f);
+            menuRt.sizeDelta = new Vector2(420f, SaveService.HasSave ? 570f : 505f);
+            menuRt.anchoredPosition = Vector2.zero;
+
+            var menuHeading = UIBuilder.CreateMenuText(menu.transform, "MenuHeading", "기억을 열다", 26,
+                TextAnchor.MiddleCenter, true);
+            var headingRt = menuHeading.rectTransform;
+            headingRt.anchorMin = headingRt.anchorMax = new Vector2(0.5f, 1f);
+            headingRt.sizeDelta = new Vector2(320f, 62f);
+            headingRt.anchoredPosition = new Vector2(0f, -54f);
+
+            UIBuilder.AddDivider(menu.transform, new Vector2(0.5f, 1f), new Vector2(300f, 2f),
+                new Vector2(0f, -94f));
+
+            float firstY = SaveService.HasSave ? 126f : 92f;
             if (SaveService.HasSave)
             {
-                _continueButton = UIBuilder.CreateButton(canvasGO.transform, "이어하기", firstY, ContinueGame);
+                _continueButton = UIBuilder.CreateButton(menu.transform, "이어하기", firstY, ContinueGame);
                 firstY -= 70f;
             }
-            _newGameButton = UIBuilder.CreateButton(canvasGO.transform, "새 게임", firstY, StartGame);
-            _settingsButton = UIBuilder.CreateButton(canvasGO.transform, "설정", firstY - 70f, ShowSettings);
-            _creditsButton = UIBuilder.CreateButton(canvasGO.transform, "제작진", firstY - 140f, ShowCredits);
+            _newGameButton = UIBuilder.CreateButton(menu.transform, "새 게임", firstY, StartGame);
+            _settingsButton = UIBuilder.CreateButton(menu.transform, "설정", firstY - 70f, ShowSettings);
+            _creditsButton = UIBuilder.CreateButton(menu.transform, "제작진", firstY - 140f, ShowCredits);
+            UIBuilder.CreateButton(menu.transform, "종료", firstY - 210f, Quit);
 
-            BuildStageRow(canvasGO.transform, firstY - 225f);
-            UIBuilder.CreateButton(canvasGO.transform, "종료", firstY - 295f, Quit);
+            var version = UIBuilder.CreateMenuText(canvasGO.transform, "BuildVersion",
+                "Hidden Weight  ·  " + Application.version, 14, TextAnchor.MiddleRight);
+            version.color = new Color(1f, 1f, 1f, 0.40f);
+            var versionRt = version.rectTransform;
+            versionRt.anchorMin = versionRt.anchorMax = new Vector2(1f, 0f);
+            versionRt.pivot = new Vector2(1f, 0f);
+            versionRt.sizeDelta = new Vector2(360f, 32f);
+            versionRt.anchoredPosition = new Vector2(-34f, 22f);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
+            BuildStageRow(canvasGO.transform, -450f);
+#endif
 
             _dialog = canvasGO.AddComponent<ConfirmDialog>();
             _sections = canvasGO.AddComponent<PauseSectionPanel>();
+        }
+
+        void BuildBackdrop(Transform parent)
+        {
+            var backdrop = new GameObject("TitleBackdrop", typeof(RectTransform));
+            backdrop.transform.SetParent(parent, false);
+            var rt = (RectTransform)backdrop.transform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            var image = backdrop.AddComponent<Image>();
+            image.sprite = backdropArt != null ? backdropArt : UIBuilder.MenuGradient;
+            image.type = Image.Type.Simple;
+            image.color = backdropArt != null
+                ? new Color(0.50f, 0.54f, 0.68f, 0.62f)
+                : Color.white;
+
+            // 기억 파편처럼 보이는 정적인 작은 마름모. 반복 애니메이션 없이도 빈 검정 배경을
+            // 채우며, 동작 줄이기 설정과 충돌하지 않는다.
+            for (int i = 0; i < 18; i++)
+            {
+                var shard = new GameObject("MemoryDust_" + i, typeof(RectTransform));
+                shard.transform.SetParent(backdrop.transform, false);
+                var shardRt = (RectTransform)shard.transform;
+                float x = ((i * 47) % 101) / 100f;
+                float y = ((i * 71 + 13) % 97) / 96f;
+                shardRt.anchorMin = shardRt.anchorMax = new Vector2(x, y);
+                float size = 3f + (i % 4) * 2f;
+                shardRt.sizeDelta = new Vector2(size, size);
+                shardRt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                shard.AddComponent<Image>().color = new Color(0.67f, 0.73f, 0.94f, 0.10f + (i % 3) * 0.04f);
+            }
+
+            var veil = new GameObject("TitleVeil", typeof(RectTransform));
+            veil.transform.SetParent(backdrop.transform, false);
+            var veilRt = (RectTransform)veil.transform;
+            veilRt.anchorMin = Vector2.zero;
+            veilRt.anchorMax = Vector2.one;
+            veilRt.offsetMin = veilRt.offsetMax = Vector2.zero;
+            veil.AddComponent<Image>().color = new Color(0.01f, 0.012f, 0.025f, 0.18f);
         }
 
         // 테스트용 단계 바로가기. 정식 진행 저장은 건드리지 않고 해당 단계에 필요한 능력만
@@ -155,7 +254,11 @@ namespace HiddenWeight.UI
 
             var zones = new (string label, string scene)[]
             {
-                // 현재 QA가 완료된 한 장짜리 잔재 씬을 실제 진행과 테스트 진입 모두에서 쓴다.
+                // 방별 additive 로딩용 셸(Zone_Residue)은 화면을 암전하고 로컬 좌표로
+                // 순간이동하므로 테스트 플레이에서 방과 방이 끊겨 보인다. 잔재·균열은 정식
+                // 진행 데이터(ZoneData.sceneName)와 동일한 전체 연결 씬을 써야 연속 카메라
+                // 이동으로 검수된다. 방 단위 포탈 셸은 제작·회귀 검사용으로만 남기고,
+                // 플레이어가 타는 정식 경로는 세 지역 모두 연속형 _Full 씬으로 통일한다.
                 ("1단계 · 잔재", SceneFlow.Residue),
                 ("2단계 · 응시", "Zone_Gaze_Full"),
                 ("3단계 · 균열", "Zone_Fracture_Full"),

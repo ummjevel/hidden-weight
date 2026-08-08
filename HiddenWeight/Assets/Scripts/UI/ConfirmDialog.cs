@@ -91,40 +91,52 @@ namespace HiddenWeight.UI
             rootRt.offsetMax = Vector2.zero;
 
             var blocker = _root.AddComponent<Image>();
-            blocker.color = new Color(0.02f, 0.025f, 0.035f, 0.82f);
+            blocker.color = new Color(0.008f, 0.010f, 0.020f, 0.88f);
 
-            var panel = new GameObject("DialogPanel", typeof(RectTransform));
-            panel.transform.SetParent(_root.transform, false);
-            var panelRt = (RectTransform)panel.transform;
+            var panelImage = UIBuilder.CreateMenuPanel(_root.transform, "DialogPanel", UIBuilder.MenuGlass);
+            var panel = panelImage.gameObject;
+            var panelRt = panelImage.rectTransform;
             panelRt.anchorMin = panelRt.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRt.sizeDelta = new Vector2(680f, 340f);
+            panelRt.sizeDelta = new Vector2(720f, 380f);
             panelRt.anchoredPosition = Vector2.zero;
-            var panelImage = panel.AddComponent<Image>();
-            panelImage.color = new Color(0.055f, 0.065f, 0.08f, 0.98f);
+
+            var caption = UIBuilder.CreateMenuText(panel.transform, "DialogCaption", "MEMORY DECISION", 14,
+                TextAnchor.MiddleCenter, true);
+            caption.color = new Color(UIBuilder.MenuEdge.r, UIBuilder.MenuEdge.g, UIBuilder.MenuEdge.b, 0.80f);
+            var captionRt = caption.rectTransform;
+            captionRt.anchorMin = captionRt.anchorMax = new Vector2(0.5f, 1f);
+            captionRt.sizeDelta = new Vector2(500f, 28f);
+            captionRt.anchoredPosition = new Vector2(0f, -32f);
 
             _title = UIBuilder.CreateText(panel.transform, "DialogTitle", 36, TextAnchor.MiddleCenter);
+            UIBuilder.StyleMenuText(_title, true);
             var titleRt = _title.rectTransform;
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 1f);
             titleRt.pivot = new Vector2(0.5f, 1f);
             titleRt.sizeDelta = new Vector2(600f, 64f);
-            titleRt.anchoredPosition = new Vector2(0f, -36f);
+            titleRt.anchoredPosition = new Vector2(0f, -62f);
+
+            UIBuilder.AddDivider(panel.transform, new Vector2(0.5f, 1f), new Vector2(500f, 2f),
+                new Vector2(0f, -130f));
 
             _message = UIBuilder.CreateText(panel.transform, "DialogMessage", 26, TextAnchor.MiddleCenter);
+            UIBuilder.StyleMenuText(_message);
+            _message.color = UIBuilder.MenuTextMuted;
             _message.horizontalOverflow = HorizontalWrapMode.Wrap;
             _message.verticalOverflow = VerticalWrapMode.Overflow;
             var messageRt = _message.rectTransform;
             messageRt.anchorMin = messageRt.anchorMax = new Vector2(0.5f, 0.5f);
             messageRt.sizeDelta = new Vector2(580f, 120f);
-            messageRt.anchoredPosition = new Vector2(0f, 28f);
+            messageRt.anchoredPosition = new Vector2(0f, 4f);
 
-            _cancelButton = UIBuilder.CreateButton(panel.transform, "취소", -105f, Cancel);
+            _cancelButton = UIBuilder.CreateButton(panel.transform, "취소", -126f, Cancel);
             var cancelRt = _cancelButton.GetComponent<RectTransform>();
-            cancelRt.anchoredPosition = new Vector2(-125f, -105f);
+            cancelRt.anchoredPosition = new Vector2(-125f, -126f);
             _cancelLabel = _cancelButton.GetComponentInChildren<Text>();
 
-            _confirmButton = UIBuilder.CreateButton(panel.transform, "확인", -105f, Confirm);
+            _confirmButton = UIBuilder.CreateButton(panel.transform, "확인", -126f, Confirm);
             var confirmRt = _confirmButton.GetComponent<RectTransform>();
-            confirmRt.anchoredPosition = new Vector2(125f, -105f);
+            confirmRt.anchoredPosition = new Vector2(125f, -126f);
             _confirmLabel = _confirmButton.GetComponentInChildren<Text>();
 
             _root.SetActive(false);

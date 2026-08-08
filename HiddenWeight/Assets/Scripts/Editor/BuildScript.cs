@@ -20,7 +20,13 @@ namespace HiddenWeight.EditorTools
             EditorApplication.Exit(0);
         }
 
-        public static void BuildMac()
+        public static void BuildMac() => Build(stageSelect: false);
+
+        // 녹화·검수용. Development Build 워터마크 없이 타이틀의 단계 선택 줄만 켠다 —
+        // 맵별로 바로 들어가 화면을 찍어야 할 때 쓴다. 정식 제출 빌드는 BuildMac을 쓸 것.
+        public static void BuildMacStageSelect() => Build(stageSelect: true);
+
+        static void Build(bool stageSelect)
         {
             // 씬 목록은 EditorBuildSettings 하나만 진실로 삼는다. 여기에 따로 적어 두면
             // ZoneSceneBuilder가 새 씬을 등록해도 빌드에는 안 들어가서, 게임 안에서 그 씬으로
@@ -38,8 +44,17 @@ namespace HiddenWeight.EditorTools
             }
             Debug.Log($"[BuildScript] 빌드에 포함할 씬 {scenes.Length}개: {string.Join(", ", scenes)}");
 
-            var report = BuildPipeline.BuildPlayer(
-                scenes, "Builds/macOS/HiddenWeight.app", BuildTarget.StandaloneOSX, BuildOptions.None);
+            var buildOptions = new BuildPlayerOptions
+            {
+                scenes = scenes,
+                locationPathName = "Builds/macOS/HiddenWeight.app",
+                target = BuildTarget.StandaloneOSX,
+                options = BuildOptions.None,
+            };
+            if (stageSelect)
+                buildOptions.extraScriptingDefines = new[] { "HIDDENWEIGHT_STAGE_SELECT" };
+
+            var report = BuildPipeline.BuildPlayer(buildOptions);
 
             if (report.summary.result != BuildResult.Succeeded)
             {

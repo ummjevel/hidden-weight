@@ -463,6 +463,7 @@ namespace HiddenWeight.UI
             if (!string.IsNullOrEmpty(value))
             {
                 var valueText = UIBuilder.CreateText(button.transform, "Value", 24, TextAnchor.MiddleRight);
+                UIBuilder.StyleMenuText(valueText, true);
                 valueText.text = value;
                 valueText.color = UIBuilder.AccentColor;
                 valueText.raycastTarget = false;
@@ -480,6 +481,7 @@ namespace HiddenWeight.UI
         void CreateSectionLabel(string value)
         {
             var text = UIBuilder.CreateText(_content, "MapSection", 20, TextAnchor.MiddleLeft);
+            UIBuilder.StyleMenuText(text, true);
             text.text = value;
             text.color = UIBuilder.AccentColor;
             text.gameObject.AddComponent<LayoutElement>().preferredHeight = 38f;
@@ -523,6 +525,7 @@ namespace HiddenWeight.UI
             iconLayout.preferredWidth = iconLayout.preferredHeight = 48f;
 
             var label = UIBuilder.CreateText(row.transform, "RoomLabel", 22, TextAnchor.MiddleLeft);
+            UIBuilder.StyleMenuText(label, current);
             label.text = RoomDisplayName(roomId) + (current ? "    현재 머무는 곳" : string.Empty);
             if (!discovered) label.color = new Color(label.color.r, label.color.g, label.color.b, 0.42f);
             label.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
@@ -543,10 +546,12 @@ namespace HiddenWeight.UI
             layout.childForceExpandHeight = false;
 
             var heading = UIBuilder.CreateText(card.transform, "MemoryTitle", 19, TextAnchor.MiddleLeft);
+            UIBuilder.StyleMenuText(heading, true);
             heading.text = "◇  " + MemoryCatalog.TitleFor(id);
             heading.color = UIBuilder.AccentColor;
             heading.gameObject.AddComponent<LayoutElement>().preferredHeight = 28f;
             var body = UIBuilder.CreateText(card.transform, "MemoryText", 22, TextAnchor.UpperLeft);
+            UIBuilder.StyleMenuText(body);
             body.text = memory;
             body.horizontalOverflow = HorizontalWrapMode.Wrap;
             body.verticalOverflow = VerticalWrapMode.Overflow;
@@ -657,20 +662,38 @@ namespace HiddenWeight.UI
 
         void Build()
         {
-            _panel = new GameObject("PauseSection", typeof(RectTransform));
-            _panel.transform.SetParent(transform, false);
-            var rt = (RectTransform)_panel.transform;
-            rt.anchorMin = new Vector2(0.09f, 0.07f);
-            rt.anchorMax = new Vector2(0.91f, 0.93f);
+            var panelImage = UIBuilder.CreateMenuPanel(transform, "PauseSection", UIBuilder.MenuGlass);
+            _panel = panelImage.gameObject;
+            var rt = panelImage.rectTransform;
+            rt.anchorMin = new Vector2(0.075f, 0.055f);
+            rt.anchorMax = new Vector2(0.925f, 0.945f);
             rt.offsetMin = rt.offsetMax = Vector2.zero;
-            _panel.AddComponent<Image>().color = UIBuilder.PanelBackground;
+
+            var caption = UIBuilder.CreateMenuText(_panel.transform, "SectionCaption", "MEMORY ARCHIVE", 14,
+                TextAnchor.UpperRight, true);
+            caption.color = new Color(UIBuilder.MenuEdge.r, UIBuilder.MenuEdge.g, UIBuilder.MenuEdge.b, 0.76f);
+            var captionRt = caption.rectTransform;
+            captionRt.anchorMin = new Vector2(0.55f, 0.90f);
+            captionRt.anchorMax = new Vector2(1f, 1f);
+            captionRt.offsetMin = new Vector2(0f, 0f);
+            captionRt.offsetMax = new Vector2(-54f, -35f);
 
             _title = UIBuilder.CreateText(_panel.transform, "SectionTitle", 36, TextAnchor.UpperLeft);
+            UIBuilder.StyleMenuText(_title, true);
             var titleRt = _title.rectTransform;
             titleRt.anchorMin = new Vector2(0f, 0.86f);
             titleRt.anchorMax = new Vector2(1f, 1f);
             titleRt.offsetMin = new Vector2(54f, 0f);
             titleRt.offsetMax = new Vector2(-54f, -24f);
+
+            UIBuilder.AddDivider(_panel.transform, new Vector2(0.5f, 0.865f), new Vector2(0f, 2f), Vector2.zero);
+            var divider = _panel.transform.Find("MemoryDivider") as RectTransform;
+            if (divider != null)
+            {
+                divider.anchorMin = new Vector2(0.04f, 0.865f);
+                divider.anchorMax = new Vector2(0.96f, 0.865f);
+                divider.offsetMin = divider.offsetMax = Vector2.zero;
+            }
 
             var viewport = new GameObject("SectionViewport", typeof(RectTransform));
             viewport.transform.SetParent(_panel.transform, false);
@@ -680,7 +703,11 @@ namespace HiddenWeight.UI
             viewportRt.anchorMin = new Vector2(0.05f, 0.19f);
             viewportRt.anchorMax = new Vector2(0.95f, 0.84f);
             viewportRt.offsetMin = viewportRt.offsetMax = Vector2.zero;
-            viewport.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.10f);
+            var viewportImage = viewport.AddComponent<Image>();
+            viewportImage.color = new Color(0.015f, 0.016f, 0.030f, 0.38f);
+            var viewportOutline = viewport.AddComponent<Outline>();
+            viewportOutline.effectColor = UIBuilder.MenuEdgeSoft;
+            viewportOutline.effectDistance = new Vector2(1f, -1f);
             viewport.AddComponent<Mask>().showMaskGraphic = true;
 
             var contentGo = new GameObject("SectionContent", typeof(RectTransform));
@@ -708,6 +735,8 @@ namespace HiddenWeight.UI
             _scroll.scrollSensitivity = 38f;
 
             _body = UIBuilder.CreateText(_content, "SectionBody", 22, TextAnchor.UpperLeft);
+            UIBuilder.StyleMenuText(_body);
+            _body.color = UIBuilder.MenuTextMuted;
             _body.horizontalOverflow = HorizontalWrapMode.Wrap;
             _body.verticalOverflow = VerticalWrapMode.Overflow;
             _body.lineSpacing = 1.15f;

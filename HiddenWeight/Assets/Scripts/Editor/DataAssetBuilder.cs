@@ -106,7 +106,7 @@ namespace HiddenWeight.EditorTools
                 d.id = ZoneId.Gaze;
                 d.displayName = "응시";
                 d.sceneName = "Zone_Gaze_Full";
-                d.nextSceneName = "Zone_Fracture";
+                d.nextSceneName = "Zone_Fracture_Full";
                 d.grantedSkill = EmotionId.Hush;
                 d.grantsAwareness = true;
                 d.awarenessStable = true;
@@ -117,7 +117,7 @@ namespace HiddenWeight.EditorTools
             {
                 d.id = ZoneId.Fracture;
                 d.displayName = "균열";
-                d.sceneName = "Zone_Fracture";
+                d.sceneName = "Zone_Fracture_Full";
                 // 기획서 5.3절 백트래킹: 균열을 클리어하면 잔재로 되돌아간다.
                 // 잔재를 두 번째로 밟았을 때 엔딩으로 보내는 판단은 ZoneTrigger가
                 // Progress.HasClearedFracture로 한다(Task 6에서 이미 구현됨).

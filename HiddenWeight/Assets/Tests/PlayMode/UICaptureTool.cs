@@ -59,6 +59,37 @@ namespace HiddenWeight.Tests
             UISettings.UiScale = 1f;
         }
 
+        // ── 0. 배포용 비인게임 화면 ───────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 타이틀과_설정_제작진을_찍는다()
+        {
+            yield return SceneManager.LoadSceneAsync("Title", LoadSceneMode.Single);
+            if (Camera.main == null)
+            {
+                var cameraGo = new GameObject("TitleCaptureCamera", typeof(Camera));
+                cameraGo.tag = "MainCamera";
+                cameraGo.GetComponent<Camera>().backgroundColor = UIBuilder.MenuInk;
+            }
+            yield return SettleUI();
+            yield return Shoot("title_00_root");
+
+            var settings = GameObject.Find("Button_설정")?.GetComponent<Button>();
+            Assert.IsNotNull(settings, "타이틀 설정 버튼이 없다.");
+            settings.onClick.Invoke();
+            yield return SettleUI();
+            yield return Shoot("title_10_settings");
+
+            var sections = Object.FindAnyObjectByType<PauseSectionPanel>();
+            sections.Hide();
+            yield return SettleUI();
+
+            var credits = GameObject.Find("Button_제작진")?.GetComponent<Button>();
+            Assert.IsNotNull(credits, "타이틀 제작진 버튼이 없다.");
+            credits.onClick.Invoke();
+            yield return SettleUI();
+            yield return Shoot("title_20_credits");
+        }
+
         // ── 1. 방마다 실제 플레이 화면 + HUD ──────────────────────────────────
         // 카메라 크기를 건드리지 않는다. 플레이어가 실제로 보는 프레이밍 위에서
         // HUD가 어떻게 얹히는지가 판단 대상이기 때문이다.

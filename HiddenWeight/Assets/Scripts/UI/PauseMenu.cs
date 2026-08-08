@@ -221,33 +221,47 @@ namespace HiddenWeight.UI
             panelRt.offsetMax = Vector2.zero;
 
             var bg = _root.AddComponent<Image>();
-            bg.color = UIBuilder.PanelBackground;
+            bg.color = new Color(0.012f, 0.014f, 0.026f, 0.82f);
 
             _rootGroup = _root.AddComponent<CanvasGroup>();
             _rootGroup.alpha = 0f;
 
-            // 섹션 패널이 열리면 통째로 감출 메뉴 크롬. 패널이 화면 대부분을 덮는데
-            // 같은 부모에 있어, 그대로 두면 지도 위에 제목과 버튼이 겹쳐 찍힌다.
-            var title = UIBuilder.CreateText(_root.transform, "일시정지", 36);
-            _chrome.Add(title.gameObject);
+            // 플레이 화면을 완전히 검게 지우지 않고 중앙의 '기억 보관함'만 떠오르게 한다.
+            var shell = UIBuilder.CreateMenuPanel(_root.transform, "PauseMenuShell", UIBuilder.MenuGlass);
+            var shellRt = shell.rectTransform;
+            shellRt.anchorMin = shellRt.anchorMax = new Vector2(0.5f, 0.5f);
+            shellRt.sizeDelta = new Vector2(980f, 650f);
+            shellRt.anchoredPosition = Vector2.zero;
+            _chrome.Add(shell.gameObject);
+
+            var caption = UIBuilder.CreateMenuText(shell.transform, "PauseCaption", "MEMORY SUSPENDED", 15,
+                TextAnchor.MiddleCenter, true);
+            caption.color = new Color(UIBuilder.MenuEdge.r, UIBuilder.MenuEdge.g, UIBuilder.MenuEdge.b, 0.82f);
+            var captionRt = caption.rectTransform;
+            captionRt.anchorMin = captionRt.anchorMax = new Vector2(0.5f, 0.5f);
+            captionRt.sizeDelta = new Vector2(400f, 32f);
+            captionRt.anchoredPosition = new Vector2(0f, 246f);
+
+            var title = UIBuilder.CreateMenuText(shell.transform, "PauseTitle", "일시정지", 44,
+                TextAnchor.MiddleCenter, true);
             var titleRt = title.rectTransform;
-            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.65f);
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.5f);
             titleRt.sizeDelta = new Vector2(400f, 60f);
-            titleRt.anchoredPosition = Vector2.zero;
+            titleRt.anchoredPosition = new Vector2(0f, 194f);
+
+            UIBuilder.AddDivider(shell.transform, new Vector2(0.5f, 0.5f), new Vector2(520f, 2f),
+                new Vector2(0f, 150f));
 
             // Close에 기본 인자가 생겨 메서드 그룹으로는 UnityAction에 안 맞는다.
-            _resumeButton = UIBuilder.CreateButton(_root.transform, "계속하기", 10f, () => Close());
+            _resumeButton = UIBuilder.CreateButton(shell.transform, "계속하기", 72f, () => Close());
             _checkpointButton = UIBuilder.CreateButton(
-                _root.transform, "체크포인트로 돌아가기", -60f, RequestReturnToCheckpoint);
-            _titleButton = UIBuilder.CreateButton(_root.transform, "타이틀로", -130f, RequestGoToTitle);
-            _chrome.Add(_resumeButton.gameObject);
-            _chrome.Add(_checkpointButton.gameObject);
-            _chrome.Add(_titleButton.gameObject);
+                shell.transform, "체크포인트로 돌아가기", 2f, RequestReturnToCheckpoint);
+            _titleButton = UIBuilder.CreateButton(shell.transform, "타이틀로", -68f, RequestGoToTitle);
 
-            CreateSectionButton("지도", -330f, PauseSection.Map);
-            CreateSectionButton("기억 기록", -110f, PauseSection.Journal);
-            CreateSectionButton("조작법", 110f, PauseSection.Controls);
-            CreateSectionButton("설정", 330f, PauseSection.Settings);
+            CreateSectionButton(shell.transform, "지도", -330f, PauseSection.Map);
+            CreateSectionButton(shell.transform, "기억 기록", -110f, PauseSection.Journal);
+            CreateSectionButton(shell.transform, "조작법", 110f, PauseSection.Controls);
+            CreateSectionButton(shell.transform, "설정", 330f, PauseSection.Settings);
 
             _dialog = _root.AddComponent<ConfirmDialog>();
             _sections = _root.AddComponent<PauseSectionPanel>();
@@ -263,13 +277,12 @@ namespace HiddenWeight.UI
                 if (go != null) go.SetActive(!sectionOpen);
         }
 
-        void CreateSectionButton(string label, float x, PauseSection section)
+        void CreateSectionButton(Transform parent, string label, float x, PauseSection section)
         {
-            var button = UIBuilder.CreateButton(_root.transform, label, 240f, () => _sections.Show(section));
+            var button = UIBuilder.CreateButton(parent, label, -238f, () => _sections.Show(section));
             var rt = (RectTransform)button.transform;
-            rt.anchoredPosition = new Vector2(x, 240f);
+            rt.anchoredPosition = new Vector2(x, -238f);
             rt.sizeDelta = new Vector2(190f, 48f);
-            _chrome.Add(button.gameObject);
         }
     }
 }

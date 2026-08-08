@@ -34,34 +34,38 @@ namespace HiddenWeight.EditorTools
         static readonly Sheet[] Sheets =
         {
             // --- 적 4종 (8x6: Idle / Move / Telegraph / Attack / Hit / Death) ---
-            new Sheet { Path = "Gameplay/Enemies/Animation/BlindPilgrim_v1.png", Rows = 6, Pivot = Center,
+            // 전부 _v1_Aligned_v2를 가리킨다 — 정렬(패딩·앵커 통일) 전 _v1 원본은 프레임마다
+            // 여백이 들쭉날쭉해 재생 중 미세하게 들썩였고, 이펙트가 옆 칸까지 넘어가는 칸도
+            // 있었다(GazeOfAll_Combat 2·3·5행). 이름은 같지만 실제로 잘리는 파일이 바뀌므로
+            // Art("PilgrimIdle_00") 같은 기존 조회 코드는 그대로 두고 여기 경로만 바꾸면 된다.
+            new Sheet { Path = "Gameplay/Enemies/Animation/BlindPilgrim_v1_Aligned_v2.png", Rows = 6, Pivot = Center,
                         RowClips = new[] { "PilgrimIdle", "PilgrimWalk", "PilgrimTelegraph",
                                            "PilgrimAttack", "PilgrimHit", "PilgrimDeath" } },
-            new Sheet { Path = "Gameplay/Enemies/Animation/InformingMouth_v1.png", Rows = 6, Pivot = Center,
+            new Sheet { Path = "Gameplay/Enemies/Animation/InformingMouth_v1_Aligned_v2.png", Rows = 6, Pivot = Center,
                         RowClips = new[] { "MouthIdle", "MouthWalk", "MouthTelegraph",
                                            "MouthAttack", "MouthHit", "MouthDeath" } },
-            new Sheet { Path = "Gameplay/Enemies/Animation/HangingAudience_v1.png", Rows = 6, Pivot = Center,
+            new Sheet { Path = "Gameplay/Enemies/Animation/HangingAudience_v1_Aligned_v2.png", Rows = 6, Pivot = Center,
                         RowClips = new[] { "AudienceIdle", "AudienceWalk", "AudienceTelegraph",
                                            "AudienceAttack", "AudienceHit", "AudienceDeath" } },
-            new Sheet { Path = "Gameplay/Enemies/Animation/FacelessJudge_v1.png", Rows = 6, Pivot = Center,
+            new Sheet { Path = "Gameplay/Enemies/Animation/FacelessJudge_v1_Aligned_v2.png", Rows = 6, Pivot = Center,
                         RowClips = new[] { "JudgeIdle", "JudgeWalk", "JudgeTelegraph",
                                            "JudgeAttack", "JudgeHit", "JudgeDeath" } },
 
             // --- 보스 2종 ---
-            new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Combat_v1.png", Rows = 7, Pivot = Center,
+            new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Combat_v1_Aligned_v2.png", Rows = 7, Pivot = Center,
                         RowClips = new[] { "GatekeeperIdle", "GatekeeperGazeSweep", "GatekeeperEyelid",
                                            "GatekeeperCharge", "GatekeeperDualGaze", "GatekeeperHit",
                                            "GatekeeperDeath" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Transitions_v1.png", Rows = 3, Pivot = Center,
+            new Sheet { Path = "Gameplay/Bosses/Animation/IrisGatekeeper_Transitions_v1_Aligned_v2.png", Rows = 3, Pivot = Center,
                         RowClips = new[] { "GatekeeperEntrance", "GatekeeperOverload", "GatekeeperShortcut" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Combat_v1.png", Rows = 7, Pivot = Center,
+            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Combat_v1_Aligned_v2.png", Rows = 7, Pivot = Center,
                         RowClips = new[] { "AllEyesIdle", "AllEyesFixedGaze", "AllEyesRotatingGaze",
                                            "AllEyesProjectile", "AllEyesTrueStrike", "AllEyesHit",
                                            "AllEyesDeath" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Deceptions_v1.png", Rows = 4, Pivot = Center,
+            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Deceptions_v1_Aligned_v2.png", Rows = 4, Pivot = Center,
                         RowClips = new[] { "AllEyesFalseTelegraph", "AllEyesTrueTelegraph",
                                            "AllEyesDelayedImitation", "AllEyesDisappear" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Reactions_v1.png", Rows = 3, Pivot = Center,
+            new Sheet { Path = "Gameplay/Bosses/Animation/GazeOfAll_Reactions_v1_Aligned_v2.png", Rows = 3, Pivot = Center,
                         RowClips = new[] { "AllEyesAwarenessExposure", "AllEyesFinal", "AllEyesAudienceTurn" } },
 
             // --- 환경 전환 ---

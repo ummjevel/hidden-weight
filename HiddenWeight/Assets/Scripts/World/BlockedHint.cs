@@ -48,6 +48,14 @@ namespace HiddenWeight.World
 
         void Start()
         {
+            // 잔재 지역 출구는 ZoneTrigger 자체의 ExitLabel을 사용한다. 예전에 저장되었거나
+            // 다른 런타임 경로에서 붙은 BlockedHint도 여기서 막아 중복 문구를 방지한다.
+            if (_zoneTrigger != null && gameObject.scene.name.Contains("Residue"))
+            {
+                enabled = false;
+                return;
+            }
+
             var go = new GameObject("BlockedHintText");
             go.transform.SetParent(transform, false);
 
@@ -97,7 +105,7 @@ namespace HiddenWeight.World
         // 막고 있지 않으면 null. 그래야 열린 뒤에는 문구가 저절로 사라진다.
         string CurrentMessage()
         {
-            bool residue = gameObject.scene.name == "Zone_Residue_Full";
+            bool residue = gameObject.scene.name.Contains("Residue");
 
             if (_encounter != null)
                 return _encounter.IsRunning && !_encounter.IsFinished
@@ -108,9 +116,12 @@ namespace HiddenWeight.World
                 return _gate.IsOpen ? null : GateMessage(_gate.RequiredSkill, residue);
 
             if (_shortcut != null)
-                return _shortcut.IsOpen
+                // 잔재의 숏컷 장치는 작은 상자처럼 보여 문구가 붙으면 보상 상자로
+                // 오해하기 쉽다. 개방 조건은 되감기·보스 흐름에서 이미 안내하므로
+                // 잔재에서는 별도의 장치 문구를 띄우지 않는다.
+                return _shortcut.IsOpen || gameObject.scene.name.Contains("Residue")
                     ? null
-                    : (residue ? ResidueShortcutMessage(_shortcut.Id) : "반대편에서만 열 수 있다");
+                    : "반대편에서만 열 수 있다";
 
             // 지역 출구는 조건을 못 채웠을 때만 이유를 말한다. 열려 있으면 굳이 안내하지
             // 않는다 — 지나가면 되는 곳에 문구가 남아 있으면 읽을 것이 늘기만 한다.
@@ -135,23 +146,6 @@ namespace HiddenWeight.World
                     : null;
 
             return null;
-        }
-
-        static string ResidueShortcutMessage(string id)
-        {
-            switch (id)
-            {
-                case "residue_shortcut_a":
-                    return "R05의 무너진 구조물을 되감으면 열립니다.";
-                case "residue_shortcut_b":
-                    return "R08 상층의 도르래를 되감으면 열립니다.";
-                case "residue_shortcut_c":
-                    return "R10 중간 보스를 처치하면 열립니다.";
-                case "residue_secret_s2":
-                    return "R06의 선택 구조물을 되감으면 열립니다.";
-                default:
-                    return "다른 구간의 장치를 작동하면 열립니다.";
-            }
         }
 
         static string GateMessage(EmotionId skill, bool residue)

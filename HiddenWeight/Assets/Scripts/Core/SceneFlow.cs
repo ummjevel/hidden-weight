@@ -8,7 +8,7 @@ namespace HiddenWeight.Core
         public const string Bootstrap = "Bootstrap";
         public const string Title = "Title";
         public const string Prologue = "Zone_Prologue";
-        public const string Residue = "Zone_Residue";
+        public const string Residue = "Zone_Residue_Full";
         public const string Gaze = "Zone_Gaze";
         public const string Fracture = "Zone_Fracture";
         public const string Ending = "Ending";

@@ -18,7 +18,7 @@ namespace HiddenWeight.Tests
     // 낙하가 멈추지 않으면 settledY가 스폰보다 한참 아래로 찍히고 grounded=false로 남는다.
     public class ZonePlayableTests
     {
-        static readonly string[] Zones = { "Zone_Prologue", "Zone_Residue", "Zone_Gaze", "Zone_Fracture" };
+        static readonly string[] Zones = { "Zone_Prologue", "Zone_Residue_Full", "Zone_Gaze", "Zone_Fracture" };
 
         // 착지 판정 허용 오차. 콜라이더 접촉 오프셋(0.01)과 조금의 파고듦을 감안한 값.
         const float LandingTolerance = 0.2f;

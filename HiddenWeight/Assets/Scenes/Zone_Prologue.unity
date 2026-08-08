@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueActionHint
   action: 3
-  message: '{Jump}  +  {Dash}'
+  message: "{Dash}  ·  대시\n점프 중에도 사용 가능"
   showRadius: 4.5
   delaySeconds: 0
   fadeSpeed: 5
@@ -213,10 +213,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cebe740d3566840b1b4c037023e37613, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueConceptHint
-  message: "\uC138 \uACF5\uAC04\uC758 \uAE30\uC5B5\uC744 \uBAA8\uC73C\uBA74\n\uC774
-    \uAFC8\uC5D0\uC11C \uAE68\uC5B4\uB0A0 \uC218 \uC788\uB2E4."
+  message: "각 구역에서 기억 파편을 찾으면\n다음 구역으로 이동할 수 있습니다."
   showRadius: 2.5
-  visibleSeconds: 3
+  visibleSeconds: 5.5
   fadeSpeed: 4
 --- !u!1 &9098511
 GameObject:
@@ -1611,10 +1610,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cebe740d3566840b1b4c037023e37613, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueConceptHint
-  message: "\uC9C0\uB098\uAC04 \uC77C, \uC9C0\uAE08\uC758 \uC2DC\uC120,\n\uC544\uC9C1
-    \uC624\uC9C0 \uC54A\uC740 \uAC71\uC815\uC774 \uC138 \uACF5\uAC04\uC744 \uB9CC\uB4E4\uC5C8\uB2E4."
+  message: "꿈은 세 구역으로 나뉩니다.\n잔재 · 응시 · 균열"
   showRadius: 3
-  visibleSeconds: 3
+  visibleSeconds: 5.5
   fadeSpeed: 4
 --- !u!1 &825688977
 GameObject:
@@ -9287,10 +9285,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cebe740d3566840b1b4c037023e37613, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueConceptHint
-  message: "\uCCAB \uBC88\uC9F8 \uACF5\uAC04 \xB7 \uC794\uC7AC\n\uC9C0\uB098\uAC04
-    \uAE30\uC5B5\uC774 \uB0A8\uC740 \uACF3"
+  message: "첫 구역: 잔재\n지나간 기억이 남아 있는 곳입니다."
   showRadius: 2.5
-  visibleSeconds: 3
+  visibleSeconds: 5.5
   fadeSpeed: 4
 --- !u!1 &1204170744
 GameObject:
@@ -10289,7 +10286,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueActionHint
   action: 0
-  message: '{Move}'
+  message: '{Move}  ·  이동'
   showRadius: 4.5
   delaySeconds: 0.35
   fadeSpeed: 5
@@ -10631,7 +10628,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueActionHint
   action: 2
-  message: "\uBCBD\uC5D0 \uBD99\uC740 \uB4A4  {Jump}"
+  message: "{Jump}  ·  벽점프\n벽에 붙은 상태에서 누르기"
   showRadius: 4.5
   delaySeconds: 0
   fadeSpeed: 5
@@ -10926,7 +10923,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueActionHint
   action: 1
-  message: '{Jump}'
+  message: '{Jump}  ·  점프'
   showRadius: 4.5
   delaySeconds: 0
   fadeSpeed: 5
@@ -11072,10 +11069,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cebe740d3566840b1b4c037023e37613, type: 3}
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueConceptHint
-  message: "\uC774\uACF3\uC740 \uAE30\uC5B5\uACFC \uAC10\uC815\uC774\n\uACF5\uAC04\uC774
-    \uB41C \uAFC8\uC774\uB2E4."
+  message: "이곳은 꿈속입니다.\n기억과 감정은 공간의 형태로 나타납니다."
   showRadius: 3
-  visibleSeconds: 3
+  visibleSeconds: 5.5
   fadeSpeed: 4
 --- !u!1 &2074574063
 GameObject:
@@ -11122,7 +11118,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.UI.PrologueActionHint
   action: 4
-  message: '{Attack}'
+  message: '{Attack}  ·  공격'
   showRadius: 4.5
   delaySeconds: 0
   fadeSpeed: 5

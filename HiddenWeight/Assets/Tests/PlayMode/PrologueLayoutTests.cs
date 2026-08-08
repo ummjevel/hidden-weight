@@ -188,7 +188,22 @@ namespace HiddenWeight.Tests
 
             var actions = new HashSet<PrologueActionHint.RequiredAction>();
             foreach (var hint in Object.FindObjectsByType<PrologueActionHint>(FindObjectsSortMode.None))
+            {
                 actions.Add(hint.Action);
+                var text = hint.GetComponentInChildren<TextMesh>();
+                Assert.IsNotNull(text);
+                string expectedAction = hint.Action switch
+                {
+                    PrologueActionHint.RequiredAction.Move => "이동",
+                    PrologueActionHint.RequiredAction.Jump => "점프",
+                    PrologueActionHint.RequiredAction.WallJump => "벽점프",
+                    PrologueActionHint.RequiredAction.Dash => "대시",
+                    PrologueActionHint.RequiredAction.Attack => "공격",
+                    _ => string.Empty
+                };
+                StringAssert.Contains(expectedAction, text.text,
+                    hint.Action + " 안내에 키만 있고 행동 설명이 없다.");
+            }
 
             Assert.AreEqual(5, actions.Count, "이동·점프·벽점프·대시·공격 안내가 각각 하나씩 필요하다.");
             Assert.AreEqual(2, Object.FindObjectsByType<Enemy>(FindObjectsSortMode.None).Length,
@@ -261,6 +276,46 @@ namespace HiddenWeight.Tests
         }
 
         [UnityTest]
+        public IEnumerator 벽점프_안내가_나오면_이전_세계관_문구를_즉시_닫는다()
+        {
+            yield return LoadPrologue();
+            var concept = System.Array.Find(
+                Object.FindObjectsByType<PrologueConceptHint>(FindObjectsSortMode.None),
+                hint => hint.Message.Contains("세 구역"));
+            var wallJump = System.Array.Find(
+                Object.FindObjectsByType<PrologueActionHint>(FindObjectsSortMode.None),
+                hint => hint.Action == PrologueActionHint.RequiredAction.WallJump);
+            Assert.IsNotNull(concept);
+            Assert.IsNotNull(wallJump);
+
+            PlayerController.Instance.TeleportTo(concept.transform.position);
+            PlayerInput.Injected = default;
+            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.Greater(concept.GetComponentInChildren<TextMesh>().color.a, 0.25f);
+
+            PlayerController.Instance.TeleportTo(wallJump.transform.position);
+            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.Less(concept.GetComponentInChildren<TextMesh>().color.a, 0.01f,
+                "벽점프 안내와 이전 세계관 문구가 동시에 표시된다.");
+            Assert.Greater(wallJump.GetComponentInChildren<TextMesh>().color.a, 0.25f,
+                "이전 문구를 닫은 뒤 벽점프 안내가 나타나지 않는다.");
+        }
+
+        [UnityTest]
+        public IEnumerator 튜토리얼_등반벽에는_흰색_경계띠를_생성하지_않는다()
+        {
+            yield return LoadPrologue();
+
+            foreach (var renderer in Object.FindObjectsByType<SpriteRenderer>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                Assert.IsFalse(renderer.name.StartsWith("WallClimbEdge")
+                               || renderer.name == "TraversalWallEdge",
+                    renderer.name + " 흰색 경계띠가 튜토리얼 벽에 남아 있다.");
+            }
+        }
+
+        [UnityTest]
         public IEnumerator 네_안전_구간에서_꿈의_정체와_목표를_안내한다()
         {
             yield return LoadPrologue();
@@ -273,10 +328,10 @@ namespace HiddenWeight.Tests
 
             CollectionAssert.IsSubsetOf(new[]
             {
-                "이곳은 기억과 감정이 공간이 된 꿈이다.",
-                "지나간 일, 지금의 시선, 아직 오지 않은 걱정이 세 공간을 만들었다.",
-                "세 공간의 기억을 모으면 이 꿈에서 깨어날 수 있다.",
-                "첫 번째 공간 · 잔재 지나간 기억이 남은 곳",
+                "이곳은 꿈속입니다. 기억과 감정은 공간의 형태로 나타납니다.",
+                "꿈은 세 구역으로 나뉩니다. 잔재 · 응시 · 균열",
+                "각 구역에서 기억 파편을 찾으면 다음 구역으로 이동할 수 있습니다.",
+                "첫 구역: 잔재 지나간 기억이 남아 있는 곳입니다.",
             }, messages);
         }
 
@@ -361,7 +416,8 @@ namespace HiddenWeight.Tests
                 && Time.realtimeSinceStartup < deadline)
                 yield return null;
 
-            Assert.AreEqual("Zone_Residue_Full", SceneManager.GetActiveScene().name);
+            Assert.AreEqual("Zone_Residue_Full", SceneManager.GetActiveScene().name,
+                "튜토리얼 출구가 잔재 Full 씬으로 전환되지 않았다.");
         }
 
         static IEnumerator LoadPrologue()

@@ -12,9 +12,12 @@ namespace HiddenWeight.World
     // 숏컷과 비밀방이 실제 통로가 되고, 지역 출구가 보스 승리를 요구한다.
     public sealed class ResidueLoopRuntime : MonoBehaviour
     {
+        RoomLoader _roomLoader;
+
         public static void Install(Transform parent)
         {
-            if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Residue_Full")) return;
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (sceneName != "Zone_Residue" && !sceneName.Contains("Residue_Full")) return;
             if (FindFirstObjectByType<ResidueLoopRuntime>() != null) return;
             var go = new GameObject("ResidueLoopRuntime");
             if (parent != null) go.transform.SetParent(parent, false);
@@ -23,12 +26,33 @@ namespace HiddenWeight.World
 
         IEnumerator Start()
         {
-            if (GetComponent<ResidueAmbientAudio>() == null) gameObject.AddComponent<ResidueAmbientAudio>();
+            // 포탈 셸은 환경음을 이미 소유한다. _Full처럼 없는 경우에만 보충해야 방형 맵에서
+            // 같은 환경음이 두 겹으로 재생되지 않는다.
+            if (FindFirstObjectByType<ResidueAmbientAudio>() == null)
+                gameObject.AddComponent<ResidueAmbientAudio>();
+
+            // 룸형 잔재에서는 한 번에 한 방만 additive 로드된다. Full 씬처럼 모든 방을
+            // 동시에 찾으려 하면 아무 보정도 적용되지 않으므로, 방 로드가 끝날 때마다 그
+            // 방에 필요한 보정만 적용한다. _Full은 비교·백업용으로 기존 동작을 유지한다.
+            if (gameObject.scene.name == "Zone_Residue")
+            {
+                while (RoomLoader.Instance == null) yield return null;
+                _roomLoader = RoomLoader.Instance;
+                _roomLoader.RoomLoaded += OnRoomLoaded;
+
+                // ZoneMarker와 ResidueEntryPoint의 Start 순서에 따라 첫 방 이벤트를 먼저
+                // 놓칠 수도 있다. 이미 로드된 방이 있으면 한 번 직접 보정한다.
+                if (!string.IsNullOrEmpty(_roomLoader.CurrentRoom))
+                    StartCoroutine(ConfigureRoomAfterStart(_roomLoader.CurrentRoom));
+                yield break;
+            }
+
             // 각 컴포넌트의 Start가 초기 상태를 적용한 다음 연결한다.
             yield return null;
             ConfigureR05PrimaryRestore();
             ConfigureR05OptionalRestoreAndRewards();
             ConfigureR07Stability();
+            CameraLockedRoomBackground.ConfigureR08ChimneyExit();
             ConfigureR08Pulleys();
             ConfigureR10ArenaEntrance();
             ConfigureR10MidBoss();
@@ -36,6 +60,162 @@ namespace HiddenWeight.World
             ConfigureOptionalMainPathEncounters();
             ConfigurePassages();
             ConfigureFinalEncounter();
+        }
+
+        void OnDestroy()
+        {
+            if (_roomLoader != null) _roomLoader.RoomLoaded -= OnRoomLoaded;
+        }
+
+        void OnRoomLoaded(string roomName)
+            => StartCoroutine(ConfigureRoomAfterStart(roomName));
+
+        IEnumerator ConfigureRoomAfterStart(string roomName)
+        {
+            // additive 씬의 Awake/OnEnable뿐 아니라 Start까지 끝난 뒤 덮어써야 빌더의
+            // 초기화가 보정값을 다시 되돌리지 않는다.
+            yield return null;
+            if (_roomLoader == null || _roomLoader.CurrentRoom != roomName) yield break;
+
+            // 현재 저장된 방 씬이 빌더보다 한 버전 이전이어도 포탈 경로가 빠지지 않게 한다.
+            // 생성한 문은 additive 방 씬으로 옮기므로 방을 나갈 때 함께 언로드된다.
+            ConfigurePortalDoors(roomName);
+
+            switch (roomName)
+            {
+                case "R05":
+                    ConfigureR05PrimaryRestore();
+                    ConfigureR05OptionalRestoreAndRewards();
+                    break;
+                case "R06":
+                    ConfigureR06RequiredStepEscape();
+                    ConfigureR06SecretRoute();
+                    break;
+                case "R07":
+                    ConfigureR07Stability();
+                    break;
+                case "R08":
+                    // additive 방의 모든 Start가 끝난 다음 벽·이동 발판·중간 안전 발판을
+                    // 다시 맞춘다. 배경 Awake의 실행 순서에 따라 R08 상행 경로가 빠지는
+                    // 경우를 막는다.
+                    CameraLockedRoomBackground.ConfigureR08ChimneyExit();
+                    ConfigureR08Pulleys();
+                    break;
+                case "R09":
+                    ConfigureOptionalMainPathEncounters();
+                    break;
+                case "R10":
+                    ConfigureR10ArenaEntrance();
+                    ConfigureR10MidBoss();
+                    break;
+                case "R12":
+                    ConfigureR10ArenaEntrance();
+                    ConfigureFinalEncounter();
+                    break;
+            }
+        }
+
+        void ConfigurePortalDoors(string roomName)
+        {
+            var room = FindRoom(RoomObjectName(roomName));
+            if (room == null) return;
+
+            switch (roomName)
+            {
+                case "R03":
+                    EnsureRoomDoor(room, "residue_shortcut_A:S", Side.S, new Vector2(6f, 3f),
+                        "R05", "residue_shortcut_A:S", "residue_shortcut_a");
+                    EnsureRoomDoor(room, "residue_shortcut_B:S", Side.S, new Vector2(23f, 2f),
+                        "R08", "residue_shortcut_B:S", "residue_shortcut_b");
+                    break;
+                case "R05":
+                    EnsureRoomDoor(room, "residue_shortcut_A:S", Side.S, new Vector2(2f, 3f),
+                        "R03", "residue_shortcut_A:S", "residue_shortcut_a");
+                    break;
+                case "R06":
+                    EnsureRoomDoor(room, "residue_R06_S2:D", Side.D, new Vector2(21f, 7.2f),
+                        "S2", "residue_R06_S2:U", "residue_secret_s2");
+                    break;
+                case "S2":
+                    EnsureRoomDoor(room, "residue_R06_S2:U", Side.U, new Vector2(4f, 4.25f),
+                        "R06", "residue_R06_S2:D", "residue_secret_s2");
+                    break;
+                case "R07":
+                    EnsureRoomDoor(room, "residue_shortcut_C:S", Side.S, new Vector2(25f, 9f),
+                        "R10", "residue_shortcut_C:S", "residue_shortcut_c");
+                    break;
+                case "R08":
+                    EnsureRoomDoor(room, "residue_shortcut_B:S", Side.S, new Vector2(21f, 26.5f),
+                        "R03", "residue_shortcut_B:S", "residue_shortcut_b");
+                    break;
+                case "R10":
+                    EnsureRoomDoor(room, "residue_shortcut_C:S", Side.S, new Vector2(3.5f, 4f),
+                        "R07", "residue_shortcut_C:S", "residue_shortcut_c");
+                    break;
+            }
+        }
+
+        static string RoomObjectName(string roomName)
+            => roomName.StartsWith("S") ? "Secret0" + roomName.Substring(1) : "Room" + roomName.Substring(1);
+
+        static void EnsureRoomDoor(Room room, string id, Side side, Vector2 localAnchor,
+                                   string targetRoom, string targetDoorId, string shortcutId)
+        {
+            RoomDoor door = null;
+            foreach (var candidate in FindObjectsByType<RoomDoor>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject.scene != room.gameObject.scene || candidate.DoorId != id) continue;
+                door = candidate;
+                break;
+            }
+
+            if (door == null)
+            {
+                var go = new GameObject("Door_" + id.Replace(':', '_'));
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, room.gameObject.scene);
+                go.transform.SetParent(room.transform, true);
+                var collider = go.AddComponent<BoxCollider2D>();
+                collider.isTrigger = true;
+                collider.size = side == Side.U || side == Side.D
+                    ? new Vector2(3f, 1.2f) : new Vector2(1.2f, 3.5f);
+                door = go.AddComponent<RoomDoor>();
+                BlockedHint.AttachTo(go, door: door);
+            }
+
+            door.transform.position = (Vector2)room.WorldBounds.min + localAnchor;
+            door.Configure(id, side, targetRoom, targetDoorId,
+                RoomDoor.DefaultArrivalOffset(side), shortcutId);
+        }
+
+        void ConfigureR06SecretRoute()
+        {
+            var room = FindRoom("Room06");
+            if (room == null) return;
+
+            Vector2 desired = (Vector2)room.WorldBounds.min + new Vector2(21f, 6f);
+            Rewindable selected = null;
+            float best = float.MaxValue;
+            foreach (var candidate in FindObjectsByType<Rewindable>(FindObjectsSortMode.None))
+            {
+                if (!room.WorldBounds.Contains(candidate.transform.position)) continue;
+                float distance = Vector2.Distance(candidate.transform.position, desired);
+                if (distance >= best) continue;
+                best = distance;
+                selected = candidate;
+            }
+            if (selected != null && best < 1f)
+                selected.ConfigureLinkedShortcut("residue_secret_s2");
+        }
+
+        void ConfigureR06RequiredStepEscape()
+        {
+            // _Full과 같은 계단 위치·크기를 유지한다. additive 로드 직후 플레이어가 복원
+            // 위치 안으로 들어간 경우에만, 계단 왼쪽의 기존 안전 바닥으로 되돌린다.
+            var room = FindRoom("Room06");
+            var step = GameObject.Find("R06_RequiredStep")?.GetComponent<Rewindable>();
+            if (room == null || step == null || step.gameObject.scene != room.gameObject.scene) return;
+            step.ConfigureSafeRestoreEscape((Vector2)room.WorldBounds.min + new Vector2(4f, 2f));
         }
 
         void ConfigureR10ArenaEntrance()
@@ -67,9 +247,15 @@ namespace HiddenWeight.World
 
                 candidate.transform.localScale = Vector3.one * 1.25f;
                 candidate.ConfigureDifficulty(1.6f, 8f, 0.9f, 1.25f, 1.4f, 1.25f, 4.2f);
+                // 주황색 판정 도형은 디버그 범위처럼 보여 보스 연출을 가린다. 공격은
+                // 준비 자세와 피격 모션으로만 읽히게 한다.
+                candidate.ConfigureAttackReadability(false);
                 var animator = candidate.GetComponentInChildren<SpriteAnimator>(true);
                 animator?.LockReferenceCenterToLocalX(0f);
-                AttachBossPresentationGuard(candidate.gameObject, "WatcherAnimIdle");
+                AttachBossPresentationGuard(candidate.gameObject, "WatcherAnimIdle",
+                    room.WorldBounds.min.y + 3f);
+                if (candidate.GetComponent<ResidueFinalBossDeathCleanup>() == null)
+                    candidate.gameObject.AddComponent<ResidueFinalBossDeathCleanup>();
             }
 
             // 저장된 Full 씬의 두 y=9 발판을 재활용해 출구 계단으로 내린다. 별도 충돌체를
@@ -88,6 +274,17 @@ namespace HiddenWeight.World
 
             PlaceExitStep(platforms[0], "R10_ExitStep_Low", room, 19.25f, 5f);
             PlaceExitStep(platforms[platforms.Count - 1], "R10_ExitStep_High", room, 22f, 7f);
+
+            // 이 계단은 보스의 시작 위치와 겹친다. 전투 중부터 켜 두면 보스가 계단 위로
+            // 밀려 올라가 공중에 떠 보이므로, 승리한 뒤 출구 동선으로만 나타나게 한다.
+            foreach (var encounter in FindObjectsByType<Encounter>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (encounter.Id != "residue_r10_boss") continue;
+                encounter.RegisterVictoryObject(platforms[0].gameObject);
+                encounter.RegisterVictoryObject(platforms[platforms.Count - 1].gameObject);
+                break;
+            }
         }
 
         static void PlaceExitStep(BoxCollider2D platform, string name, Room room, float x, float y)
@@ -371,10 +568,12 @@ namespace HiddenWeight.World
                 boss.ConfigureArena(arena.ToArray());
                 // Full 씬이 다시 빌드되지 않아도 R12에만 완화된 첫 지역 난도를 적용한다.
                 boss.ConfigureDifficulty(2.2f, 6.5f, 1.1f, 1.4f, 1.6f, 1.45f, 3.8f);
+                boss.ConfigureAttackReadability(false);
                 boss.ConfigurePresentation("InstructorRecover", "InstructorSweep", "InstructorHook",
                     "InstructorSlam", "InstructorHook", "InstructorPhase");
                 boss.GetComponentInChildren<SpriteAnimator>(true)?.LockReferenceCenterToLocalX(0f);
-                AttachBossPresentationGuard(boss.gameObject, "InstructorHalo");
+                AttachBossPresentationGuard(boss.gameObject, "InstructorHalo",
+                    r12.WorldBounds.min.y + 3f);
                 if (boss.GetComponent<ResidueFinalBossDeathCleanup>() == null)
                     boss.gameObject.AddComponent<ResidueFinalBossDeathCleanup>();
             }
@@ -402,12 +601,16 @@ namespace HiddenWeight.World
             }
         }
 
-        static void AttachBossPresentationGuard(GameObject boss, string safeClip)
+        static void AttachBossPresentationGuard(GameObject boss, string safeClip, float arenaFloorY)
         {
             if (boss == null) return;
             var guard = boss.GetComponent<ResidueBossPresentationGuard>();
             if (guard == null) guard = boss.AddComponent<ResidueBossPresentationGuard>();
             guard.Configure(safeClip);
+            guard.ConfigureArenaFloor(arenaFloorY);
+            var hitFeedback = boss.GetComponent<ResidueBossHitFeedback>();
+            if (hitFeedback == null) hitFeedback = boss.AddComponent<ResidueBossHitFeedback>();
+            hitFeedback.Configure();
         }
 
         static Shortcut Get(Dictionary<string, Shortcut> values, string id)
@@ -486,6 +689,8 @@ namespace HiddenWeight.World
         Rigidbody2D _body;
         Collider2D _collider;
         int _groundMask;
+        bool _hasArenaFloor;
+        float _arenaFloorY;
 
         public string SafeClip => _safeClip;
 
@@ -500,6 +705,20 @@ namespace HiddenWeight.World
                 if (poses == null) poses = gameObject.AddComponent<ResidueWatcherPoseDriver>();
                 poses.Configure(_animator, _collider);
             }
+            else if (!string.IsNullOrEmpty(safeClip) && safeClip.StartsWith("Instructor"))
+            {
+                var poses = GetComponent<ResidueInstructorPoseDriver>();
+                if (poses == null) poses = gameObject.AddComponent<ResidueInstructorPoseDriver>();
+                poses.Configure(_animator, _collider);
+            }
+        }
+
+        public void ConfigureArenaFloor(float worldY)
+        {
+            _hasArenaFloor = true;
+            _arenaFloorY = worldY;
+            Cache();
+            SnapToGround();
         }
 
         void Awake()
@@ -531,9 +750,8 @@ namespace HiddenWeight.World
         void FixedUpdate()
         {
             if (_enemy == null || !_enemy.IsAlive || _body == null || _collider == null) return;
-            // 낙하 공격 중에는 건드리지 않는다. 착지가 끝나 속도가 거의 0이고 실제 바닥과의
-            // 간격이 1.25유닛 이하일 때만 내린다. 낙하 공격 직후 물리 속도가 0으로 정리됐지만
-            // 발밑 접촉이 한 프레임 비어 보스가 공중에 남는 경우까지 회수한다.
+            // 낙하 공격 중에는 건드리지 않는다. 착지가 끝나 수직 속도가 거의 0일 때만
+            // 전장 바닥을 다시 확인해, 계단이나 발판에 잘못 얹힌 상태를 회수한다.
             if (Mathf.Abs(_body.linearVelocity.y) > 0.1f) return;
 
             SnapToGround();
@@ -544,6 +762,21 @@ namespace HiddenWeight.World
             if (_enemy == null || !_enemy.IsAlive || _body == null || _collider == null) return;
 
             Bounds bounds = _collider.bounds;
+            // R10/R12 보스는 계단이나 복원 발판 위가 아니라 전장 주 바닥에서 싸운다.
+            // 낙하 공격의 정점(약 6유닛)은 건드리지 않고, 착지 뒤 계단에 얹힌 경우만
+            // 원래 바닥으로 내려서 공중에 떠 보이는 상태를 회수한다.
+            if (_hasArenaFloor)
+            {
+                float arenaGap = bounds.min.y - _arenaFloorY;
+                const float maxArenaCorrection = 5f;
+                if (arenaGap > 0.01f && arenaGap <= maxArenaCorrection)
+                {
+                    transform.position += Vector3.down * arenaGap;
+                    _body.linearVelocity = new Vector2(_body.linearVelocity.x, 0f);
+                    return;
+                }
+            }
+
             const float maxGroundGap = 2f;
             var hit = Physics2D.Raycast(bounds.center, Vector2.down,
                 bounds.extents.y + maxGroundGap, _groundMask);
@@ -558,8 +791,8 @@ namespace HiddenWeight.World
         }
     }
 
-    // R12는 사망 판정과 동시에 출구가 열린다. 사망 애니메이션을 기다리는 동안 보스 형체가
-    // 문 옆에 남지 않도록 최종 보스의 그림과 잔여 파티클만 즉시 정리한다.
+    // R10/R12는 사망 판정과 동시에 출구가 열린다. 사망 애니메이션을 기다리는 동안 보스
+    // 형체가 남지 않도록 그림과 잔여 파티클을 즉시 정리한다.
     public sealed class ResidueFinalBossDeathCleanup : MonoBehaviour
     {
         Enemy _enemy;
@@ -642,21 +875,187 @@ namespace HiddenWeight.World
             Transform parent = visual.parent;
             Vector3 feetWorld = new Vector3(_collider.bounds.center.x, _collider.bounds.min.y, 0f);
             Vector3 feetLocal = parent.InverseTransformPoint(feetWorld);
+            float contactInset = ContactInsetFor(pose);
             visual.localPosition = new Vector3(
                 feetLocal.x - sprite.bounds.center.x * scale,
-                feetLocal.y - sprite.bounds.min.y * scale,
+                feetLocal.y - (sprite.bounds.min.y + contactInset) * scale,
                 visual.localPosition.z);
+        }
+
+        // 512px 셀 안의 실제 불투명 픽셀 바닥까지 남은 투명 여백(100 PPU 기준).
+        // Sprite.bounds는 투명 셀 전체를 포함하므로 이 값을 빼지 않으면 사진처럼 떠 보인다.
+        static float ContactInsetFor(int pose)
+        {
+            float[] insets = { 0.68f, 0.72f, 0.70f, 1.54f, 1.54f, 1.53f };
+            return insets[Mathf.Clamp(pose, 0, insets.Length - 1)];
         }
 
         static int PoseFor(string clip)
         {
             if (string.IsNullOrEmpty(clip)) return 0;              // Idle
             if (clip.Contains("Sweep")) return 1;                 // Sweep anticipation
-            if (clip.Contains("Charge")) return 2;                // Charge anticipation
+            if (clip.Contains("Charge")) return 4;                // Grounded charge anticipation
             if (clip.Contains("Stun")) return 3;                  // Charge impact
             if (clip.Contains("Drop")) return 4;                  // Drop attack
             if (clip.Contains("Hit") || clip.Contains("Death")) return 5;
             return 0;
+        }
+    }
+
+    // 최종 보스의 원본 애니메이션 시트는 행마다 셀 크기가 달라 클립 전환 때 본체 크기가
+    // 변한다. 동일한 512x512 셀로 정리한 투명 포즈 원본만 사용해 크기와 중심을 고정한다.
+    public sealed class ResidueInstructorPoseDriver : MonoBehaviour
+    {
+        SpriteAnimator _animator;
+        Collider2D _collider;
+        SpriteRenderer _renderer;
+        Sprite[] _poses;
+
+        public void Configure(SpriteAnimator animator, Collider2D bodyCollider)
+        {
+            _animator = animator;
+            _collider = bodyCollider;
+            _renderer = animator != null ? animator.Renderer : null;
+            EnsurePoses();
+        }
+
+        void EnsurePoses()
+        {
+            if (_poses != null) return;
+            var texture = Resources.Load<Texture2D>("Art/Residue/Bosses/MemoryInstructor_Poses_v5");
+            if (texture == null || texture.width < 3 || texture.height < 2) return;
+
+            float cellWidth = texture.width / 3f;
+            float cellHeight = texture.height / 2f;
+            _poses = new Sprite[6];
+            for (int row = 0; row < 2; row++)
+            for (int column = 0; column < 3; column++)
+            {
+                var rect = new Rect(column * cellWidth, (1 - row) * cellHeight,
+                    cellWidth, cellHeight);
+                _poses[row * 3 + column] = Sprite.Create(texture, rect,
+                    new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.Tight);
+            }
+        }
+
+        void LateUpdate()
+        {
+            if (_animator == null || _renderer == null || _collider == null) return;
+            EnsurePoses();
+            if (_poses == null) return;
+
+            int pose = Mathf.Clamp(PoseFor(_animator.CurrentClip), 0, 5);
+            Sprite sprite = _poses[pose];
+            if (sprite == null) return;
+            _renderer.sprite = sprite;
+
+            // 모든 포즈가 같은 셀과 같은 본체 비율을 사용하므로 고정 배율을 유지한다.
+            // 효과가 큰 공격에서도 본체가 작아지거나 커지지 않는다.
+            Transform visual = _renderer.transform;
+            const float displayScale = 0.9f;
+            visual.localScale = Vector3.one * displayScale;
+
+            Transform parent = visual.parent;
+            Vector3 floorWorld = new Vector3(_collider.bounds.center.x, _collider.bounds.min.y, 0f);
+            Vector3 floorLocal = parent.InverseTransformPoint(floorWorld);
+            float contactInset = ContactInsetFor(pose);
+            visual.localPosition = new Vector3(
+                floorLocal.x - sprite.bounds.center.x * displayScale,
+                floorLocal.y - (sprite.bounds.min.y + contactInset) * displayScale,
+                visual.localPosition.z);
+        }
+
+        static float ContactInsetFor(int pose)
+        {
+            // v5는 모든 포즈의 실제 접지선을 셀 아래 56px 지점으로 통일했다.
+            float[] insets = { 0.56f, 0.56f, 0.56f, 0.56f, 0.56f, 0.56f };
+            return insets[Mathf.Clamp(pose, 0, insets.Length - 1)];
+        }
+
+        static int PoseFor(string clip)
+        {
+            if (string.IsNullOrEmpty(clip) || clip.Contains("Halo")) return 0;
+            if (clip.Contains("Sweep") || clip.Contains("Core") || clip.Contains("Overload")) return 1;
+            if (clip.Contains("Hook")) return 2;
+            if (clip.Contains("Slam")) return 3;
+            if (clip.Contains("Death")) return 5;
+            return 4; // Recover, Hit, Phase
+        }
+    }
+
+    // 잔재 보스 전용 피격 피드백. Enemy의 흰색 점멸과 Hit 포즈에 짧은 회전 반동을 더해
+    // 플레이어 공격이 실제로 들어갔다는 것을 큰 보스 실루엣에서도 즉시 읽게 한다.
+    public sealed class ResidueBossHitFeedback : MonoBehaviour
+    {
+        Enemy _enemy;
+        SpriteRenderer _renderer;
+        Quaternion _restRotation;
+        int _lastHealth;
+        float _hitUntil;
+        int _hitDirection = 1;
+
+        public void Configure()
+        {
+            Cache();
+            _lastHealth = _enemy != null ? _enemy.Health : 0;
+        }
+
+        void Awake() => Cache();
+
+        void Cache()
+        {
+            if (_enemy == null) _enemy = GetComponent<Enemy>();
+            if (_renderer == null)
+            {
+                var animator = GetComponentInChildren<SpriteAnimator>(true);
+                _renderer = animator != null ? animator.Renderer : GetComponentInChildren<SpriteRenderer>(true);
+                if (_renderer != null) _restRotation = _renderer.transform.localRotation;
+            }
+        }
+
+        void OnEnable()
+        {
+            Cache();
+            if (_enemy == null) return;
+            _lastHealth = _enemy.Health;
+            _enemy.HealthChanged -= HandleHealthChanged;
+            _enemy.HealthChanged += HandleHealthChanged;
+        }
+
+        void OnDisable()
+        {
+            if (_enemy != null) _enemy.HealthChanged -= HandleHealthChanged;
+            RestoreRotation();
+        }
+
+        void HandleHealthChanged(int current, int _)
+        {
+            if (current < _lastHealth)
+            {
+                _hitDirection *= -1;
+                _hitUntil = Time.unscaledTime + 0.18f;
+            }
+            _lastHealth = current;
+        }
+
+        void LateUpdate()
+        {
+            if (_renderer == null) return;
+            float remaining = _hitUntil - Time.unscaledTime;
+            if (remaining <= 0f)
+            {
+                RestoreRotation();
+                return;
+            }
+
+            float progress = 1f - remaining / 0.18f;
+            float angle = Mathf.Sin(progress * Mathf.PI) * 7f * _hitDirection;
+            _renderer.transform.localRotation = _restRotation * Quaternion.Euler(0f, 0f, angle);
+        }
+
+        void RestoreRotation()
+        {
+            if (_renderer != null) _renderer.transform.localRotation = _restRotation;
         }
     }
 

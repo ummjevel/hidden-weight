@@ -1082,11 +1082,11 @@ namespace HiddenWeight.EditorTools
             PlacePlayerAndCamera(root, new Vector3(3f, 1f, 0f));
             BuildCheckpoint(root.transform, new Vector2(3f, 1f));
             BuildPrologueActionHint(root.transform, new Vector2(5f, 3.2f),
-                PrologueActionHint.RequiredAction.Move, "{Move}", 0.35f);
+                PrologueActionHint.RequiredAction.Move, "{Move}  ·  이동", 0.35f);
             BuildPrologueActionHint(root.transform, new Vector2(9.5f, 3.2f),
-                PrologueActionHint.RequiredAction.Jump, "{Jump}");
+                PrologueActionHint.RequiredAction.Jump, "{Jump}  ·  점프");
             BuildPrologueConceptHint(root.transform, new Vector2(15f, 4.5f),
-                "이곳은 기억과 감정이\n공간이 된 꿈이다.");
+                "이곳은 꿈속입니다.\n기억과 감정은 공간의 형태로 나타납니다.");
             var t01Room = BuildRoom(rooms.transform, "T01", new Vector2(12f, 7f),
                 new Vector2(24f, 14f)).GetComponent<Room>();
             SingleRoomBackgroundBuilder.Build(t01Room, "Assets/Art/Prologue");
@@ -1105,9 +1105,10 @@ namespace HiddenWeight.EditorTools
                 new Vector2(1f, 7f));
             Floor(tilemap, 46, 52, 9);
             BuildPrologueActionHint(root.transform, new Vector2(40f, 3f),
-                PrologueActionHint.RequiredAction.WallJump, "벽에 붙은 뒤  {Jump}");
+                PrologueActionHint.RequiredAction.WallJump,
+                "{Jump}  ·  벽점프\n벽에 붙은 상태에서 누르기");
             BuildPrologueConceptHint(root.transform, new Vector2(33f, 2.5f),
-                "지나간 일, 지금의 시선,\n아직 오지 않은 걱정이 세 공간을 만들었다.");
+                "꿈은 세 구역으로 나뉩니다.\n잔재 · 응시 · 균열");
             var t02Room = BuildRoom(rooms.transform, "T02", new Vector2(38f, 7f),
                 new Vector2(28f, 18f)).GetComponent<Room>();
             SingleRoomBackgroundBuilder.Build(t02Room, "Assets/Art/Prologue");
@@ -1122,13 +1123,14 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 68, 70, 8);
             Floor(tilemap, 70, 82, 9);
             BuildPrologueActionHint(root.transform, new Vector2(57.5f, 12f),
-                PrologueActionHint.RequiredAction.Dash, "{Jump}  +  {Dash}");
+                PrologueActionHint.RequiredAction.Dash,
+                "{Dash}  ·  대시\n점프 중에도 사용 가능");
             BuildPrologueEnemy(root.transform, new Vector2(75f, 10f), prologueEnemy,
                 "NamelessEcho_T03", "Prologue_FragmentShard", 1.55f);
             BuildPrologueActionHint(root.transform, new Vector2(73f, 12f),
-                PrologueActionHint.RequiredAction.Attack, "{Attack}");
+                PrologueActionHint.RequiredAction.Attack, "{Attack}  ·  공격");
             BuildPrologueConceptHint(root.transform, new Vector2(80f, 12f),
-                "세 공간의 기억을 모으면\n이 꿈에서 깨어날 수 있다.", 2.5f);
+                "각 구역에서 기억 파편을 찾으면\n다음 구역으로 이동할 수 있습니다.", 2.5f);
             var t03Room = BuildRoom(rooms.transform, "T03", new Vector2(67f, 13f),
                 new Vector2(30f, 16f)).GetComponent<Room>();
             SingleRoomBackgroundBuilder.Build(t03Room, "Assets/Art/Prologue");
@@ -1153,7 +1155,7 @@ namespace HiddenWeight.EditorTools
             Floor(tilemap, 106, 114, 18);
             BuildCheckpoint(root.transform, new Vector2(110f, 19f));
             BuildPrologueConceptHint(root.transform, new Vector2(109f, 22f),
-                "첫 번째 공간 · 잔재\n지나간 기억이 남은 곳", 2.5f);
+                "첫 구역: 잔재\n지나간 기억이 남아 있는 곳입니다.", 2.5f);
             var t04Room = BuildRoom(rooms.transform, "T04", new Vector2(98f, 14f),
                 new Vector2(32f, 18f)).GetComponent<Room>();
             SingleRoomBackgroundBuilder.Build(t04Room, "Assets/Art/Prologue");

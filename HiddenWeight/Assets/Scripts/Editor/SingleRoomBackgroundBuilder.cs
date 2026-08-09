@@ -292,6 +292,8 @@ namespace HiddenWeight.EditorTools
                 return null;
 
             string roomName = room.name;
+            if (roomName.Contains("R06") || roomName.Contains("Room06"))
+                return "Assets/Art/Residue/Backgrounds/V3/Residue_Background_R06_v4.png";
             if (roomName.Contains("R08") || roomName.Contains("R09")
                 || roomName.Contains("Room08") || roomName.Contains("Room09"))
                 return "Assets/Art/Residue/Backgrounds/V3/Residue_Background_Shaft_v3.png";

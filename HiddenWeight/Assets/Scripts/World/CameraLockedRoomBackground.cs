@@ -24,6 +24,7 @@ namespace HiddenWeight.World
         [SerializeField] Vector2 worldSize;
         static Sprite _visibilityPixel;
         const float CameraFollowOverscan = 1.08f;
+        Room _owner;
 
         public void ConfigureWorldSize(Vector2 size) => worldSize = size;
 
@@ -31,6 +32,7 @@ namespace HiddenWeight.World
 
         void Awake()
         {
+            _owner = GetComponentInParent<Room>();
             // 세 지역 모두 배경을 카메라 추종 벽지로 통일한다(2026-08-09 팀 결정). 방 고정
             // (worldSize)은 카메라가 방 경계를 넘거나 방 크기가 그림과 어긋날 때 검은 여백이
             // 드러났다 — 균열에서 실제로 겪었고 잔재·응시도 같은 방식으로 맞춘다.
@@ -45,11 +47,28 @@ namespace HiddenWeight.World
 
         void LateUpdate()
         {
+            var renderer = GetComponent<SpriteRenderer>();
+            bool visible = IsCurrentRoomBackground();
+            if (renderer != null) renderer.enabled = visible;
+            if (!visible) return;
+
             if (UsesWorldSize) return; // 방 크기에 이미 고정했으면 매 프레임 다시 맞출 필요가 없다.
 
             Camera camera = Camera.main;
             if (camera != null)
                 Refresh(camera);
+        }
+
+        bool IsCurrentRoomBackground()
+        {
+            if (_owner == null) _owner = GetComponentInParent<Room>();
+            if (_owner == null) return true;
+
+            Room current = RoomCamera.Instance != null ? RoomCamera.Instance.CurrentRoom : null;
+            if (current != null) return current == _owner;
+
+            var player = Player.PlayerController.Instance;
+            return player == null || _owner.Contains(player.transform.position);
         }
 
         // 방 전체를 한 번만 덮도록 스케일한다(가로세로 비율은 유지하고 큰 쪽에 맞춰 방을
@@ -194,7 +213,10 @@ namespace HiddenWeight.World
             ConfigureR08ChimneyExit();
             ConfigureGazeGs2Slot();
             ConfigureGazeG06FloorSafety();
+            ConfigureGazeG06SlotVisuals();
+            DisableLegacyGazeSeamBackground();
             DisableR07FakeStairWall();
+            ConfigureR07ExitStep();
             DisableLegacyResidueFloorArt(palette);
             foreach (var tilemap in FindObjectsByType<Tilemap>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -267,6 +289,46 @@ namespace HiddenWeight.World
             AddHiddenGround(root.transform, "Floor_D", new Vector3(min.x + 30f, min.y + 2f, z), new Vector2(4f, 4f));
         }
 
+        static void ConfigureGazeG06SlotVisuals()
+        {
+            if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Gaze"))
+                return;
+
+            var room = GameObject.Find("GazeRoom06")?.GetComponent<Room>();
+            var right = GameObject.Find("G06_Slot_R")?.GetComponent<BoxCollider2D>();
+            if (room != null && right != null)
+            {
+                // 오른쪽 벽은 꼭대기에서 옆으로 빠져나갈 수 있도록 1유닛 낮춘다.
+                // 하단은 기존 바닥(local y=2)에 붙여 벽타기 시작점은 그대로 유지한다.
+                SetWallVerticalSpan(right,
+                    room.WorldBounds.min.y + 2f,
+                    room.WorldBounds.min.y + 5f);
+            }
+
+            foreach (string wallName in new[] { "G06_Slot_L", "G06_Slot_R" })
+            {
+                var wall = GameObject.Find(wallName)?.GetComponent<BoxCollider2D>();
+                if (wall == null) continue;
+
+                // 빌더의 구형 Art는 부모의 세로 스케일을 다시 받아 실제 콜라이더보다
+                // 위아래로 길게 보인다. 해당 그림만 끄고 아래 BuildWallClimbSurfaces가
+                // 콜라이더 bounds와 정확히 같은 높이의 벽면을 새로 만들게 한다.
+                Transform oldArt = wall.transform.Find("Art");
+                if (oldArt != null) oldArt.gameObject.SetActive(false);
+            }
+        }
+
+        static void DisableLegacyGazeSeamBackground()
+        {
+            if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Gaze"))
+                return;
+
+            // G01-G02의 검은 틈을 가리기 위해 과거에 추가했던 화면 크기 배경판이다.
+            // 카메라 추적 배경이 정식 적용된 뒤에는 G01 위에 겹쳐 짙은 사각형만 만든다.
+            var seam = GameObject.Find("G01_G02_SeamBackground");
+            if (seam != null) seam.SetActive(false);
+        }
+
         static void AddHiddenGround(Transform parent, string name, Vector3 center, Vector2 size)
         {
             var ground = new GameObject(name);
@@ -294,6 +356,40 @@ namespace HiddenWeight.World
             var crashWall = GameObject.Find("R07_CrashWall");
             if (crashWall != null && IsResidue(crashWall.scene.name))
                 crashWall.SetActive(false);
+
+            // 이전 QA 보정에서 추가한 출구 바닥 그림은 타일 콜라이더 표면보다 위로 떠 있고,
+            // 현재 자동 생성되는 정식 표면과 중복된다. 실제 타일 bounds에서 만든 그림만 쓴다.
+            var exitFloor = GameObject.Find("R07_ExitFloorVisual");
+            if (exitFloor != null && IsResidue(exitFloor.scene.name))
+                exitFloor.SetActive(false);
+        }
+
+        static void ConfigureR07ExitStep()
+        {
+            var room = GameObject.Find("Room07")?.GetComponent<Room>();
+            if (room == null || !IsResidue(room.gameObject.scene.name)) return;
+
+            Vector2 expected = (Vector2)room.WorldBounds.min + new Vector2(21.5f, 6.5f);
+            BoxCollider2D exitStep = null;
+            float closest = float.MaxValue;
+            foreach (var candidate in FindObjectsByType<BoxCollider2D>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject.scene.handle != room.gameObject.scene.handle) continue;
+                if (candidate.name != "SafePlatform" && candidate.name != "R07_ExitStep") continue;
+                float distance = Vector2.Distance(candidate.transform.position, expected);
+                if (distance >= closest) continue;
+                closest = distance;
+                exitStep = candidate;
+            }
+            if (exitStep == null || closest > 1f) return;
+
+            // y=5와 y=8 바닥의 정확한 중간에 충돌면을 둔다. 이전 y=6.5 중심값은
+            // 발판 윗면이 6.75까지 올라가 그림보다 캐릭터가 허공에 서는 인상을 줬다.
+            Vector3 position = exitStep.transform.position;
+            position.y = room.WorldBounds.min.y + 6.25f;
+            exitStep.transform.position = position;
+            exitStep.name = "R07_ExitStep";
         }
 
         static void ConfigureR04ChimneyEntry()

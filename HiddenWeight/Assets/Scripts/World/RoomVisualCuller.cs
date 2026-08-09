@@ -49,6 +49,9 @@ namespace HiddenWeight.World
         void Apply(Room current)
         {
             bool visible = current == null || current == _owner || CameraOverlapsOwner();
+            bool ownsPlayer = Player.PlayerController.Instance != null && _owner != null
+                && _owner.Contains(Player.PlayerController.Instance.transform.position);
+            bool backgroundVisible = current != null ? current == _owner : ownsPlayer;
             bool residueScene = gameObject.scene.name.Contains("Residue");
             for (int i = 0; i < _renderers.Length; i++)
             {
@@ -96,7 +99,12 @@ namespace HiddenWeight.World
                     continue;
                 }
 
-                renderer.enabled = visible && _initialRendererStates[i];
+                // CameraLockedRoomBackground는 카메라를 따라 움직이는 화면 크기 배경이다.
+                // 인접 방까지 overlap 판정으로 켜면 두 배경이 같은 화면에 포개져 경계가
+                // 짙은 불투명 사각형처럼 보이므로 현재 방의 배경 하나만 활성화한다.
+                bool rendererVisible = renderer.GetComponent<CameraLockedRoomBackground>() != null
+                    ? backgroundVisible : visible;
+                renderer.enabled = rendererVisible && _initialRendererStates[i];
             }
 
             // 방이 화면에 들어오는 순간 패럴랙스를 다시 기준 잡는다. 씬 시작 때 잡힌 앵커를

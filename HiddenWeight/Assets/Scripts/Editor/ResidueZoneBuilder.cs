@@ -1246,7 +1246,8 @@ namespace HiddenWeight.EditorTools
             // 배경에 묻혔다. 충돌과 같은 x=23~30, 표면 y=8에 잔재 바닥을 명시적으로 겹친다.
             PlaceFloorArt(c.Root.transform, c.P(26.5f, 8f), 7f, c.Variant);
             // y=5 → y=8은 한 번에 오르면 +3이라 실측 점프 높이(2.72)를 넘는다. 중간 발판을 둔다.
-            BuildSafePlatform(c.Root.transform, c.P(21.5f, 6.5f));
+            var exitStep = BuildSafePlatform(c.Root.transform, c.P(21.5f, 6.25f));
+            exitStep.name = "R07_ExitStep";
             // 실제 충돌이 없는 아치형 계단 원화는 통과 가능한 거대한 벽처럼 보여 사용하지
             // 않는다. 위에서 만든 SafePlatform의 정식 발판 그림만 이동 경로로 표시한다.
 

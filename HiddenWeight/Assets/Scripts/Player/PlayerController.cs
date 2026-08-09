@@ -52,6 +52,7 @@ namespace HiddenWeight.Player
             _attack = GetComponent<PlayerAttack>();
             _spriteAnimator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
             _data = GameManager.Instance.Balance.player;
+            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             _rb.gravityScale = _data.gravityScale;
         }
 

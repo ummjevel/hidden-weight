@@ -601,6 +601,16 @@ namespace HiddenWeight.EditorTools
             // 벽이 없어 지그재그 하강 중 왼쪽으로 살짝만 벗어나도 곧장 GS1까지 뚫려
             // 떨어졌다.
             BuildShaft(parent, map, "Shaft_GS1", G04.x, G04.y + 0, GS1.y + 2);
+            // 오른쪽 벽의 맨 위 한 칸이 G04 쪽으로 튀어나와 벽점프 출구를 막았다.
+            // 하단은 유지하고 상단만 한 칸 낮춰 마지막 점프가 옆으로 빠지게 한다.
+            var gs1Right = parent.Find("Shaft_GS1_R");
+            if (gs1Right != null)
+            {
+                gs1Right.position += Vector3.down * 0.5f;
+                var scale = gs1Right.localScale;
+                scale.y -= 1f;
+                gs1Right.localScale = scale;
+            }
 
             // GS2 — 위 입구와 아래 샤프트를 같은 폭·높이로 붙여 계속 벽타기할 수 있게 한다.
             BuildShaft(parent, map, "Shaft_GS2", G06.x + 20, G06.y + 2, GS2.y + 2, 2);
@@ -988,12 +998,6 @@ namespace HiddenWeight.EditorTools
             BuildSafePlatform(c.Root.transform, c.P(9.5f, 7f));
             BuildSafePlatform(c.Root.transform, c.P(14f, 8f));
 
-            // 무대를 뒤에서 본 풍경 — 앞면만 칠해진 배경판과 버팀목.
-            BuildDecor(c.Root.transform, "GS1_StageBack", c.P(9f, 8f), new Vector2(16f, 10f),
-                "Tile", new Color(0.19f, 0.18f, 0.26f), 0f, -7);
-            BuildDecor(c.Root.transform, "GS1_Prop", c.P(3f, 4f), new Vector2(1f, 4f),
-                "Tile", new Color(0.3f, 0.27f, 0.38f), 8f, -5);
-
             BuildStoryFragment(c.Root.transform, c.P(14f, 9.5f), "gaze_gs1",
                 "앞을 칠할 때, 뒤는 아무도 보지 않는다고 했다.", EmotionId.None, false);
             BuildRewardChest(c.Root.transform, "gaze_gs1_currency", c.P(16f, 3f), 30, false);
@@ -1091,7 +1095,7 @@ namespace HiddenWeight.EditorTools
             BuildPlainWall(c.Root.transform, "G06_Slot_L",
                 c.P(slotLeft, 4f), new Vector2(1f, 4f), GazeStone);
             BuildPlainWall(c.Root.transform, "G06_Slot_R",
-                c.P(slotRight, 4f), new Vector2(1f, 4f), GazeStone);
+                c.P(slotRight, 3.5f), new Vector2(1f, 3f), GazeStone);
             BuildDecor(c.Root.transform, "G06_GS2_Hint", c.P(20.5f, 5.5f), new Vector2(1.4f, 1.4f),
                 "Eye", new Color(0.35f, 0.5f, 0.5f), 0f, -4);
 

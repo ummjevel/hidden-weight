@@ -133,6 +133,7 @@ namespace HiddenWeight.World
             if (player == null) return; // 씬에 플레이어가 아직 없을 수 있다
 
             BindPlayer(player);
+            ResolveCurrentRoom(player.transform.position);
 
             float dt = Time.deltaTime;
             if (_roomBlendTimer > 0f) _roomBlendTimer -= dt;
@@ -152,6 +153,23 @@ namespace HiddenWeight.World
                 _base.x + _shakeOffset.x,
                 _base.y + _shakeOffset.y,
                 transform.position.z);
+        }
+
+        void ResolveCurrentRoom(Vector3 playerPosition)
+        {
+            if (CurrentRoom != null && CurrentRoom.Contains(playerPosition)) return;
+
+            Room closest = null;
+            float closestDistance = float.MaxValue;
+            foreach (var room in FindObjectsByType<Room>(FindObjectsInactive.Exclude))
+            {
+                if (!room.Contains(playerPosition)) continue;
+                float distance = ((Vector2)room.WorldBounds.center - (Vector2)playerPosition).sqrMagnitude;
+                if (distance >= closestDistance) continue;
+                closestDistance = distance;
+                closest = room;
+            }
+            if (closest != null) SetRoom(closest);
         }
 
         void BindPlayer(PlayerController player)

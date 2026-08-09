@@ -32926,7 +32926,7 @@ MonoBehaviour:
   chargeTelegraph: 1
   slamTelegraph: 1.2
   sweepHeight: 1.2
-  shadowSprite: {fileID: 21300000, guid: 9109f13a8c1274a2aa597b0158602155, type: 3}
+  shadowSprite: {fileID: 0}
   hurtboxSize: {x: 2.4, y: 3.2}
   hurtboxOffset: {x: 0, y: 0}
   recoverSeconds: 1
@@ -67442,6 +67442,10 @@ PrefabInstance:
       propertyPath: clipPrefix
       value: NotYetMe
       objectReference: {fileID: 0}
+    - target: {fileID: 8664592863492735638, guid: 307daa034d259451a9f579635f8983cf, type: 3}
+      propertyPath: hitClipName
+      value: NotYetMeIdle
+      objectReference: {fileID: 0}
     - target: {fileID: 8965064995835697895, guid: 307daa034d259451a9f579635f8983cf, type: 3}
       propertyPath: m_Name
       value: Enemy
@@ -67484,12 +67488,12 @@ MonoBehaviour:
   chargeTelegraph: 1
   slamTelegraph: 1.2
   sweepHeight: 1.2
-  shadowSprite: {fileID: 21300000, guid: 9109f13a8c1274a2aa597b0158602155, type: 3}
+  shadowSprite: {fileID: 0}
   hurtboxSize: {x: 2.4, y: 3.2}
   hurtboxOffset: {x: 0, y: 0}
-  recoverSeconds: 1
-  sweepRange: 5
-  chargeSpeed: 12
+  recoverSeconds: 0.7
+  sweepRange: 6
+  chargeSpeed: 14
   slamHeight: 6
   playerMask:
     serializedVersion: 2
@@ -67515,15 +67519,15 @@ MonoBehaviour:
   slamImpactEffect: BossRing
   phaseChangeEffect: BossRupture
   moveClipNames:
-  - NotYetMeDivided
-  - NotYetMeShards
-  - NotYetMeGlide
-  - NotYetMeRibbon
+  - NotYetMeIdle
+  - NotYetMeIdle
+  - NotYetMeIdle
+  - NotYetMeIdle
   idleClipName: NotYetMeIdle
-  phaseClipName: NotYetMePhase
+  phaseClipName: NotYetMeIdle
   phaseThresholds:
-  - 0.6
-  - 0.3
+  - 0.7
+  - 0.35
   idleClip: WatcherAnimIdle
   sweepClip: WatcherAnimSweep
   chargeClip: WatcherAnimCharge

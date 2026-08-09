@@ -570,7 +570,8 @@ namespace HiddenWeight.EditorTools
                                     string idleSprite = null,
                                     string clipPrefix = null,
                                     string[] moveClips = null,
-                                    string phaseClip = null)
+                                    string phaseClip = null,
+                                    string hitClip = null)
         {
             var data = LoadData<EnemyData>(assetName);
             if (data == null)
@@ -623,6 +624,9 @@ namespace HiddenWeight.EditorTools
             // 피격·사망 클립을 Enemy가 스스로 틀 수 있게 접두사를 준다. 기본은 잔재 감시자.
             SetField(go.GetComponent<HiddenWeight.Enemies.Enemy>(), "clipPrefix",
                 p => p.stringValue = clipPrefix ?? "WatcherAnim");
+            if (!string.IsNullOrEmpty(hitClip))
+                SetField(go.GetComponent<HiddenWeight.Enemies.Enemy>(), "hitClipName",
+                    p => p.stringValue = hitClip);
 
             var patrol = go.GetComponent<HiddenWeight.Enemies.EnemyPatrol>();
             if (patrol != null) patrol.enabled = false;
@@ -645,7 +649,9 @@ namespace HiddenWeight.EditorTools
                 });
             SetField(boss, "playerMask", p => p.intValue =
                 1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("PlayerHushed"));
-            SetField(boss, "shadowSprite", p => p.objectReferenceValue = LoadSprite("Tile"));
+            // 낙하 예고는 BossController가 런타임 원형 알파 스프라이트로 만든다. 공용 Tile을
+            // 넣으면 임포트 이름이나 이전 씬 데이터에 따라 흰 사각형이 다시 노출된다.
+            SetField(boss, "shadowSprite", p => p.objectReferenceValue = null);
             SetField(boss, "obstacleMask", p => p.intValue =
                 1 << LayerMask.NameToLayer("Ground") | 1 << LayerMask.NameToLayer("Wall"));
             SetField(boss, "moves", p =>

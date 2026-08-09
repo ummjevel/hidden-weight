@@ -60,6 +60,7 @@ namespace HiddenWeight.Enemies
         // 행동 모듈이 "지금 뭘 하는지"를 알려 주면 그에 맞는 클립을 재생한다.
         // 클립 이름은 종류별 접두사 + 동작(예: WalkerWalk)이고, 접두사는 빌더가 넣어 준다.
         [SerializeField] string clipPrefix = "";
+        [SerializeField] string hitClipName = "";
 
         // Encounter가 관리하는 적은 죽어도 파괴하지 않는다(되살릴 수 있어야 하므로).
         bool _managedByEncounter;
@@ -301,7 +302,10 @@ namespace HiddenWeight.Enemies
             if (_flashRoutine != null) StopCoroutine(_flashRoutine);
             _flashRoutine = StartCoroutine(FlashRoutine());
             PlayRecoil(sourcePosition);
-            PlayClip("Hit");
+            if (_animator != null && !string.IsNullOrEmpty(hitClipName) && _animator.Has(hitClipName))
+                _animator.Play(hitClipName, true);
+            else
+                PlayClip("Hit");
 
             if (Health <= 0)
             {

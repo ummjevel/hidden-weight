@@ -110,8 +110,16 @@ namespace HiddenWeight.Enemies
         {
             _self = GetComponent<Enemy>();
             _body = GetComponent<Rigidbody2D>();
-            _sprite = GetComponentInChildren<SpriteRenderer>();
             _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            _sprite = _animator != null && _animator.Renderer != null
+                ? _animator.Renderer
+                : GetComponentInChildren<SpriteRenderer>();
+
+            // 보스 프리팹 루트의 배치용 placeholder가 공격 연출 후 다시 켜지지 않게 한다.
+            var rootRenderer = GetComponent<SpriteRenderer>();
+            if (rootRenderer != null && rootRenderer != _sprite)
+                rootRenderer.enabled = false;
+
             BuildHurtbox();
         }
 
@@ -477,9 +485,9 @@ namespace HiddenWeight.Enemies
         // 떨어질 자리를 바닥에 그려 준다. 예고 동안 위치가 고정이라 비키면 확실히 피한다.
         GameObject ShowDropShadow(Vector3 target)
         {
-            Sprite sprite = shadowSprite;
-            // 공용 프리팹의 기본 그림자는 흰 Tile이라 반투명 색을 곱해도 네모가 남는다.
-            if (sprite == null || sprite.name == "Tile") sprite = DropShadowSprite();
+            // 씬에 예전 공용 Tile 참조가 남아 있어도 절대 사용하지 않는다. 이름 검사에
+            // 기대면 임포트 과정에서 이름이 바뀐 Tile이 다시 흰 사각형으로 보일 수 있다.
+            Sprite sprite = DropShadowSprite();
             if (sprite == null) return null;
 
             var go = new GameObject("BossDropShadow");

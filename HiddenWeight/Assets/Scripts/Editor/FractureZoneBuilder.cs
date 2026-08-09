@@ -1645,7 +1645,7 @@ namespace HiddenWeight.EditorTools
             BuildFractureCrumbling(c.Root.transform, c.P(17f, 8.6f));
             BuildFractureSafePlatform(c.Root.transform, c.P(6f, 6.2f));
 
-            var boss = BuildBoss(c.Root.transform, c.P(16f, 6f), "Enemy_Fracture_NotYetMe", 22,
+            var boss = BuildBoss(c.Root.transform, c.P(16f, 6f), "Enemy_Fracture_NotYetMe", 30,
                 new[]
                 {
                     BossController.Move.TimeSkip,
@@ -1653,7 +1653,7 @@ namespace HiddenWeight.EditorTools
                     BossController.Move.Charge,
                     BossController.Move.GroundSweep,
                 },
-                new[] { 0.6f, 0.3f }, new Color(0.72f, 0.68f, 0.9f),
+                new[] { 0.7f, 0.35f }, new Color(0.72f, 0.68f, 0.9f),
                 new[]
                 {
                     ("NotYetMeIdle",      8f,  true),
@@ -1669,11 +1669,22 @@ namespace HiddenWeight.EditorTools
                 },
                 "NotYetMeIdle_00",
                 clipPrefix: "NotYetMe",
-                moveClips: new[] { "NotYetMeDivided", "NotYetMeShards",
-                                   "NotYetMeGlide", "NotYetMeRibbon" },
-                phaseClip: "NotYetMePhase");
+                // 동작 행 원본은 인접 셀 그림이 서로 침범한다. 전투 패턴의 물리 동작은
+                // 유지하되, 깨끗한 대기 행만 사용해 다른 몸 조각이 노출되지 않게 한다.
+                moveClips: new[] { "NotYetMeIdle", "NotYetMeIdle",
+                                   "NotYetMeIdle", "NotYetMeIdle" },
+                phaseClip: "NotYetMeIdle",
+                hitClip: "NotYetMeIdle");
             SetField(boss.GetComponent<BossController>(), "projectileName",
                 p => p.stringValue = "FractureBossCrystals");
+            boss.GetComponent<BossController>().ConfigureDifficulty(
+                recovery: 0.7f,
+                charge: 14f,
+                sweepWarning: 0.7f,
+                chargeWarning: 1f,
+                slamWarning: 1.2f,
+                projectileWarning: 1f,
+                range: 6f);
 
             var reward = BuildRewardChest(c.Root.transform, "fracture_f12_boss", c.P(16f, 5.5f), 70, true);
             BuildEncounter(c.Root.transform, "fracture_f12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,

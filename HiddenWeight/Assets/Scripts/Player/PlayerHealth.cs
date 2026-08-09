@@ -9,6 +9,9 @@ namespace HiddenWeight.Player
     // 구독하기만 한다 — Core를 직접 호출해 위치를 요청하지 않는 역방향 훅 구조.
     public class PlayerHealth : MonoBehaviour
     {
+        // HUD 하트 10개에 각각 체력 2를 담아 피해 1이 반 칸으로 표시된다.
+        const int FixedMaxHealth = 20;
+
         int _maxHealth;
         float _invulnerableTime;
         float _blinkInterval;
@@ -30,9 +33,7 @@ namespace HiddenWeight.Player
         void Awake()
         {
             var data = GameManager.Instance.Balance.player;
-            // 영구 성장 조각 1개당 최대 체력 +1 (CONTENT_SYSTEM.md 5절). 조각은 ProgressState가
-            // 들고 있으므로 지역을 옮겨도 유지된다.
-            _maxHealth = data.maxHealth + GameManager.Instance.Progress.HealthShards;
+            _maxHealth = FixedMaxHealth;
             _invulnerableTime = data.invulnerableTime;
             _blinkInterval = data.blinkInterval;
             _knockbackForce = data.knockbackForce;
@@ -91,11 +92,10 @@ namespace HiddenWeight.Player
             Animator?.PlayOnce("PlayerHit");
         }
 
-        // 성장 조각을 먹은 즉시 최대 체력을 올린다. 다음 씬까지 기다리면 보상을 받은 체감이 없다.
+        // 기존 체력 조각 보상 경로가 호출해도 전 지역 공통 하트 10개(내부 체력 20)를 유지한다.
         public void RefreshMaxHealth()
         {
-            int max = GameManager.Instance.Balance.player.maxHealth
-                    + GameManager.Instance.Progress.HealthShards;
+            int max = FixedMaxHealth;
             if (max == _maxHealth) return;
 
             int gained = max - _maxHealth;

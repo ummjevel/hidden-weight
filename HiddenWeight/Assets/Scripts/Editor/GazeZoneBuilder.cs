@@ -1426,8 +1426,8 @@ namespace HiddenWeight.EditorTools
             var encounter = BuildEncounter(c.Root.transform, "gaze_g12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,
                 new[] { new[] { boss } }, new int[0], reward, null);
             SetField(encounter, "observeSeconds", p => p.floatValue = 0f);
-            SetField(encounter, "lockHeightOverride", p => p.floatValue = 30f);
-            SetField(encounter, "lockCenterYOffset", p => p.floatValue = 9f);
+            SetField(encounter, "lockHeightOverride", p => p.floatValue = 60f);
+            SetField(encounter, "lockCenterYOffset", p => p.floatValue = 24f);
             SetField(encounter, "hideLockVisuals", p => p.boolValue = true);
 
             // 핵심 파편과 균열로 이어지는 통로.

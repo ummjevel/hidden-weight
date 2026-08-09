@@ -16,6 +16,10 @@ namespace HiddenWeight.UI
     // 그대로 유지하고, 실제 화면에서는 지역 문양을 쓴 노드와 기억 카드로 다시 구성한다.
     public class PauseSectionPanel : MonoBehaviour
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
+        static readonly bool EnableGazeBossQaWarp = false;
+#endif
+
         GameObject _panel;
         RectTransform _content;
         ScrollRect _scroll;
@@ -320,7 +324,7 @@ namespace HiddenWeight.UI
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
             // 보스 확인용 임시 워프. 정식 릴리스 빌드에서는 컴파일 자체가 되지 않는다.
-            if (roomId == "Gaze/GazeRoom12")
+            if (EnableGazeBossQaWarp && roomId == "Gaze/GazeRoom12")
             {
                 var button = chip.AddComponent<Button>();
                 button.targetGraphic = background;

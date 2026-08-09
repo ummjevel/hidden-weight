@@ -92,6 +92,7 @@ namespace HiddenWeight.Enemies
         bool _showAttackRanges;
         GameObject _activeRangeIndicator;
         static Material _rangeMaterial;
+        static Sprite _dropShadowSprite;
 
         [Header("보스 애니메이션")]
         [SerializeField] string idleClip = "WatcherAnimIdle";
@@ -476,17 +477,49 @@ namespace HiddenWeight.Enemies
         // 떨어질 자리를 바닥에 그려 준다. 예고 동안 위치가 고정이라 비키면 확실히 피한다.
         GameObject ShowDropShadow(Vector3 target)
         {
-            if (shadowSprite == null) return null;
+            Sprite sprite = shadowSprite;
+            // 공용 프리팹의 기본 그림자는 흰 Tile이라 반투명 색을 곱해도 네모가 남는다.
+            if (sprite == null || sprite.name == "Tile") sprite = DropShadowSprite();
+            if (sprite == null) return null;
 
             var go = new GameObject("BossDropShadow");
             go.transform.position = new Vector3(target.x, target.y - 0.6f, 0f);
             go.transform.localScale = new Vector3(3f, 0.4f, 1f);
 
             var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = shadowSprite;
+            renderer.sprite = sprite;
             renderer.color = new Color(0f, 0f, 0f, 0.55f);
             renderer.sortingOrder = 4;
             return go;
+        }
+
+        static Sprite DropShadowSprite()
+        {
+            if (_dropShadowSprite != null) return _dropShadowSprite;
+
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "BossDropShadowTexture",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = ((x + 0.5f) / size - 0.5f) * 2f;
+                    float dy = ((y + 0.5f) / size - 0.5f) * 2f;
+                    float distance = Mathf.Sqrt(dx * dx + dy * dy);
+                    float alpha = Mathf.Clamp01((1f - distance) / 0.28f);
+                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                }
+            texture.Apply(false, true);
+            _dropShadowSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f), size);
+            _dropShadowSprite.name = "BossDropShadow";
+            _dropShadowSprite.hideFlags = HideFlags.HideAndDontSave;
+            return _dropShadowSprite;
         }
 
         GameObject ShowAttackRange(Move move, Vector3 target, int direction)

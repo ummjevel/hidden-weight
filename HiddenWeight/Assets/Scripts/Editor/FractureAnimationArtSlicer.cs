@@ -22,6 +22,7 @@ namespace HiddenWeight.EditorTools
     {
         const string Root = "Assets/Art/Fracture";
         const int DefaultColumns = 8;
+        const string BossGridVersion = "unarrived-self-grid-v2";
 
         sealed class Sheet
         {
@@ -100,24 +101,20 @@ namespace HiddenWeight.EditorTools
 
             // --- 지역 보스: 아직 오지 않은 나 ---
             //
-            // 이 시트들은 프레임마다 칸 안 여백이 크게 다르다(Possibilities 행은 그림 바닥이
-            // 최대 47px, Reactions 행은 가로 중심이 최대 46px 흔들린다). 응시는 같은 문제를
-            // _Aligned_v2 시트를 새로 그려서 풀었지만(GazeAnimationArtSlicer 주석), 균열은
-            // 시트를 건드리지 않고 SpriteAnimator 쪽에서 잡는다 — 이 스프라이트들은
-            // spriteMeshType이 Tight라 sprite.bounds가 "실제로 그려진 영역"을 돌려주므로,
-            // uniformScale / lockFeetToGround / lockReferenceCenter가 그대로 먹는다
-            // (Enemy.Awake의 보스 정렬 블록 참고).
+            // 이 세 시트는 정확한 8열 격자로 납품됐다. MeasureFrames를 켜면 흩날리는 옷자락을
+            // 프레임 경계로 오인해 첫 칸을 x=8부터 자르고 이웃 프레임 끝을 섞는다. 격자로
+            // 자른 뒤 실제 몸의 정렬은 SpriteAnimator의 bounds 기반 고정이 맡는다.
             //
             // PNG 픽셀을 직접 옮겨 맞추는 방법은 쓰지 말 것. Tight 메시에서는 그림을 칸
             // 아래로 붙이는 순간 피벗(칸 중앙)과 그림 중심이 벌어져 보스가 통째로 내려앉는다.
-            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Combat_v1.png", Rows = 7, Pivot = Center, MeasureFrames = true,
+            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Combat_v1.png", Rows = 7, Pivot = Center,
                         RowClips = new[] { "NotYetMeIdle", "NotYetMeGlide", "NotYetMeRibbon",
                                            "NotYetMeShards", "NotYetMeStagger", "NotYetMeHit",
                                            "NotYetMeDeath" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Possibilities_v1.png", Rows = 4, Pivot = Center, MeasureFrames = true,
+            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Possibilities_v1.png", Rows = 4, Pivot = Center,
                         RowClips = new[] { "NotYetMeWinged", "NotYetMeBeast",
                                            "NotYetMeDivided", "NotYetMeOracle" } },
-            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Reactions_v1.png", Rows = 3, Pivot = Center, MeasureFrames = true,
+            new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Reactions_v1.png", Rows = 3, Pivot = Center,
                         RowClips = new[] { "NotYetMeAwakening", "NotYetMePhase", "NotYetMeAcceptance" } },
 
             // --- 환경 전환 ---
@@ -174,6 +171,32 @@ namespace HiddenWeight.EditorTools
                         RowClips = new[] { "FractureStatusForesight", "FractureStatusPossibility",
                                            "FractureStatusFixed", "FractureStatusProgress" } },
         };
+
+        [InitializeOnLoadMethod]
+        static void ScheduleBossGridRepair()
+        {
+            EditorApplication.delayCall += EnsureBossGridSlices;
+        }
+
+        static void EnsureBossGridSlices()
+        {
+            foreach (var sheet in Sheets)
+            {
+                if (!sheet.Path.Contains("UnarrivedSelf_")) continue;
+
+                string path = $"{Root}/{sheet.Path}";
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                if (importer == null || texture == null || importer.userData.Contains(BossGridVersion))
+                    continue;
+
+                importer.spritesheet = BuildRects(texture.width, texture.height, sheet, path);
+                importer.userData = string.IsNullOrEmpty(importer.userData)
+                    ? BossGridVersion
+                    : importer.userData + ";" + BossGridVersion;
+                importer.SaveAndReimport();
+            }
+        }
 
         [MenuItem("Hidden Weight/Art/Slice Fracture Animation Sheets")]
         public static void SliceAll()

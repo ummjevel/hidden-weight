@@ -1247,8 +1247,11 @@ namespace HiddenWeight.EditorTools
                 new[] { new[] { pilgrim, mouth } }, System.Array.Empty<int>(), null, null);
 
             var reward = BuildRewardChest(c.Root.transform, "gaze_g09_elite", c.P(27f, 11.5f), 40, false);
-            BuildEncounter(c.Root.transform, "gaze_g09_elite", c.P(23.5f, 12f), new Vector2(11f, 6f), true,
+            var eliteEncounter = BuildEncounter(c.Root.transform, "gaze_g09_elite", c.P(23.5f, 12f), new Vector2(11f, 6f), true,
                 new[] { new[] { judge } }, System.Array.Empty<int>(), reward, null);
+            // 선택 정예 트리거가 주 조우와 겹친다. 이 잠금벽까지 켜지면 G10으로 가는
+            // 주 동선을 투명 벽이 막으므로, 정예 전투는 진행 통행을 잠그지 않는다.
+            SetField(eliteEncounter, "allowsTraversal", p => p.boolValue = true);
 
             c.Room("GazeRoom09", 32f, 16f);
         }

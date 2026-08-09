@@ -8,12 +8,16 @@ namespace HiddenWeight.World
     {
         Room _owner;
         Renderer[] _renderers;
+        bool[] _initialRendererStates;
         RoomCamera _camera;
 
         void Awake()
         {
             _owner = GetComponentInParent<Room>();
             _renderers = GetComponentsInChildren<Renderer>(true);
+            _initialRendererStates = new bool[_renderers.Length];
+            for (int i = 0; i < _renderers.Length; i++)
+                _initialRendererStates[i] = _renderers[i] != null && _renderers[i].enabled;
         }
 
         void Start() => TryBind();
@@ -45,8 +49,9 @@ namespace HiddenWeight.World
         {
             bool visible = current == null || current == _owner;
             bool residueScene = gameObject.scene.name.Contains("Residue");
-            foreach (var renderer in _renderers)
+            for (int i = 0; i < _renderers.Length; i++)
             {
+                var renderer = _renderers[i];
                 if (renderer == null) continue;
 
                 // V3 실제 표면 모듈로 교체된 뒤에도 씬에 남아 있는 구형 FloorArt는
@@ -90,7 +95,7 @@ namespace HiddenWeight.World
                     continue;
                 }
 
-                renderer.enabled = visible;
+                renderer.enabled = visible && _initialRendererStates[i];
             }
 
             // 방이 화면에 들어오는 순간 패럴랙스를 다시 기준 잡는다. 씬 시작 때 잡힌 앵커를

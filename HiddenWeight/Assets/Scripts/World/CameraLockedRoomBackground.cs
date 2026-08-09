@@ -30,6 +30,7 @@ namespace HiddenWeight.World
 
         void Awake()
         {
+            InheritRoomWorldSize();
             ApplyReadabilityTint();
             EnsureRoomVisualCuller();
             BuildTraversalEdges();
@@ -51,6 +52,18 @@ namespace HiddenWeight.World
         // 완전히 덮는다 — 방 폭·높이 비율이 그림과 다르면 한 축은 방보다 더 그려지지만,
         // 비율을 억지로 늘려 그림이 찌그러지는 것보다는 낫다). 위치는 SingleRoomBackgroundBuilder가
         // 이미 room.WorldBounds.center로 잡아 두므로 여기서는 스케일만 계산한다.
+        void InheritRoomWorldSize()
+        {
+            if (UsesWorldSize) return;
+
+            var room = GetComponentInParent<Room>();
+            if (room == null) return;
+
+            Vector2 size = room.WorldBounds.size;
+            if (size.x <= 0f || size.y <= 0f) return;
+            worldSize = size;
+        }
+
         void ApplyWorldSize()
         {
             var renderer = GetComponent<SpriteRenderer>();
@@ -185,6 +198,7 @@ namespace HiddenWeight.World
             var palette = Resources.Load<TraversalArtPalette>("TraversalArtPalette");
             ConfigureR04ChimneyEntry();
             ConfigureR08ChimneyExit();
+            ConfigureGazeGs2Slot();
             DisableR07FakeStairWall();
             DisableLegacyResidueFloorArt(palette);
             foreach (var tilemap in FindObjectsByType<Tilemap>(
@@ -391,6 +405,44 @@ namespace HiddenWeight.World
             var renderer = art.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = 4;
+        }
+
+        static void ConfigureGazeGs2Slot()
+        {
+            var room = GameObject.Find("GazeRoom06")?.GetComponent<Room>();
+            if (room == null || !room.gameObject.scene.name.Contains("Gaze")) return;
+
+            Tilemap tilemap = null;
+            foreach (var candidate in FindObjectsByType<Tilemap>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.gameObject.scene != room.gameObject.scene) continue;
+                tilemap = candidate;
+                break;
+            }
+            if (tilemap == null) return;
+
+            Vector3Int origin = tilemap.WorldToCell(new Vector3(
+                room.WorldBounds.min.x + 0.05f,
+                room.WorldBounds.min.y + 0.05f,
+                0f));
+
+            bool changed = false;
+            for (int x = 19; x <= 21; x++)
+            for (int y = 0; y <= 2; y++)
+            {
+                Vector3Int cell = origin + new Vector3Int(x, y, 0);
+                if (!tilemap.HasTile(cell)) continue;
+                tilemap.SetTile(cell, null);
+                changed = true;
+            }
+
+            if (!changed) return;
+            tilemap.RefreshAllTiles();
+            var tileCollider = tilemap.GetComponent<TilemapCollider2D>();
+            if (tileCollider != null && tileCollider.hasTilemapChanges)
+                tileCollider.ProcessTilemapChanges();
+            Physics2D.SyncTransforms();
         }
 
         static void InvalidateMismatchedWallVisual(BoxCollider2D wall)

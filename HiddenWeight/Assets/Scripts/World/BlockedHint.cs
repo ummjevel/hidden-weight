@@ -60,7 +60,7 @@ namespace HiddenWeight.World
             }
 
             _text = UIBuilder.CreateWorldText(null, "BlockedHintText", new Vector2(900f, 150f),
-                0.01f, 48, 40);
+                0.01f, 40, 40);
             _textRoot = _text.transform.parent;
             _textRoot.SetParent(transform, true);
             _textRoot.position = transform.position + Vector3.up * TextHeight;

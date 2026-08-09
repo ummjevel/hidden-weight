@@ -66,7 +66,7 @@ namespace HiddenWeight.UI
         {
             _dialog.ShowInfo(
                 "제작진",
-                "Hidden Weight\n\n기획 · 개발 · 아트\nHidden Weight Team",
+                "Hidden Weight\n\n기획 · 개발 · 아트\nIF98",
                 _creditsButton);
         }
 
@@ -173,6 +173,7 @@ namespace HiddenWeight.UI
 
             _dialog = canvasGO.AddComponent<ConfirmDialog>();
             _sections = canvasGO.AddComponent<PauseSectionPanel>();
+
         }
 
         void BuildBackdrop(Transform parent)

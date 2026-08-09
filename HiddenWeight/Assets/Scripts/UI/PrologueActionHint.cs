@@ -44,7 +44,7 @@ namespace HiddenWeight.UI
         void Start()
         {
             _text = UIBuilder.CreateWorldText(transform, "HintText", new Vector2(900f, 190f),
-                0.01f, 64, 40);
+                0.01f, 54, 40);
             _textRoot = _text.transform.parent;
             _text.color = new Color(1f, 1f, 1f, 0f);
             RefreshPrompt(InputPrompts.CurrentDevice);

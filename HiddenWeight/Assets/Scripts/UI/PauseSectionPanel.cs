@@ -16,9 +16,7 @@ namespace HiddenWeight.UI
     // 그대로 유지하고, 실제 화면에서는 지역 문양을 쓴 노드와 기억 카드로 다시 구성한다.
     public class PauseSectionPanel : MonoBehaviour
     {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
-        static readonly bool EnableGazeBossQaWarp = false;
-#endif
+        static readonly bool EnableFractureBossQaWarp = false;
 
         GameObject _panel;
         RectTransform _content;
@@ -322,16 +320,14 @@ namespace HiddenWeight.UI
                 ? new Color(UIBuilder.AccentColor.r, UIBuilder.AccentColor.g, UIBuilder.AccentColor.b, 0.85f)
                 : discovered ? new Color(1f, 1f, 1f, 0.085f) : new Color(0.3f, 0.3f, 0.3f, 0.05f);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
-            // 보스 확인용 임시 워프. 정식 릴리스 빌드에서는 컴파일 자체가 되지 않는다.
-            if (EnableGazeBossQaWarp && roomId == "Gaze/GazeRoom12")
+            // F12 보스 이미지 확인용 임시 워프. 테스트가 끝나면 위 플래그만 false로 돌린다.
+            if (EnableFractureBossQaWarp && roomId == "Fracture/FractureRoom12")
             {
                 var button = chip.AddComponent<Button>();
                 button.targetGraphic = background;
-                button.onClick.AddListener(WarpToGazeBossForQa);
+                button.onClick.AddListener(WarpToFractureBossForQa);
                 _actionButtons.Add(button);
             }
-#endif
 
             var element = chip.AddComponent<LayoutElement>();
             element.preferredWidth = ChipWidth;
@@ -361,29 +357,28 @@ namespace HiddenWeight.UI
             _dynamicItems.Add(chip);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
-        void WarpToGazeBossForQa()
+        void WarpToFractureBossForQa()
         {
             var targetRoom = Object.FindObjectsByType<HiddenWeight.World.Room>(
                     FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .FirstOrDefault(room => room.name == "GazeRoom12");
+                .FirstOrDefault(room => room.name == "FractureRoom12");
             var player = HiddenWeight.Player.PlayerController.Instance;
             var camera = HiddenWeight.World.RoomCamera.Instance;
             if (targetRoom == null || player == null || camera == null) return;
 
-            // 서쪽 잠금벽 바깥이 아니라 전장 안쪽의 바닥 위로 보낸다.
-            // G12 조우 범위(local x=2..28, y=3..15)에도 들어가므로 보스가 곧바로 시작된다.
-            Vector3 target = targetRoom.WorldBounds.min + new Vector3(4f, 5.5f, 0f);
+            // F12 서쪽 입구나 잠금벽 바깥이 아니라, 바닥 표면(local y=4) 위이면서
+            // 조우 범위(local x=2..28, y=3..15) 안인 좌측 안전 지대로 보낸다.
+            Vector3 target = targetRoom.WorldBounds.min + new Vector3(5f, 5.2f, 0f);
             target.z = player.transform.position.z;
             player.TeleportTo(target);
             camera.SetRoom(targetRoom);
             camera.SnapToPlayer();
+            GameManager.Instance?.Progress.VisitRoom("Fracture/FractureRoom12");
 
             var pause = Object.FindFirstObjectByType<PauseMenu>();
             if (pause != null) pause.Close(SfxCue.UiMapClose);
             else Hide();
         }
-#endif
 
         void BuildJournal()
         {

@@ -21,7 +21,7 @@ namespace HiddenWeight.UI
             // 화면 UI와 같은 uGUI 렌더링 경로를 사용한다. WebGL에서만 TextMesh의 동적
             // 글리프 메시가 비는 문제를 피하면서 이미 포함된 폰트를 공유해 용량을 늘리지 않는다.
             _text = UIBuilder.CreateWorldText(transform, "HintText", new Vector2(720f, 140f),
-                0.01f, 48, 40);
+                0.01f, 40, 40);
             _text.color = new Color(1f, 1f, 1f, 0f);
             RefreshPrompt(InputPrompts.CurrentDevice);
 

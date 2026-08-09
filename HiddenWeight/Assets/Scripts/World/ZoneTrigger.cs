@@ -47,10 +47,18 @@ namespace HiddenWeight.World
                 if (bar != null) bar.color = color;
             if (_exitLabel != null)
             {
-                bool residue = gameObject.scene.name.Contains("Residue");
-                _exitLabel.text = residue
-                    ? (open ? "다음 지역 · 응시" : "기억의 교수자를 처치하면 열립니다.")
-                    : (open ? "응시로 가는 통로" : "기억의 교수자를 쓰러뜨려야 열린다");
+                if (marksFractureCleared)
+                    _exitLabel.text = open
+                        ? "균열 너머로 마지막 기억이 열린다"
+                        : "아직 오지 않은 나를 쓰러뜨려야 열린다";
+                else if (gameObject.scene.name.Contains("Residue"))
+                    _exitLabel.text = open
+                        ? "기억 너머로 시선의 세계가 열린다"
+                        : "기억의 교수자를 쓰러뜨려야 열린다";
+                else
+                    _exitLabel.text = open
+                        ? "시선 너머로 균열의 세계가 열린다"
+                        : "모든 시선의 주인을 쓰러뜨려야 열린다";
                 _exitLabel.color = color;
             }
         }
@@ -76,7 +84,7 @@ namespace HiddenWeight.World
             };
 
             _exitLabel = UIBuilder.CreateWorldText(root.transform, "ExitLabel",
-                new Vector2(900f, 140f), 0.009f, 48, 42);
+                new Vector2(900f, 140f), 0.009f, 40, 42);
             _exitLabel.transform.parent.localPosition = new Vector3(0f, 2.15f, 0f);
         }
 

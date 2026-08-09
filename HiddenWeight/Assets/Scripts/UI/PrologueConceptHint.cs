@@ -37,7 +37,7 @@ namespace HiddenWeight.UI
         void Start()
         {
             _text = UIBuilder.CreateWorldText(transform, "ConceptText", new Vector2(1000f, 220f),
-                0.01f, 60, 39, false);
+                0.01f, 50, 39, false);
             _textRoot = _text.transform.parent;
             _text.lineSpacing = 1.05f;
             _text.text = message;

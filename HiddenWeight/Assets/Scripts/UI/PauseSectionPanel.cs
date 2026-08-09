@@ -382,7 +382,6 @@ namespace HiddenWeight.UI
             AddBinding("대시", InputActionId.Dash);
             AddBinding("공격", InputActionId.Attack);
             AddBinding("감정 스킬", InputActionId.Skill);
-            AddBinding("자각", InputActionId.Awareness);
             AddBinding("지도", InputActionId.Map);
             AddBinding("일시정지", InputActionId.Pause);
         }

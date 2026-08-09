@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.World
 {
@@ -15,8 +17,9 @@ namespace HiddenWeight.World
         SpriteRenderer _source;
         SpriteRenderer _placeholder;
         SpriteRenderer _outline;
-        TextMesh _marker;
-        MeshRenderer _markerRenderer;
+        Text _marker;
+        Canvas _markerCanvas;
+        Transform _markerRoot;
         Transform _player;
         bool _residueScene;
 
@@ -66,7 +69,7 @@ namespace HiddenWeight.World
             _outline.sortingOrder = _source.sortingOrder - 1; // 본체 바로 뒤
             _outline.enabled = false;
 
-            var markerObject = new GameObject("RewindTargetMarker");
+            var markerObject = new GameObject("RewindTargetMarker", typeof(RectTransform));
             markerObject.transform.SetParent(transform, false);
             markerObject.transform.localPosition = new Vector3(0f, 1.15f, 0f);
             // 일부 Unity 임포트 환경에서 런타임 Sprite 아이콘이 텍스처 없는 흰 사각형으로
@@ -97,7 +100,7 @@ namespace HiddenWeight.World
             // 조작 표식은 실제 되감기 사거리 부근에 들어왔을 때만 보여 준다.
             bool markerInRange = !_residueScene || (_player != null
                 && Vector2.Distance(_player.position, transform.position) <= 6f);
-            if (_markerRenderer != null) _markerRenderer.enabled = show && markerInRange;
+            if (_markerCanvas != null) _markerCanvas.enabled = show && markerInRange;
             if (!show) return;
 
             // 본체 스프라이트가 꺼진 상태(무너진 발판)에서도 아웃라인은 자리를 표시해야 하므로
@@ -111,9 +114,9 @@ namespace HiddenWeight.World
                 _marker.color = new Color(outlineColor.r, outlineColor.g, outlineColor.b, alpha);
                 if (_residueScene)
                 {
-                    _marker.transform.position = transform.position + Vector3.up
+                    _markerRoot.position = transform.position + Vector3.up
                         * (1.15f + Mathf.Sin(Time.time * pulseSpeed) * 0.08f);
-                    _marker.transform.rotation = Quaternion.identity;
+                    _markerRoot.rotation = Quaternion.identity;
                 }
             }
         }
@@ -126,17 +129,32 @@ namespace HiddenWeight.World
 
         void BuildTextMarker(GameObject markerObject, string text, float characterSize)
         {
-            _marker = markerObject.AddComponent<TextMesh>();
-            _marker.text = text;
-            _marker.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _markerRoot = markerObject.transform;
+            var rootRect = (RectTransform)_markerRoot;
+            rootRect.sizeDelta = new Vector2(420f, 90f);
+            rootRect.localScale = Vector3.one * (characterSize / 7.2f);
+
+            _markerCanvas = markerObject.AddComponent<Canvas>();
+            _markerCanvas.renderMode = RenderMode.WorldSpace;
+            _markerCanvas.overrideSorting = true;
+            _markerCanvas.sortingOrder = 39;
+
+            var textObject = new GameObject("MarkerText", typeof(RectTransform));
+            textObject.transform.SetParent(markerObject.transform, false);
+            var textRect = (RectTransform)textObject.transform;
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = textRect.offsetMax = Vector2.zero;
+
+            _marker = textObject.AddComponent<Text>();
+            _marker.font = UIBuilder.WorldHintFont;
             _marker.fontSize = 48;
-            _marker.characterSize = characterSize;
-            _marker.anchor = TextAnchor.MiddleCenter;
-            _marker.alignment = TextAlignment.Center;
-            _markerRenderer = markerObject.GetComponent<MeshRenderer>();
-            _markerRenderer.material = _marker.font.material;
-            _markerRenderer.sortingOrder = 39;
-            _markerRenderer.enabled = false;
+            _marker.alignment = TextAnchor.MiddleCenter;
+            _marker.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _marker.verticalOverflow = VerticalWrapMode.Overflow;
+            _marker.raycastTarget = false;
+            _marker.text = text;
+            _markerCanvas.enabled = false;
         }
     }
 }

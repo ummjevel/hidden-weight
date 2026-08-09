@@ -19,6 +19,9 @@ namespace HiddenWeight.UI
             ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         public static Font MenuBold => _menuBold ??= Resources.Load<Font>("Fonts/NanumMyeongjo-Bold")
             ?? MenuRegular;
+        // 월드 안내도 이미 빌드에 포함되는 메뉴 폰트 인스턴스를 공유한다. 별도 폰트나
+        // 정적 아틀라스를 추가하지 않아 WebGL 빌드 용량을 늘리지 않는다.
+        public static Font WorldHintFont => MenuBold;
         // 화면마다 따로 하드코딩돼 있던 색을 한 곳으로 모은 것 — 값 자체는 기존 화면들이
         // 이미 쓰던 것 중 하나로 통일했을 뿐, 새로운 톤을 도입한 게 아니다. 실제 아트(커스텀
         // 폰트·아이콘)는 별도 작업으로 미루고, 지금은 색·형태의 일관성만 맞춘다.

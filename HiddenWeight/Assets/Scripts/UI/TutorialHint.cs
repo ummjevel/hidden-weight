@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using HiddenWeight.Player;
 
 namespace HiddenWeight.UI
@@ -12,26 +13,41 @@ namespace HiddenWeight.UI
         [SerializeField] float showRadius = 5f;
         [SerializeField] float fadeSpeed = 4f;
 
-        TextMesh _text;
+        Text _text;
         float _alpha;
 
         void Start()
         {
-            var go = new GameObject("HintText");
+            var go = new GameObject("HintCanvas", typeof(RectTransform));
             go.transform.SetParent(transform, false);
 
-            _text = go.AddComponent<TextMesh>();
-            RefreshPrompt(InputPrompts.CurrentDevice);
-            _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 48;
-            _text.characterSize = 0.06f;
-            _text.anchor = TextAnchor.MiddleCenter;
-            _text.alignment = TextAlignment.Center;
-            _text.color = new Color(1f, 1f, 1f, 0f);
+            var rootRect = (RectTransform)go.transform;
+            rootRect.sizeDelta = new Vector2(720f, 140f);
+            rootRect.localScale = Vector3.one * 0.01f;
 
-            var renderer = go.GetComponent<MeshRenderer>();
-            renderer.material = _text.font.material;
-            renderer.sortingOrder = 40; // 플레이어(10)·고스트(50) 사이, 항상 배경 위
+            var canvas = go.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 40;
+
+            var textObject = new GameObject("HintText", typeof(RectTransform));
+            textObject.transform.SetParent(go.transform, false);
+            var textRect = (RectTransform)textObject.transform;
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = textRect.offsetMax = Vector2.zero;
+
+            // 화면 UI와 같은 uGUI 렌더링 경로를 사용한다. WebGL에서만 TextMesh의 동적
+            // 글리프 메시가 비는 문제를 피하면서 이미 포함된 폰트를 공유해 용량을 늘리지 않는다.
+            _text = textObject.AddComponent<Text>();
+            _text.font = UIBuilder.WorldHintFont;
+            _text.fontSize = 48;
+            _text.alignment = TextAnchor.MiddleCenter;
+            _text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _text.verticalOverflow = VerticalWrapMode.Overflow;
+            _text.raycastTarget = false;
+            _text.color = new Color(1f, 1f, 1f, 0f);
+            RefreshPrompt(InputPrompts.CurrentDevice);
 
             InputPrompts.DeviceChanged += RefreshPrompt;
         }

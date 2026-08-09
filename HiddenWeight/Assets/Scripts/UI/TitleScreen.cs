@@ -2,7 +2,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using HiddenWeight.Core;
-using HiddenWeight.Data;
 
 namespace HiddenWeight.UI
 {
@@ -56,27 +55,6 @@ namespace HiddenWeight.UI
             _dialog.ShowInfo("기억을 열 수 없습니다",
                 "저장된 기억이 손상되었습니다. 새 게임을 시작하면 새 기억으로 교체됩니다.",
                 _continueButton != null ? _continueButton : _newGameButton);
-        }
-
-        // 지역으로 바로 들어가는 QA용 입구. 정식 빌드에는 절대 노출하지 않는다.
-        // 잔재는 R05에서 되감기를, 응시는 G05(숨죽이기)·G11(자각)에서 실제로 걸어가
-        // 얻는 흐름을 검수해야 하므로 선해금하지 않는다 — 미리 열어 두면 해금 전
-        // 구간(G02 등)이 스킬 없이도 통과되는지 확인할 수 없다. 균열 바로가기는
-        // 기존 QA 편의를 유지한다.
-        void StartZoneTest(string sceneName)
-        {
-            var progress = GameManager.Instance.Progress;
-            progress.ResetAll();
-            if (!sceneName.Contains("Residue") && !sceneName.Contains("Gaze"))
-            {
-                progress.UnlockSkill(EmotionId.Rewind);
-                progress.UnlockSkill(EmotionId.Hush);
-                progress.UnlockSkill(EmotionId.Foresight);
-                progress.GrantAwareness();
-            }
-
-            GameManager.Instance.SetState(GameState.Playing);
-            SceneFlow.LoadWithFade(sceneName);
         }
 
         void Quit()
@@ -193,10 +171,6 @@ namespace HiddenWeight.UI
             versionRt.sizeDelta = new Vector2(360f, 32f);
             versionRt.anchoredPosition = new Vector2(-34f, 22f);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
-            BuildStageRow(canvasGO.transform, -450f);
-#endif
-
             _dialog = canvasGO.AddComponent<ConfirmDialog>();
             _sections = canvasGO.AddComponent<PauseSectionPanel>();
         }
@@ -241,37 +215,5 @@ namespace HiddenWeight.UI
             veil.AddComponent<Image>().color = new Color(0.01f, 0.012f, 0.025f, 0.18f);
         }
 
-        // 테스트용 단계 바로가기. 정식 진행 저장은 건드리지 않고 해당 단계에 필요한 능력만
-        // 임시로 열어 바로 맵과 전투를 검수할 수 있게 한다.
-        void BuildStageRow(Transform parent, float y)
-        {
-            var caption = UIBuilder.CreateText(parent, "단계 선택 · 테스트", 15);
-            var captionRt = caption.rectTransform;
-            captionRt.anchorMin = captionRt.anchorMax = new Vector2(0.5f, 0.5f);
-            captionRt.sizeDelta = new Vector2(400f, 24f);
-            captionRt.anchoredPosition = new Vector2(0f, y + 42f);
-            caption.color = new Color(1f, 1f, 1f, 0.45f);
-
-            var zones = new (string label, string scene)[]
-            {
-                // 방별 additive 로딩용 셸(Zone_Residue)은 화면을 암전하고 로컬 좌표로
-                // 순간이동하므로 테스트 플레이에서 방과 방이 끊겨 보인다. 잔재·균열은 정식
-                // 진행 데이터(ZoneData.sceneName)와 동일한 전체 연결 씬을 써야 연속 카메라
-                // 이동으로 검수된다. 방 단위 포탈 셸은 제작·회귀 검사용으로만 남기고,
-                // 플레이어가 타는 정식 경로는 세 지역 모두 연속형 _Full 씬으로 통일한다.
-                ("1단계 · 잔재", SceneFlow.Residue),
-                ("2단계 · 응시", "Zone_Gaze_Full"),
-                ("3단계 · 균열", "Zone_Fracture_Full"),
-            };
-
-            for (int i = 0; i < zones.Length; i++)
-            {
-                string scene = zones[i].scene; // 클로저가 루프 변수를 공유하지 않게 복사
-                var button = UIBuilder.CreateButton(parent, zones[i].label, y, () => StartZoneTest(scene));
-                var rt = (RectTransform)button.transform;
-                rt.sizeDelta = new Vector2(190f, 48f);
-                rt.anchoredPosition = new Vector2((i - (zones.Length - 1) * 0.5f) * 200f, y);
-            }
-        }
     }
 }

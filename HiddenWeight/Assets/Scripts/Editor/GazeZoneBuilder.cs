@@ -601,8 +601,8 @@ namespace HiddenWeight.EditorTools
             // 떨어졌다.
             BuildShaft(parent, map, "Shaft_GS1", G04.x, G04.y + 0, GS1.y + 2);
 
-            // GS2 — G06 바닥의 좁은 틈(로컬 20~21) 아래. 틈 폭이 숨죽인 몸만 통과시킨다.
-            BuildShaft(parent, map, "Shaft_GS2", G06.x + 20, G06.y + 0, GS2.y + 2);
+            // GS2 — 위 입구와 아래 샤프트를 같은 폭·높이로 붙여 계속 벽타기할 수 있게 한다.
+            BuildShaft(parent, map, "Shaft_GS2", G06.x + 20, G06.y + 2, GS2.y + 2, 2);
 
             // GS3 — G11 바닥의 거울문(로컬 8~10) 아래. 자각 중에만 문이 열린다.
             BuildShaft(parent, map, "Shaft_GS3", G11.x + 9, G11.y + 1, GS3.y + 2);
@@ -1037,10 +1037,10 @@ namespace HiddenWeight.EditorTools
         // 능력 연속 응용. 계속 숨어 있는 것이 항상 빠른 선택은 아니게 만든다(4.6절).
         static void BuildG06(RoomCtx c)
         {
-            // GS2 샤프트를 다시 오를 수 있게 중앙 3타일을 비운다.
+            // GS2 샤프트를 다시 오를 수 있게 중앙 2타일을 비운다.
             // 이전 1타일 구멍은 너무 좁고, 샤프트 전체 폭은 화면에서 과하게 넓어 보인다.
             c.Floor(0, 19, 2, 2);
-            c.Floor(22, 24, 2, 2);
+            c.Floor(21, 24, 2, 2);
             c.Floor(24, 28, 3, 2);
             c.Floor(28, 32, 4, 2);  // 출구 (32,4)
 
@@ -1075,13 +1075,14 @@ namespace HiddenWeight.EditorTools
             for (int i = 0; i < 5; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(14f + i * 1.1f, 9f));
 
-            // GS2 입구 보조벽은 3타일 구멍의 양끝을 잡는다.
+            // GS2 입구 보조벽은 아래 샤프트와 같은 폭으로 서고, 바닥 위까지 이어져
+            // 내려갔다가 올라올 때 중간에 벽타기 판정이 끊기지 않는다.
             float slotLeft = 18.5f;
-            float slotRight = 22.5f;
+            float slotRight = 21.5f;
             BuildPlainWall(c.Root.transform, "G06_Slot_L",
-                c.P(slotLeft, 2.75f), new Vector2(1f, 1.5f), GazeStone);
+                c.P(slotLeft, 4f), new Vector2(1f, 4f), GazeStone);
             BuildPlainWall(c.Root.transform, "G06_Slot_R",
-                c.P(slotRight, 2.75f), new Vector2(1f, 1.5f), GazeStone);
+                c.P(slotRight, 4f), new Vector2(1f, 4f), GazeStone);
             BuildDecor(c.Root.transform, "G06_GS2_Hint", c.P(20.5f, 5.5f), new Vector2(1.4f, 1.4f),
                 "Eye", new Color(0.35f, 0.5f, 0.5f), 0f, -4);
 

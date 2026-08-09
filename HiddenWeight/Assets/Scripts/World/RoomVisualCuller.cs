@@ -25,6 +25,7 @@ namespace HiddenWeight.World
         void Update()
         {
             if (_camera == null) TryBind();
+            else Apply(_camera.CurrentRoom);
         }
 
         void OnDisable()
@@ -47,7 +48,7 @@ namespace HiddenWeight.World
 
         void Apply(Room current)
         {
-            bool visible = current == null || current == _owner;
+            bool visible = current == null || current == _owner || CameraOverlapsOwner();
             bool residueScene = gameObject.scene.name.Contains("Residue");
             for (int i = 0; i < _renderers.Length; i++)
             {
@@ -103,6 +104,19 @@ namespace HiddenWeight.World
             if (visible && _camera != null)
                 foreach (var layer in GetComponentsInChildren<ParallaxLayer>(true))
                     layer.Rebase(_camera.transform.position);
+        }
+
+        bool CameraOverlapsOwner()
+        {
+            if (_owner == null || _camera == null) return false;
+            var unityCamera = _camera.GetComponent<Camera>();
+            if (unityCamera == null || !unityCamera.orthographic) return false;
+
+            float height = unityCamera.orthographicSize * 2f;
+            float width = height * unityCamera.aspect;
+            var cameraBounds = new Bounds(_camera.transform.position, new Vector3(width, height, 1f));
+            cameraBounds.Expand(1f);
+            return cameraBounds.Intersects(_owner.WorldBounds);
         }
     }
 }

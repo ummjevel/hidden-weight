@@ -313,6 +313,8 @@ namespace HiddenWeight.World
             // 방 로드 뒤 벽 높이를 다시 맞추면 위의 무효화가 예전 높이의 그림을 제거한다.
             // 여기서 새 높이의 모듈을 즉시 다시 만들지 않으면 충돌만 남은 투명벽이 된다.
             BuildWallClimbSurfaces(Resources.Load<TraversalArtPalette>("TraversalArtPalette"));
+            MatchWallVisualToCollider(left);
+            MatchWallVisualToCollider(right);
             ConfigureR08LiftRoute(room);
         }
 
@@ -428,7 +430,7 @@ namespace HiddenWeight.World
                 0f));
 
             bool changed = false;
-            for (int x = 19; x <= 21; x++)
+            for (int x = 19; x <= 20; x++)
             for (int y = 0; y <= 2; y++)
             {
                 Vector3Int cell = origin + new Vector3Int(x, y, 0);
@@ -443,6 +445,58 @@ namespace HiddenWeight.World
             if (tileCollider != null && tileCollider.hasTilemapChanges)
                 tileCollider.ProcessTilemapChanges();
             Physics2D.SyncTransforms();
+        }
+
+        static void MatchWallVisualToCollider(BoxCollider2D wall)
+        {
+            if (wall == null) return;
+
+            Transform root = wall.transform.Find("WallClimbSurfaces_Runtime");
+            if (root == null) return;
+
+            var renderers = root.GetComponentsInChildren<SpriteRenderer>(true);
+            bool hasRenderer = false;
+            Bounds artBounds = default;
+            foreach (var renderer in renderers)
+            {
+                if (!renderer.enabled || renderer.sprite == null) continue;
+                if (!hasRenderer) artBounds = renderer.bounds;
+                else artBounds.Encapsulate(renderer.bounds);
+                hasRenderer = true;
+            }
+            if (!hasRenderer || artBounds.size.y <= 0.001f) return;
+
+            Bounds target = wall.bounds;
+            float ratio = target.size.y / artBounds.size.y;
+            if (!Mathf.Approximately(ratio, 1f))
+            {
+                foreach (var renderer in renderers)
+                {
+                    Transform t = renderer.transform;
+                    Vector3 position = t.position;
+                    position.y = target.center.y + (position.y - artBounds.center.y) * ratio;
+                    t.position = position;
+
+                    Vector3 scale = t.localScale;
+                    scale.y *= ratio;
+                    t.localScale = scale;
+                }
+            }
+
+            hasRenderer = false;
+            foreach (var renderer in renderers)
+            {
+                if (!renderer.enabled || renderer.sprite == null) continue;
+                if (!hasRenderer) artBounds = renderer.bounds;
+                else artBounds.Encapsulate(renderer.bounds);
+                hasRenderer = true;
+            }
+            if (!hasRenderer) return;
+
+            Vector3 delta = target.center - artBounds.center;
+            if (delta.sqrMagnitude <= 0.0001f) return;
+            foreach (var renderer in renderers)
+                renderer.transform.position += delta;
         }
 
         static void InvalidateMismatchedWallVisual(BoxCollider2D wall)

@@ -261,10 +261,11 @@ namespace HiddenWeight.EditorTools
             col.size = size;
 
             // 전투 중에만 켜지는 잠금 벽 2개(좌우).
+            // Wall 레이어는 플레이어가 벽타기로 붙을 수 있으므로, 전투 차단벽은 Ground로 둔다.
             var lockL = BuildSolidBlock(go.transform, "Lock_L",
-                new Vector2(center.x - size.x * 0.5f, center.y), new Vector2(1f, size.y), "Wall");
+                new Vector2(center.x - size.x * 0.5f, center.y), new Vector2(1f, size.y), "Ground");
             var lockR = BuildSolidBlock(go.transform, "Lock_R",
-                new Vector2(center.x + size.x * 0.5f, center.y), new Vector2(1f, size.y), "Wall");
+                new Vector2(center.x + size.x * 0.5f, center.y), new Vector2(1f, size.y), "Ground");
             lockL.SetActive(false);
             lockR.SetActive(false);
 
@@ -1409,6 +1410,12 @@ namespace HiddenWeight.EditorTools
             // 숏컷 자체는 R07 씬에 있으므로 오브젝트가 아니라 id로 연결한다.
             var midBossEncounter = BuildEncounter(c.Root.transform, "residue_r10_boss", c.P(12f, 7f), new Vector2(20f, 10f), true,
                 new[] { new[] { boss } }, new int[0], reward, _shortcutC, "residue_shortcut_c");
+            foreach (Transform child in midBossEncounter.transform)
+            {
+                if (child.name != "Lock_L" && child.name != "Lock_R") continue;
+                child.localPosition = new Vector3(child.localPosition.x, 7f, child.localPosition.z);
+                child.localScale = new Vector3(1f, 24f, 1f);
+            }
             SetField(midBossEncounter, "victoryObjects", p =>
             {
                 p.arraySize = 2;

@@ -80,7 +80,7 @@ namespace HiddenWeight.UI
             var textGO = new GameObject("FragmentText");
             textGO.transform.SetParent(canvasGO.transform, false);
             _text = textGO.AddComponent<Text>();
-            _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _text.font = UIBuilder.MenuRegular;
             _text.fontSize = 28;
             _text.alignment = TextAnchor.MiddleCenter;
             _text.horizontalOverflow = HorizontalWrapMode.Wrap;

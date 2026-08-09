@@ -1,6 +1,8 @@
 using UnityEngine;
+using UnityEngine.UI;
 using HiddenWeight.Core;
 using HiddenWeight.Data;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.World
 {
@@ -21,7 +23,7 @@ namespace HiddenWeight.World
                 && GameManager.Instance.Progress.IsEncounterCleared(requiredEncounterId));
 
         SpriteRenderer[] _exitBars;
-        TextMesh _exitLabel;
+        Text _exitLabel;
         static Sprite _barSprite;
 
         void Start()
@@ -73,18 +75,9 @@ namespace HiddenWeight.World
                 AddBar(root.transform, "Lintel", new Vector2(0f, 1.5f), new Vector2(2f, 0.18f)),
             };
 
-            var labelObject = new GameObject("ExitLabel");
-            labelObject.transform.SetParent(root.transform, false);
-            labelObject.transform.localPosition = new Vector3(0f, 2.15f, 0f);
-            _exitLabel = labelObject.AddComponent<TextMesh>();
-            _exitLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _exitLabel.fontSize = 48;
-            _exitLabel.characterSize = 0.045f;
-            _exitLabel.anchor = TextAnchor.MiddleCenter;
-            _exitLabel.alignment = TextAlignment.Center;
-            var renderer = labelObject.GetComponent<MeshRenderer>();
-            renderer.material = _exitLabel.font.material;
-            renderer.sortingOrder = 42;
+            _exitLabel = UIBuilder.CreateWorldText(root.transform, "ExitLabel",
+                new Vector2(900f, 140f), 0.009f, 48, 42);
+            _exitLabel.transform.parent.localPosition = new Vector3(0f, 2.15f, 0f);
         }
 
         static SpriteRenderer AddBar(Transform parent, string name, Vector2 position, Vector2 size)

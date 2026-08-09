@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using HiddenWeight.Player;
 
 namespace HiddenWeight.UI
@@ -14,7 +15,8 @@ namespace HiddenWeight.UI
         [SerializeField] float visibleSeconds = 5.5f;
         [SerializeField] float fadeSpeed = 4f;
 
-        TextMesh _text;
+        Text _text;
+        Transform _textRoot;
         PlayerController _player;
         float _alpha;
         float _hideAt;
@@ -34,23 +36,12 @@ namespace HiddenWeight.UI
 
         void Start()
         {
-            var textObject = new GameObject("ConceptText");
-            textObject.transform.SetParent(transform, false);
-
-            _text = textObject.AddComponent<TextMesh>();
-            _text.font = Resources.Load<Font>("Fonts/NanumMyeongjo-Regular")
-                ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 60;
-            _text.characterSize = 0.06f;
-            _text.anchor = TextAnchor.MiddleCenter;
-            _text.alignment = TextAlignment.Center;
+            _text = UIBuilder.CreateWorldText(transform, "ConceptText", new Vector2(1000f, 220f),
+                0.01f, 60, 39, false);
+            _textRoot = _text.transform.parent;
             _text.lineSpacing = 1.05f;
             _text.text = message;
             _text.color = new Color(1f, 1f, 1f, 0f);
-
-            var renderer = textObject.GetComponent<MeshRenderer>();
-            renderer.material = _text.font.material;
-            renderer.sortingOrder = 39;
 
             _player = PlayerController.Instance;
         }
@@ -80,7 +71,7 @@ namespace HiddenWeight.UI
             // 달리는 중에도 문장이 화면 밖으로 밀리지 않게 카메라 안쪽에 고정한다.
             Camera camera = Camera.main;
             if (show && camera != null)
-                _text.transform.position = new Vector3(
+                _textRoot.position = new Vector3(
                     camera.transform.position.x,
                     camera.transform.position.y + camera.orthographicSize * 0.34f,
                     transform.position.z);

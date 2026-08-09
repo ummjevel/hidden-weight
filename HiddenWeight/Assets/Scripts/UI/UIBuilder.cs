@@ -212,7 +212,7 @@ namespace HiddenWeight.UI
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = MenuRegular;
             text.fontSize = fontSize;
             text.alignment = alignment;
             text.color = TextPrimary;
@@ -227,11 +227,44 @@ namespace HiddenWeight.UI
             var go = new GameObject("Text_" + content);
             go.transform.SetParent(parent, false);
             var text = go.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = MenuRegular;
             text.fontSize = fontSize;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = TextPrimary;
             text.text = content;
+            return text;
+        }
+
+        // TextMesh의 동적 글리프 생성은 WebGL에서 한글이 비는 경우가 있다. 월드 안내도
+        // 화면 UI와 같은 uGUI 경로와 정적으로 포함된 Nanum 폰트를 공유한다.
+        public static Text CreateWorldText(Transform parent, string name, Vector2 size,
+            float worldScale, int fontSize, int sortingOrder, bool bold = true)
+        {
+            var root = new GameObject(name + "Canvas", typeof(RectTransform));
+            if (parent != null) root.transform.SetParent(parent, false);
+            var rootRect = (RectTransform)root.transform;
+            rootRect.sizeDelta = size;
+            rootRect.localScale = Vector3.one * worldScale;
+
+            var canvas = root.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = sortingOrder;
+
+            var textObject = new GameObject(name, typeof(RectTransform));
+            textObject.transform.SetParent(root.transform, false);
+            var textRect = (RectTransform)textObject.transform;
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = textRect.offsetMax = Vector2.zero;
+
+            var text = textObject.AddComponent<Text>();
+            text.font = bold ? WorldHintFont : MenuRegular;
+            text.fontSize = fontSize;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
             return text;
         }
 

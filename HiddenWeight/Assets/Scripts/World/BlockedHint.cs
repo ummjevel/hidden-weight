@@ -1,7 +1,9 @@
 using UnityEngine;
+using UnityEngine.UI;
 using HiddenWeight.Data;
 using HiddenWeight.Enemies;
 using HiddenWeight.Player;
+using HiddenWeight.UI;
 
 namespace HiddenWeight.World
 {
@@ -11,7 +13,7 @@ namespace HiddenWeight.World
     // 숏컷이 전부 같은 벽으로 보이면, 플레이어는 넘어갈 수 있는 벽인 줄 알고 벽점프를 시도하다
     // 시간을 버린다(실제 QA에서 나온 문제다). 이유를 한 줄로 말해 주면 그 자리에서 판단이 끝난다.
     //
-    // TutorialHint와 같은 방식(캔버스 없는 월드 TextMesh)이지만, 문구가 고정이 아니라 대상의
+    // TutorialHint와 같은 월드 캔버스 방식이지만, 문구가 고정이 아니라 대상의
     // 현재 상태에서 나온다는 점이 다르다. 열리면 문구도 함께 사라진다.
     public class BlockedHint : MonoBehaviour
     {
@@ -28,7 +30,8 @@ namespace HiddenWeight.World
         RoomDoor _door;
         Rewindable _rewindable;
 
-        TextMesh _text;
+        Text _text;
+        Transform _textRoot;
         float _alpha;
 
         public static BlockedHint AttachTo(GameObject target, Encounter encounter = null,
@@ -56,26 +59,12 @@ namespace HiddenWeight.World
                 return;
             }
 
-            var go = new GameObject("BlockedHintText");
-            go.transform.SetParent(transform, false);
-
-            // 부모(잠금벽)가 크기를 localScale에 싣고 있으면 글자까지 늘어난다. 월드 기준으로
-            // 붙여 두고 크기를 직접 정한다.
-            go.transform.SetParent(transform, true);
-            go.transform.position = transform.position + Vector3.up * TextHeight;
-            go.transform.localScale = Vector3.one;
-
-            _text = go.AddComponent<TextMesh>();
-            _text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 48;
-            _text.characterSize = 0.055f;
-            _text.anchor = TextAnchor.MiddleCenter;
-            _text.alignment = TextAlignment.Center;
+            _text = UIBuilder.CreateWorldText(null, "BlockedHintText", new Vector2(900f, 150f),
+                0.01f, 48, 40);
+            _textRoot = _text.transform.parent;
+            _textRoot.SetParent(transform, true);
+            _textRoot.position = transform.position + Vector3.up * TextHeight;
             _text.color = new Color(1f, 1f, 1f, 0f);
-
-            var renderer = go.GetComponent<MeshRenderer>();
-            renderer.material = _text.font.material;
-            renderer.sortingOrder = 40; // TutorialHint와 같은 층 — 항상 지형 위
         }
 
         void Update()
@@ -86,8 +75,8 @@ namespace HiddenWeight.World
             // 돌면 읽을 수 없다. 다른 지역의 기존 월드 문구 동작은 건드리지 않는다.
             if (gameObject.scene.name.Contains("Residue"))
             {
-                _text.transform.position = transform.position + Vector3.up * TextHeight;
-                _text.transform.rotation = Quaternion.identity;
+                _textRoot.position = transform.position + Vector3.up * TextHeight;
+                _textRoot.rotation = Quaternion.identity;
             }
 
             string message = CurrentMessage();

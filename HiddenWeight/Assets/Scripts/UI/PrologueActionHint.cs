@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using HiddenWeight.Player;
 
 namespace HiddenWeight.UI
@@ -26,7 +27,8 @@ namespace HiddenWeight.UI
         [SerializeField] float minimumReadableSeconds = 1f;
         [SerializeField] float visibleSeconds = 5.5f;
 
-        TextMesh _text;
+        Text _text;
+        Transform _textRoot;
         PlayerController _player;
         float _alpha;
         float _nearSince = -1f;
@@ -41,22 +43,11 @@ namespace HiddenWeight.UI
 
         void Start()
         {
-            var textObject = new GameObject("HintText");
-            textObject.transform.SetParent(transform, false);
-
-            _text = textObject.AddComponent<TextMesh>();
-            _text.font = Resources.Load<Font>("Fonts/NanumMyeongjo-Bold")
-                ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _text.fontSize = 64;
-            _text.characterSize = 0.072f;
-            _text.anchor = TextAnchor.MiddleCenter;
-            _text.alignment = TextAlignment.Center;
+            _text = UIBuilder.CreateWorldText(transform, "HintText", new Vector2(900f, 190f),
+                0.01f, 64, 40);
+            _textRoot = _text.transform.parent;
             _text.color = new Color(1f, 1f, 1f, 0f);
             RefreshPrompt(InputPrompts.CurrentDevice);
-
-            var renderer = textObject.GetComponent<MeshRenderer>();
-            renderer.material = _text.font.material;
-            renderer.sortingOrder = 40;
 
             _player = PlayerController.Instance;
             InputPrompts.DeviceChanged += RefreshPrompt;
@@ -137,7 +128,7 @@ namespace HiddenWeight.UI
             // 활성화된 동안은 카메라 상단을 따라가 실제 화면에서 읽을 시간을 보장한다.
             Camera camera = Camera.main;
             if (show && camera != null)
-                _text.transform.position = new Vector3(
+                _textRoot.position = new Vector3(
                     camera.transform.position.x,
                     camera.transform.position.y + camera.orthographicSize * 0.62f,
                     transform.position.z);

@@ -118,7 +118,12 @@ namespace HiddenWeight.World
             if (!string.IsNullOrEmpty(requiredEncounterId)
                 && !gm.Progress.IsEncounterCleared(requiredEncounterId))
                 return;
-            if (marksFractureCleared) gm.Progress.MarkFractureCleared();
+            if (marksFractureCleared)
+            {
+                gm.Progress.MarkFractureCleared();
+                SceneFlow.LoadWithFade(SceneFlow.Ending);
+                return;
+            }
 
             var next = gm.CurrentZoneData != null ? gm.CurrentZoneData.nextSceneName : SceneFlow.Title;
 

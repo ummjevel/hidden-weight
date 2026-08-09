@@ -1688,7 +1688,9 @@ namespace HiddenWeight.EditorTools
                 "알아도 고를 수는 없었다. 그래서 골랐다.", EmotionId.None, false);
 
             // 클리어 허브로 이어지는 통로. 이 트리거가 균열 클리어를 진행도에 기록한다.
-            BuildZoneTrigger(c.Root.transform, c.P(28f, 6f), new Vector2(2f, 4f), true);
+            var exit = BuildZoneTrigger(c.Root.transform, c.P(28f, 6f), new Vector2(2f, 4f), true);
+            SetField(exit.GetComponent<ZoneTrigger>(), "requiredEncounterId",
+                p => p.stringValue = "fracture_f12_boss");
 
             c.Room("FractureRoom12", 30f, 18f);
             BuildBoundary(c.Root.transform, "Fracture_EastBoundary", c.P(30.5f, 0f).x);

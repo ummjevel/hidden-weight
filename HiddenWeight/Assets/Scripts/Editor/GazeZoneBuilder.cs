@@ -1037,9 +1037,10 @@ namespace HiddenWeight.EditorTools
         // 능력 연속 응용. 계속 숨어 있는 것이 항상 빠른 선택은 아니게 만든다(4.6절).
         static void BuildG06(RoomCtx c)
         {
-            // 로컬 20~21을 비워 GS2로 내려가는 구멍을 만든다. 깊이 2로 얕게 판다.
-            c.Floor(0, 20, 2, 2);
-            c.Floor(21, 24, 2, 2);
+            // GS2 샤프트를 다시 오를 수 있게 중앙 3타일을 비운다.
+            // 이전 1타일 구멍은 너무 좁고, 샤프트 전체 폭은 화면에서 과하게 넓어 보인다.
+            c.Floor(0, 19, 2, 2);
+            c.Floor(22, 24, 2, 2);
             c.Floor(24, 28, 3, 2);
             c.Floor(28, 32, 4, 2);  // 출구 (32,4)
 
@@ -1074,18 +1075,13 @@ namespace HiddenWeight.EditorTools
             for (int i = 0; i < 5; i++)
                 BuildCurrencyPickup(c.Root.transform, c.P(14f + i * 1.1f, 9f));
 
-            // GS2 입구 — 숨죽인 몸만 들어가는 좁은 세로 틈. 바닥 구멍(로컬 20~21) 위에 얹는다.
-            // 틈 폭이 0.48(숨죽임) < 0.66 < 0.8(평상시)이라 평소에는 몸이 끼어 들어가지 못한다.
-            //
-            // 틈을 만드는 벽 두 장은 일부러 낮게(1.5) 세운다. 주 동선이 이 앞을 지나가므로
-            // 벽이 높으면 길이 막힌다 — 평상시에는 벽 위를 넘어 지나가고, 숨죽였을 때만
-            // 위에서 틈 안으로 몸을 떨어뜨릴 수 있다.
-            float slotLeft = 20.5f - SlotWidth * 0.5f;
-            float slotRight = 20.5f + SlotWidth * 0.5f;
+            // GS2 입구 보조벽은 3타일 구멍의 양끝을 잡는다.
+            float slotLeft = 18.5f;
+            float slotRight = 22.5f;
             BuildPlainWall(c.Root.transform, "G06_Slot_L",
-                c.P(slotLeft - 0.6f, 2.75f), new Vector2(1.2f, 1.5f), GazeStone);
+                c.P(slotLeft, 2.75f), new Vector2(1f, 1.5f), GazeStone);
             BuildPlainWall(c.Root.transform, "G06_Slot_R",
-                c.P(slotRight + 0.6f, 2.75f), new Vector2(1.2f, 1.5f), GazeStone);
+                c.P(slotRight, 2.75f), new Vector2(1f, 1.5f), GazeStone);
             BuildDecor(c.Root.transform, "G06_GS2_Hint", c.P(20.5f, 5.5f), new Vector2(1.4f, 1.4f),
                 "Eye", new Color(0.35f, 0.5f, 0.5f), 0f, -4);
 
@@ -1111,11 +1107,6 @@ namespace HiddenWeight.EditorTools
         static void BuildGS2(RoomCtx c)
         {
             c.Floor(0, 24, 2);
-
-            // 통로를 좁히는 우리들. 사이를 지나가되 싸울 필요는 없다.
-            for (int i = 0; i < 4; i++)
-                BuildDecor(c.Root.transform, $"GS2_Cage_{i}", c.P(4f + i * 5f, 5f), new Vector2(2f, 4f),
-                    "Gate", new Color(0.24f, 0.22f, 0.34f), 0f, -5);
 
             BuildGazeEnemy(c.Root.transform, c.P(8f, 3f), GazeEnemyKind.Pilgrim);
             BuildGazeEnemy(c.Root.transform, c.P(16f, 3f), GazeEnemyKind.Pilgrim);
@@ -1392,14 +1383,16 @@ namespace HiddenWeight.EditorTools
             // 승리 후(혹은 전투 중 이동 시) 걸어서·뛰어서 지나갈 수 있게 한다. 원래 높이
             // 4에 바닥에서 0.5 띄운 배치는 서 있는 플레이어 몸(바닥 위 1.4)과 겹쳐 걸리면서도
             // 시야는 못 막는, 이도 저도 아닌 치수였다.
-            BuildCoverPillar(c.Root.transform, "G12_Curtain_L", c.P(6f, 5.1f), new Vector2(1.4f, 2.2f));
-            BuildCoverPillar(c.Root.transform, "G12_Curtain_R", c.P(24f, 5.1f), new Vector2(1.4f, 2.2f));
+            var curtainL = BuildCoverPillar(c.Root.transform, "G12_Curtain_L", c.P(6f, 5.1f), new Vector2(1.4f, 2.2f));
+            var curtainR = BuildCoverPillar(c.Root.transform, "G12_Curtain_R", c.P(24f, 5.1f), new Vector2(1.4f, 2.2f));
+            BlendCoverIntoBackground(curtainL);
+            BlendCoverIntoBackground(curtainR);
 
             // 관객 조각상 5개. 자각이 없으면 다섯이 같은 예고를 보내고, 자각 중에는 하나만 남는다.
             for (int i = 0; i < 5; i++)
                 BuildStatue(c.Root.transform, $"G12_Statue_{i}", c.P(4f + i * 5.5f, 4f), i == 2, i * 0.35f);
 
-            var boss = BuildBoss(c.Root.transform, c.P(15f, 6f), "Enemy_Gaze_AllEyes", 20,
+            var boss = BuildBoss(c.Root.transform, c.P(15f, 7.5f), "Enemy_Gaze_AllEyes", 20,
                 new[]
                 {
                     BossController.Move.GazeSweep,
@@ -1435,10 +1428,20 @@ namespace HiddenWeight.EditorTools
             // 핵심 파편과 균열로 이어지는 통로.
             BuildStoryFragment(c.Root.transform, c.P(26f, 5f), "gaze_core",
                 "관객들이 서로를 보기 시작하자, 무대는 그냥 바닥이 되었다.", EmotionId.None, false);
-            BuildZoneTrigger(c.Root.transform, c.P(28f, 6f), new Vector2(2f, 4f), false);
+            var exit = BuildZoneTrigger(c.Root.transform, c.P(28f, 6f), new Vector2(2f, 4f), false);
+            SetField(exit.GetComponent<ZoneTrigger>(), "requiredEncounterId",
+                p => p.stringValue = "gaze_g12_boss");
 
             c.Room("GazeRoom12", 30f, 18f);
             BuildBoundary(c.Root.transform, "Gaze_EastBoundary", c.P(30.5f, 0f).x);
+        }
+
+        static void BlendCoverIntoBackground(GameObject cover)
+        {
+            var renderer = cover.transform.Find("Art")?.GetComponent<SpriteRenderer>();
+            if (renderer == null) return;
+            renderer.color = new Color(0.34f, 0.32f, 0.42f, 0.42f);
+            renderer.sortingOrder = 1;
         }
     }
 }

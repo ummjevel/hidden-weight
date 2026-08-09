@@ -1437,6 +1437,13 @@ namespace HiddenWeight.EditorTools
             SetField(encounter, "lockHeightOverride", p => p.floatValue = 60f);
             SetField(encounter, "lockCenterYOffset", p => p.floatValue = 24f);
             SetField(encounter, "hideLockVisuals", p => p.boolValue = true);
+            // 출구 트리거가 오른쪽 잠금벽과 같은 x에 있어 승리 후에도 물리 벽에 먼저
+            // 닿는 회귀가 있었다. 미클리어 진입은 requiredEncounterId와 동쪽 경계가 막으므로
+            // 조우 잠금은 입구 쪽 한 장만 필요하다.
+            SetField(encounter, "lockObjects", p =>
+            {
+                if (p.arraySize > 1) p.arraySize = 1;
+            });
 
             // 핵심 파편과 균열로 이어지는 통로.
             BuildStoryFragment(c.Root.transform, c.P(26f, 5f), "gaze_core",

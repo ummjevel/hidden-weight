@@ -29,6 +29,8 @@ namespace HiddenWeight.UI
 
             BuildHierarchy();
             SceneFlow.FadeLoader = FadeAndLoad;
+            SceneFlow.StartupCinematicPlayer = onFinished =>
+                CinematicVideoPlayer.Play("final_start_scene.mp4", onFinished);
         }
 
         void BuildHierarchy()

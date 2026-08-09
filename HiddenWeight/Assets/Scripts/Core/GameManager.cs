@@ -66,7 +66,12 @@ namespace HiddenWeight.Core
 
         void Start()
         {
-            if (autoLoadTitle) SceneFlow.Load(SceneFlow.Title);
+            if (!autoLoadTitle) return;
+
+            if (SceneFlow.StartupCinematicPlayer != null)
+                SceneFlow.StartupCinematicPlayer(() => SceneFlow.Load(SceneFlow.Title));
+            else
+                SceneFlow.Load(SceneFlow.Title);
         }
 
         void HandleSceneLoaded(Scene scene, LoadSceneMode mode)

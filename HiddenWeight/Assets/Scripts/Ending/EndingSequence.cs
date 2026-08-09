@@ -146,6 +146,11 @@ namespace HiddenWeight.Ending
             if (ScreenFader.Instance != null) yield return ScreenFader.Instance.FadeTo(1f, fadeOutSeconds);
 
             PlayerInput.Enabled = true;
+            CinematicVideoPlayer.Play("final_end_scene.mp4", ReturnToTitle);
+        }
+
+        void ReturnToTitle()
+        {
             if (GameManager.Instance != null) GameManager.Instance.SetState(GameState.Title);
             SceneFlow.LoadWithFade(SceneFlow.Title);
         }

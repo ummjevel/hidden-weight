@@ -15,6 +15,7 @@ namespace HiddenWeight.Core
 
         // UI(ScreenFader)가 채우는 훅. Core는 UI 모듈을 참조하지 않는다.
         public static System.Action<string, float> FadeLoader;
+        public static System.Action<System.Action> StartupCinematicPlayer;
 
         public static void Load(string sceneName) => SceneManager.LoadScene(sceneName);
 

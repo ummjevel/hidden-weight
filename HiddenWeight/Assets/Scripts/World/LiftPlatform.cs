@@ -24,6 +24,11 @@ namespace HiddenWeight.World
         // 0이면 편도(종점에 도착한 채로 영구히 멈춘다 — 기존 동작). 0보다 크면 종점 도착 후
         // 이만큼 기다렸다가 출발점으로 되돌아가고, 도착하면 다시 탈 수 있게 초기화된다.
         [SerializeField] float returnDelay = 0f;
+        // 상시 왕복. 밟지 않아도 스스로 출발하고, 양 끝에서 잠깐 쉬었다가 계속 오간다.
+        // "한 번 올라가면 안 내려온다"를 없애기 위한 모드다 — 내려갈 때는 위에서 기다렸다가
+        // 타면 된다. 숏컷은 여전히 플레이어를 태운 채 종점에 닿았을 때만 연다(빈 왕복으로
+        // "승강기를 상층까지 작동시키면"이라는 조건이 저절로 풀리면 안 된다).
+        [SerializeField] bool continuous;
         [SerializeField] Shortcut linkedShortcut;   // 종점에 닿으면 열린다(숏컷 B)
         // 방이 씬으로 갈라진 뒤로 승강기와 숏컷은 서로 다른 씬에 산다(G08→G03). 유니티는
         // 씬을 넘는 오브젝트 참조를 저장하지 못해 linkedShortcut이 null로 구워지므로,
@@ -69,6 +74,14 @@ namespace HiddenWeight.World
 
         void Start()
         {
+            // 상시 왕복은 아무도 밟지 않아도 곧바로 운행을 시작한다.
+            if (continuous)
+            {
+                _leg = 0;
+                _delayTimer = startDelay;
+                return;
+            }
+
             // 왕복 승강기(returnDelay > 0)는 매번 다시 탈 수 있어야 하므로 항상 출발점에서
             // 시작한다 — "숏컷이 이미 열렸다"는 사실과 "승강기가 지금 어디 있는가"는 별개다.
             // 편도 승강기만 아래 규칙을 적용한다: 한 번 종점까지 운행해 숏컷을 연 뒤에는
@@ -109,6 +122,19 @@ namespace HiddenWeight.World
         Vector3 Target(int leg)
             => _origin + (Vector3)waypoints[Mathf.Clamp(leg, 0, waypoints.Length - 1)];
 
+        // 양 끝에서 쉬는 시간. returnDelay가 있으면 그 값을, 상시 왕복인데 값이 없으면
+        // 내릴·탈 여유가 되는 기본값을 쓴다.
+        float EndPause => returnDelay > 0f ? returnDelay : 1.5f;
+
+        // CarryRiders와 같은 판으로 "지금 위에 플레이어가 서 있는가"만 본다.
+        bool HasRiderAboard()
+        {
+            var size = _box != null ? _box.size : new Vector2(3f, 0.5f);
+            var center = (Vector2)transform.position + new Vector2(0f, size.y * 0.5f + 0.45f);
+            var area = new Vector2(size.x * 0.95f, 1f);
+            return Physics2D.OverlapBox(center, area, 0f, _riderMask) != null;
+        }
+
         void FixedUpdate()
         {
             if (_finished || _leg < 0) return;
@@ -130,9 +156,18 @@ namespace HiddenWeight.World
 
             if (_returning)
             {
-                // 출발점 복귀 완료. 다시 탈 수 있는 상태로 되돌린다.
+                // 출발점 복귀 완료. 상시 왕복은 잠깐 쉬었다가 다시 떠나고,
+                // 그 외에는 다시 탈 수 있는 상태로 되돌린다.
                 _returning = false;
-                _leg = -1;
+                if (continuous)
+                {
+                    _leg = 0;
+                    _delayTimer = EndPause;
+                }
+                else
+                {
+                    _leg = -1;
+                }
                 AudioManager.Instance?.PlaySfx(SfxCue.LiftStop, 0.55f);
                 return;
             }
@@ -141,15 +176,17 @@ namespace HiddenWeight.World
             if (_leg < waypoints.Length) return;
 
             // 종점 도착. 여기서만 숏컷이 열린다 — 도중에 내려도 열리지 않아야
-            // "승강기를 상층까지 작동시키면"이라는 조건이 성립한다.
+            // "승강기를 상층까지 작동시키면"이라는 조건이 성립한다. 상시 왕복은 빈 채로도
+            // 종점에 닿으므로, 플레이어를 태웠을 때만 연다.
             _leg = waypoints.Length - 1;
             AudioManager.Instance?.PlaySfx(SfxCue.LiftStop, 0.55f);
-            OpenLinkedShortcut();
+            if (!continuous || HasRiderAboard())
+                OpenLinkedShortcut();
 
-            if (returnDelay > 0f)
+            if (returnDelay > 0f || continuous)
             {
                 // 편도로 멈추는 대신 이만큼 기다렸다가 출발점으로 되돌아간다.
-                _delayTimer = returnDelay;
+                _delayTimer = EndPause;
                 _returning = true;
             }
             else

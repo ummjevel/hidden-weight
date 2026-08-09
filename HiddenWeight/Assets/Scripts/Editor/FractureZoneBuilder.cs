@@ -1454,9 +1454,11 @@ namespace HiddenWeight.EditorTools
             c.Tiles(8, 24, 25, 26);    // 북동 출구 선반 (22,26)
 
             // 첫 웨이포인트가 아래를 향한다 — 이것이 "역행"의 전부다. 그다음은 곧게 위로만.
+            // 상시 왕복: 한 번 올라가면 위에 멈춰 있어 내려올 방법이 없었다. 스스로
+            // 오르내리게 두고, 내려갈 때는 위에서 기다렸다가 타면 된다.
             BuildLift(c.Root.transform, "F08_Lift", c.P(6f, 2.6f),
                 new[] { new Vector2(0f, -0.5f), new Vector2(0f, 22.6f) },
-                _fractureShortcutB, new Color(0.7f, 0.9f, 0.85f));
+                _fractureShortcutB, new Color(0.7f, 0.9f, 0.85f), continuous: true);
 
             // 승강기를 놓치고 오른쪽으로 계속 걸어도 허공에 떨어지지 않게 막는다.
             //
@@ -1625,10 +1627,13 @@ namespace HiddenWeight.EditorTools
             c.Floor(10, 20, 4);    // 중앙 변화 지대
             c.Floor(20, 30, 4);    // 우측 공격 지대
 
-            var wallL = BuildSolidBlock(c.Root.transform, "F12_Wall_L", c.P(0.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
+            // 좌측 벽은 F11에서 오는 통로 입구(로컬 (0,4), 통로 안높이 5)를 막으면 안 된다 —
+            // 바닥부터 세우면 보스방에 들어올 방법이 없다(전투 중 이탈 차단은 Encounter의
+            // Lock_L/Lock_R이 맡는다). 통로 천장(y=9) 위부터만 세워 입구를 비워 둔다.
+            var wallL = BuildSolidBlock(c.Root.transform, "F12_Wall_L", c.P(0.5f, 11.5f), new Vector2(1.2f, 5f), "Wall", FractureStone);
             var wallR = BuildSolidBlock(c.Root.transform, "F12_Wall_R", c.P(29.5f, 9f), new Vector2(1.2f, 10f), "Wall", FractureStone);
             // 세로 벽이므로 바닥 윗면 셀이 아니라 벽 켜 셀을 쓴다(ApplyBlockArt 주석 참고).
-            ApplyBlockArt(wallL, new Vector2(1.2f, 10f), spriteName: "Terrain_r2_c4");
+            ApplyBlockArt(wallL, new Vector2(1.2f, 5f), spriteName: "Terrain_r2_c4");
             ApplyBlockArt(wallR, new Vector2(1.2f, 10f), spriteName: "Terrain_r2_c4");
 
             // 단계마다 일부 발판이 사라지지만 좌측 안정 지대는 언제나 반응 가능한 안전 경로다.

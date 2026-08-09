@@ -83,6 +83,15 @@ namespace HiddenWeight.World
             if (_current != null) Apply();
         }
 
+        // 프레임마다 다시 재는 대신 첫 프레임 배율 하나로 고정한다. 플레이어 프리팹은 굽는
+        // 시점에 이 값을 켜지만, 이미 구워진 씬의 적·보스는 런타임에 켜야 해서 열어 둔다.
+        public void UseUniformScale()
+        {
+            uniformScale = true;
+            _uniformScaleFactor = -1f;
+            if (_current != null) Apply();
+        }
+
         void Awake()
         {
             if (target == null) target = GetComponentInChildren<SpriteRenderer>();

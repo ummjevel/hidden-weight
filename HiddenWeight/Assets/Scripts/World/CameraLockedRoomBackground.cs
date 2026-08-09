@@ -31,10 +31,14 @@ namespace HiddenWeight.World
 
         void Awake()
         {
+            // 세 지역 모두 배경을 카메라 추종 벽지로 통일한다(2026-08-09 팀 결정). 방 고정
+            // (worldSize)은 카메라가 방 경계를 넘거나 방 크기가 그림과 어긋날 때 검은 여백이
+            // 드러났다 — 균열에서 실제로 겪었고 잔재·응시도 같은 방식으로 맞춘다.
+            // 빌더가 구워 둔 worldSize는 무시한다(씬 재생성 없이 세 지역에 일괄 적용).
+            worldSize = Vector2.zero;
             ApplyReadabilityTint();
             EnsureRoomVisualCuller();
             BuildTraversalEdges();
-            if (UsesWorldSize) ApplyWorldSize();
         }
 
         void OnValidate() => ApplyReadabilityTint();

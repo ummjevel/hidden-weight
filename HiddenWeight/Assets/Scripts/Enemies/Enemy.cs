@@ -44,6 +44,18 @@ namespace HiddenWeight.Enemies
         SpriteRenderer _sprite;
         Coroutine _flashRoutine;
         HiddenWeight.World.SpriteAnimator _animator;
+        bool _isBoss;
+
+        // tint와 외곽선은 둘 다 잔재를 위해 만든 장치다. 잔재 적은 어두운 앰버 단색에 가까워
+        // tint로 지역색을 입히고 밝은 선(EnemyOutline.mat, 앰버 0.86/0.78/0.62)으로 배경에서
+        // 떼어냈다. 균열 보스는 반대다 — 이미 다색 수채로 그려져 있어 tint를 곱하면 색이
+        // 죽고, 반투명하게 흩날리는 옷자락을 굵기 2.2 외곽선이 훑어 금색으로 번진다.
+        bool KeepArtAsDrawn => _isBoss && gameObject.scene.name.Contains("Fracture");
+
+        // 평상시 스프라이트 색. 번쩍임·예고처럼 색을 잠깐 바꿨다 되돌리는 쪽은 전부 여기로
+        // 돌아와야 한다 — data.tint로 직접 되돌리면 원본 그림 보스가 한 번 맞거나 예고를
+        // 한 번 낸 뒤부터 색이 죽는다.
+        public Color BaseSpriteColor => KeepArtAsDrawn ? Color.white : data.tint;
 
         // 행동 모듈이 "지금 뭘 하는지"를 알려 주면 그에 맞는 클립을 재생한다.
         // 클립 이름은 종류별 접두사 + 동작(예: WalkerWalk)이고, 접두사는 빌더가 넣어 준다.
@@ -74,7 +86,9 @@ namespace HiddenWeight.Enemies
                 _rb.simulated = true;
                 _rb.linearVelocity = Vector2.zero;
             }
-            if (_sprite != null) _sprite.color = data.tint;
+            // 원본 그림 그대로 두기로 한 보스는 여기서도 tint를 되씌우지 않는다.
+            // 되씌우면 조우를 한 번 재시작한 뒤부터 색이 죽는다.
+            if (_sprite != null) _sprite.color = KeepArtAsDrawn ? Color.white : data.tint;
 
             // 조우에 묶인 적은 방이 열릴 때 꺼져 있어 Start가 돌지 않는다. 그대로 두면
             // 전투가 시작되는 순간 적이 공중에서 떨어지며 등장한다 — 조우의 첫 인상이
@@ -101,6 +115,7 @@ namespace HiddenWeight.Enemies
         {
             _rb = GetComponent<Rigidbody2D>();
             _bodyCollider = GetComponent<Collider2D>();
+            _isBoss = GetComponent<BossController>() != null;
             _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
             _sprite = _animator != null && _animator.Renderer != null
                 ? _animator.Renderer
@@ -117,9 +132,43 @@ namespace HiddenWeight.Enemies
                 _animator.LockFeetToLocalY(feetY);
             }
 
+            // 균열 보스의 그림을 판정에 붙들어 맨다.
+            //
+            // 이 시트들은 Tight 메시라 sprite.bounds가 "실제로 그려진 영역"이다. 그래서
+            // normalizedHeight(3.2)가 프레임마다 배율을 다시 잡는데, 같은 클립 안에서도
+            // 그려진 높이가 91~170px로 흔들려 배율이 최대 1.9배까지 널뛴다 — 보스가 커졌다
+            // 작아졌다 하고, 피벗이 칸 중앙이라 위치까지 함께 밀린다. 한 프레임이 유난히
+            // 크게 잡히면 몸이 두 조각으로 갈라져 보이기까지 한다.
+            //
+            //   uniformScale        첫 프레임 배율 하나로 고정 → 크기가 널뛰지 않는다
+            //   lockFeetToGround    그려진 발을 몸통 콜라이더 바닥에 고정 → 위아래로 안 튄다
+            //   lockReferenceCenter 그려진 몸 중심을 판정 중앙에 고정 → 좌우로 안 밀린다
+            //
+            // R10 손목의 감시자가 세 번째 것만 따로 쓰던 방식을 보스 전체로 넓힌 것이다.
+            if (_isBoss && _animator != null && gameObject.scene.name.Contains("Fracture"))
+            {
+                _animator.UseUniformScale();
+                _animator.LockReferenceCenterToLocalX(0f);
+                if (_bodyCollider != null)
+                {
+                    float feetY = transform.InverseTransformPoint(
+                        new Vector3(_bodyCollider.bounds.center.x, _bodyCollider.bounds.min.y, 0f)).y;
+                    _animator.LockFeetToLocalY(feetY);
+                }
+            }
+
             Health = data.maxHealth;
-            if (_sprite != null) _sprite.color = data.tint;
-            if (_sprite != null && outlineMaterial != null) _sprite.material = outlineMaterial;
+
+            // 균열 보스만 원본 그림 그대로 그린다.
+            //
+            // tint와 외곽선은 둘 다 잔재를 위해 만든 장치다. 잔재 적은 어두운 앰버 단색에
+            // 가까워서 tint로 지역색을 입히고 밝은 선(EnemyOutline.mat, 앰버 0.86/0.78/0.62)으로
+            // 배경에서 떼어냈다. 균열 보스는 반대다 — 이미 다색 수채로 그려져 있어 tint를
+            // 곱하면 색이 죽고, 반투명하게 흩날리는 옷자락 가장자리를 굵기 2.2 외곽선이
+            // 전부 훑어 실루엣이 금색 덩어리로 번진다.
+            if (_sprite != null) _sprite.color = KeepArtAsDrawn ? Color.white : data.tint;
+            if (_sprite != null && outlineMaterial != null && !KeepArtAsDrawn)
+                _sprite.material = outlineMaterial;
 
             // 피격 반동은 **그림에만** 준다. 루트를 움직이면 콜라이더가 같이 가서 판정이 어긋난다.
             if (_sprite != null && _sprite.transform != transform)
@@ -315,7 +364,9 @@ namespace HiddenWeight.Enemies
         {
             if (_sprite != null)
             {
-                var original = data.tint;
+                // 원본 그림 그대로 두는 보스는 흰색이 평상시 색이다. data.tint로 되돌리면
+                // 처음 맞는 순간부터 색이 죽는다.
+                var original = KeepArtAsDrawn ? Color.white : data.tint;
                 _sprite.color = FlashColor(original);
                 yield return new WaitForSeconds(0.14f);
                 _sprite.color = original;

@@ -219,7 +219,7 @@ namespace HiddenWeight.EditorTools
         // 빌드 패스에서 이미 null로 구워진 경우를 위한 대안. LiftPlatform.cs 주석 참고.
         static LiftPlatform BuildLift(Transform parent, string name, Vector2 pos, Vector2[] waypoints,
                                       Shortcut shortcut, Color tint, string shortcutId = null,
-                                      float returnDelay = 0f)
+                                      float returnDelay = 0f, bool continuous = false)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -251,6 +251,7 @@ namespace HiddenWeight.EditorTools
             if (!string.IsNullOrEmpty(shortcutId))
                 SetField(lift, "linkedShortcutId", p => p.stringValue = shortcutId);
             if (returnDelay > 0f) SetField(lift, "returnDelay", p => p.floatValue = returnDelay);
+            if (continuous) SetField(lift, "continuous", p => p.boolValue = true);
             return lift;
         }
 

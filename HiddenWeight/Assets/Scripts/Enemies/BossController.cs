@@ -32,6 +32,11 @@ namespace HiddenWeight.Enemies
         [SerializeField] float slamTelegraph = 1.2f;
         [SerializeField] float sweepHeight = 1.2f;   // 이 높이 위로 뛰면 쓸기를 넘는다
         [SerializeField] Sprite shadowSprite;        // 낙하 예고용 바닥 그림자
+
+        // 피격 판정 상자(루트 로컬 단위). 보스 루트 배율이 2배라 화면에서는 이 값의 2배가 된다.
+        // 기본값 2.4x3.2는 BuildBoss가 그림에 맞춰 쓰는 높이 3.2와 같은 눈금이다.
+        [SerializeField] Vector2 hurtboxSize = new Vector2(2.4f, 3.2f);
+        [SerializeField] Vector2 hurtboxOffset = Vector2.zero;
         [SerializeField] float recoverSeconds = 1.0f;
         [SerializeField] float sweepRange = 5f;
         [SerializeField] float chargeSpeed = 12f;
@@ -106,6 +111,32 @@ namespace HiddenWeight.Enemies
             _body = GetComponent<Rigidbody2D>();
             _sprite = GetComponentInChildren<SpriteRenderer>();
             _animator = GetComponentInChildren<HiddenWeight.World.SpriteAnimator>();
+            BuildHurtbox();
+        }
+
+        // 그림 크기에 맞춘 피격 판정.
+        //
+        // 보스의 몸통 콜라이더는 일반 적과 같은 0.9x0.9다. 보스만 루트 배율이 2배라 화면에서는
+        // 1.8x1.8인데, 그림은 높이 3.2(화면 6.4)로 그려진다 — 보이는 몸의 4분의 1 남짓에만
+        // 칼이 닿는다. 눈에 보이는 실루엣을 때렸는데 안 맞는 것이 "때리기 어렵다"의 정체다.
+        //
+        // 몸통 콜라이더를 키우지 않는 이유: 그건 물리 몸체이기도 해서 넓히면 보스가 지형에
+        // 끼거나 바닥 위로 밀려 올라간다. 대신 트리거 자식을 하나 더 둔다 —
+        // PlayerAttack은 OverlapCircleAll로 Enemy 레이어 콜라이더를 모은 뒤
+        // GetComponentInParent<IDamageable>()로 올라오므로 트리거로도 정확히 잡힌다.
+        // 접촉 피해는 별도의 Hitbox 자식이 맡으므로 이 상자는 맞기만 하고 때리지는 않는다.
+        void BuildHurtbox()
+        {
+            if (transform.Find("BossHurtbox") != null) return;
+
+            var go = new GameObject("BossHurtbox");
+            go.transform.SetParent(transform, false);
+            go.layer = gameObject.layer;   // Enemy
+
+            var box = go.AddComponent<BoxCollider2D>();
+            box.isTrigger = true;
+            box.size = hurtboxSize;
+            box.offset = hurtboxOffset;
         }
 
         // 클립이 시트에 있으면 튼다. 피격 애니메이션(Enemy.PlayClip)이 재생 중일 수 있으므로
@@ -549,7 +580,9 @@ namespace HiddenWeight.Enemies
         void Telegraph(bool on)
         {
             if (_sprite == null) return;
-            _sprite.color = on ? Color.Lerp(_self.Data.tint, Color.white, 0.7f) : _self.Data.tint;
+            // 평상시 색은 Enemy가 정한다(원본 그림 그대로 두는 보스는 흰색이다).
+            var basis = _self.BaseSpriteColor;
+            _sprite.color = on ? Color.Lerp(basis, Color.white, 0.7f) : basis;
         }
     }
 }

@@ -99,6 +99,17 @@ namespace HiddenWeight.EditorTools
                                            "SecondHandPhase", "SecondHandShortcut" } },
 
             // --- 지역 보스: 아직 오지 않은 나 ---
+            //
+            // 이 시트들은 프레임마다 칸 안 여백이 크게 다르다(Possibilities 행은 그림 바닥이
+            // 최대 47px, Reactions 행은 가로 중심이 최대 46px 흔들린다). 응시는 같은 문제를
+            // _Aligned_v2 시트를 새로 그려서 풀었지만(GazeAnimationArtSlicer 주석), 균열은
+            // 시트를 건드리지 않고 SpriteAnimator 쪽에서 잡는다 — 이 스프라이트들은
+            // spriteMeshType이 Tight라 sprite.bounds가 "실제로 그려진 영역"을 돌려주므로,
+            // uniformScale / lockFeetToGround / lockReferenceCenter가 그대로 먹는다
+            // (Enemy.Awake의 보스 정렬 블록 참고).
+            //
+            // PNG 픽셀을 직접 옮겨 맞추는 방법은 쓰지 말 것. Tight 메시에서는 그림을 칸
+            // 아래로 붙이는 순간 피벗(칸 중앙)과 그림 중심이 벌어져 보스가 통째로 내려앉는다.
             new Sheet { Path = "Gameplay/Bosses/Animation/UnarrivedSelf_Combat_v1.png", Rows = 7, Pivot = Center, MeasureFrames = true,
                         RowClips = new[] { "NotYetMeIdle", "NotYetMeGlide", "NotYetMeRibbon",
                                            "NotYetMeShards", "NotYetMeStagger", "NotYetMeHit",

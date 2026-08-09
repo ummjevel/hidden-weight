@@ -1044,7 +1044,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &382346570
 Transform:
   m_ObjectHideFlags: 0
@@ -1841,7 +1841,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &542300456
 Transform:
   m_ObjectHideFlags: 0
@@ -4956,7 +4956,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1730922906
 Transform:
   m_ObjectHideFlags: 0
@@ -8580,7 +8580,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: HiddenWeight::HiddenWeight.Enemies.Encounter
   encounterId: gaze_g12_boss
   oneTime: 1
-  observeSeconds: 2
+  observeSeconds: 0
   waves:
   - members:
     - {fileID: 2130260759}
@@ -8589,6 +8589,9 @@ MonoBehaviour:
   lockObjects:
   - {fileID: 377821223}
   - {fileID: 808338333}
+  lockHeightOverride: 30
+  lockCenterYOffset: 9
+  hideLockVisuals: 1
   allowsTraversal: 0
   victoryReward: {fileID: 211320754}
   victoryShortcut: {fileID: 0}

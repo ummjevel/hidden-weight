@@ -1044,6 +1044,14 @@ namespace HiddenWeight.EditorTools
             c.Floor(24, 28, 3, 2);
             c.Floor(28, 32, 4, 2);  // 출구 (32,4)
 
+            // 타일맵의 긴 바닥은 고속 낙하 때 경계 한 프레임을 건너뛰는 경우가 있다.
+            // GS2로 내려가는 x=19~21 구멍은 그대로 두고, 실제로 그림이 있는 바닥 아래에만
+            // 연속 BoxCollider를 겹쳐 플레이어가 검은 바닥으로 빠지지 않게 한다.
+            BuildG06FloorSafety(c.Root.transform, "G06_FloorSafety_A", c.P(9.5f, 1f), new Vector2(19f, 2f));
+            BuildG06FloorSafety(c.Root.transform, "G06_FloorSafety_B", c.P(22.5f, 1f), new Vector2(3f, 2f));
+            BuildG06FloorSafety(c.Root.transform, "G06_FloorSafety_C", c.P(26f, 1.5f), new Vector2(4f, 3f));
+            BuildG06FloorSafety(c.Root.transform, "G06_FloorSafety_D", c.P(30f, 2f), new Vector2(4f, 4f));
+
             // 첫 낮은 천장만 주 동선의 필수 응용이다.
             BuildSolidBlock(c.Root.transform, "G06_LowCeiling_A",
                 c.P(6f, 2f + CrawlClearance + 1f), new Vector2(4f, 2f), "Ground", GazeStone);
@@ -1089,6 +1097,13 @@ namespace HiddenWeight.EditorTools
             BuildRewardChest(c.Root.transform, "gaze_g06_material", c.P(30f, 5f), 20, false);
 
             c.Room("GazeRoom06", 32f, 16f);
+        }
+
+        static void BuildG06FloorSafety(Transform parent, string name, Vector2 center, Vector2 size)
+        {
+            var floor = BuildSolidBlock(parent, name, center, size, "Ground", GazeStone);
+            var renderer = floor.GetComponent<SpriteRenderer>();
+            if (renderer != null) renderer.enabled = false;
         }
 
         static void LinkScreamer(GameObject mouth, GazeHazard device)
@@ -1376,18 +1391,7 @@ namespace HiddenWeight.EditorTools
             // 두면 입구와 출구를 그대로 막아 버린다 — 봇이 왼쪽 벽을 벽점프로 넘어야만
             // 들어올 수 있는 상태였다.
 
-            // 전장을 관객석·중앙 무대·좌우 엄폐막 세 층으로 읽히게 만든다(4.12절).
-            BuildDecor(c.Root.transform, "G12_Gallery", c.P(15f, 14f), new Vector2(26f, 3f),
-                "Tile", new Color(0.22f, 0.2f, 0.32f), 0f, -6);
-            // G10 Cover_A/B와 같은 이유·같은 치수: 바닥(4)에 그대로 붙여야 보스의 GazeSweep
-            // 라인캐스트 차단이 실제로 통하고, 높이는 점프 높이(2.72)보다 낮은 2.2로 낮춰
-            // 승리 후(혹은 전투 중 이동 시) 걸어서·뛰어서 지나갈 수 있게 한다. 원래 높이
-            // 4에 바닥에서 0.5 띄운 배치는 서 있는 플레이어 몸(바닥 위 1.4)과 겹쳐 걸리면서도
-            // 시야는 못 막는, 이도 저도 아닌 치수였다.
-            var curtainL = BuildCoverPillar(c.Root.transform, "G12_Curtain_L", c.P(6f, 5.1f), new Vector2(1.4f, 2.2f));
-            var curtainR = BuildCoverPillar(c.Root.transform, "G12_Curtain_R", c.P(24f, 5.1f), new Vector2(1.4f, 2.2f));
-            BlendCoverIntoBackground(curtainL);
-            BlendCoverIntoBackground(curtainR);
+            // 기능 없는 갤러리 판과 세로 Curtain 블록은 단색 직사각형으로 보여 제거한다.
 
             // 관객 조각상 5개. 자각이 없으면 다섯이 같은 예고를 보내고, 자각 중에는 하나만 남는다.
             for (int i = 0; i < 5; i++)
@@ -1423,8 +1427,12 @@ namespace HiddenWeight.EditorTools
             SetField(boss.GetComponent<BossController>(), "phaseChangeEffect", p => p.stringValue = "GazeVfxReveal");
 
             var reward = BuildRewardChest(c.Root.transform, "gaze_g12_boss", c.P(15f, 5.5f), 70, true);
-            BuildEncounter(c.Root.transform, "gaze_g12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,
+            var encounter = BuildEncounter(c.Root.transform, "gaze_g12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,
                 new[] { new[] { boss } }, new int[0], reward, null);
+            SetField(encounter, "observeSeconds", p => p.floatValue = 0f);
+            SetField(encounter, "lockHeightOverride", p => p.floatValue = 30f);
+            SetField(encounter, "lockCenterYOffset", p => p.floatValue = 9f);
+            SetField(encounter, "hideLockVisuals", p => p.boolValue = true);
 
             // 핵심 파편과 균열로 이어지는 통로.
             BuildStoryFragment(c.Root.transform, c.P(26f, 5f), "gaze_core",
@@ -1437,12 +1445,5 @@ namespace HiddenWeight.EditorTools
             BuildBoundary(c.Root.transform, "Gaze_EastBoundary", c.P(30.5f, 0f).x);
         }
 
-        static void BlendCoverIntoBackground(GameObject cover)
-        {
-            var renderer = cover.transform.Find("Art")?.GetComponent<SpriteRenderer>();
-            if (renderer == null) return;
-            renderer.color = new Color(0.34f, 0.32f, 0.42f, 0.42f);
-            renderer.sortingOrder = 1;
-        }
     }
 }

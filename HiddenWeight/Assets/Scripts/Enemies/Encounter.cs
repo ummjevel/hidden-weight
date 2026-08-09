@@ -32,6 +32,9 @@ namespace HiddenWeight.Enemies
         [SerializeField] float observeSeconds = 2f; // 입장 후 잠그기까지 관찰 시간
         [SerializeField] Wave[] waves;
         [SerializeField] GameObject[] lockObjects;  // 전투 중에만 켜지는 잠금 콜라이더
+        [SerializeField] float lockHeightOverride;
+        [SerializeField] float lockCenterYOffset;
+        [SerializeField] bool hideLockVisuals;
         // 기존 씬에 새 bool 필드가 없을 때 Unity 기본값은 false다. 그래서 "잠금"의 반대값을
         // 저장한다 — 기존 응시·균열·보스 조우는 데이터 재생성 없이도 계속 잠긴다.
         [SerializeField] bool allowsTraversal;
@@ -77,6 +80,7 @@ namespace HiddenWeight.Enemies
 
         void Start()
         {
+            ApplyLockOverrides();
             SetLocks(false);
             if (victoryObjects != null)
                 foreach (var target in victoryObjects)
@@ -130,9 +134,17 @@ namespace HiddenWeight.Enemies
 
         void OnTriggerEnter2D(Collider2D other)
         {
-            if (_running || _finished) return;
-            if (!PlayerLayers.IsPlayer(other.gameObject)) return;
+            TryBegin(other);
+        }
 
+        void OnTriggerStay2D(Collider2D other)
+        {
+            TryBegin(other);
+        }
+
+        void TryBegin(Collider2D other)
+        {
+            if (_running || _finished || !PlayerLayers.IsPlayer(other.gameObject)) return;
             StartCoroutine(BeginRoutine());
         }
 
@@ -253,6 +265,31 @@ namespace HiddenWeight.Enemies
                 if (lockObject != null) lockObject.SetActive(locked);
 
             if (locked) PullMembersInside();
+        }
+
+        void ApplyLockOverrides()
+        {
+            if (lockObjects == null) return;
+
+            foreach (var lockObject in lockObjects)
+            {
+                if (lockObject == null) continue;
+
+                if (lockHeightOverride > 0f)
+                {
+                    var position = lockObject.transform.localPosition;
+                    position.y = lockCenterYOffset;
+                    lockObject.transform.localPosition = position;
+
+                    var scale = lockObject.transform.localScale;
+                    scale.y = lockHeightOverride;
+                    lockObject.transform.localScale = scale;
+                }
+
+                if (!hideLockVisuals) continue;
+                foreach (var renderer in lockObject.GetComponentsInChildren<Renderer>(true))
+                    renderer.enabled = false;
+            }
         }
 
         // 잠금이 걸리는 순간 구역 밖에 나가 있던 적을 안으로 데려온다.

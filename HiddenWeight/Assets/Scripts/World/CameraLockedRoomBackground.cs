@@ -23,6 +23,7 @@ namespace HiddenWeight.World
         // 맞추면 그림이 방 안에 고정되어 최소한 같은 방 안에서는 크기·위치가 일정하다.
         [SerializeField] Vector2 worldSize;
         static Sprite _visibilityPixel;
+        const float CameraFollowOverscan = 1.08f;
 
         public void ConfigureWorldSize(Vector2 size) => worldSize = size;
 
@@ -30,7 +31,6 @@ namespace HiddenWeight.World
 
         void Awake()
         {
-            InheritRoomWorldSize();
             ApplyReadabilityTint();
             EnsureRoomVisualCuller();
             BuildTraversalEdges();
@@ -52,18 +52,6 @@ namespace HiddenWeight.World
         // 완전히 덮는다 — 방 폭·높이 비율이 그림과 다르면 한 축은 방보다 더 그려지지만,
         // 비율을 억지로 늘려 그림이 찌그러지는 것보다는 낫다). 위치는 SingleRoomBackgroundBuilder가
         // 이미 room.WorldBounds.center로 잡아 두므로 여기서는 스케일만 계산한다.
-        void InheritRoomWorldSize()
-        {
-            if (UsesWorldSize) return;
-
-            var room = GetComponentInParent<Room>();
-            if (room == null) return;
-
-            Vector2 size = room.WorldBounds.size;
-            if (size.x <= 0f || size.y <= 0f) return;
-            worldSize = size;
-        }
-
         void ApplyWorldSize()
         {
             var renderer = GetComponent<SpriteRenderer>();
@@ -98,7 +86,9 @@ namespace HiddenWeight.World
             if (spriteSize.x <= 0f || spriteSize.y <= 0f)
                 return;
 
-            float requiredHeight = camera.orthographicSize * 2f;
+            // 카메라 보간과 픽셀 반올림이 같은 프레임에 일어나도 원화 가장자리 밖이
+            // 드러나지 않도록 화면보다 조금 크게 덮는다.
+            float requiredHeight = camera.orthographicSize * 2f * CameraFollowOverscan;
             float requiredWidth = requiredHeight * camera.aspect;
             float scale = Mathf.Max(
                 requiredWidth / spriteSize.x,
@@ -199,6 +189,7 @@ namespace HiddenWeight.World
             ConfigureR04ChimneyEntry();
             ConfigureR08ChimneyExit();
             ConfigureGazeGs2Slot();
+            ConfigureGazeG06FloorSafety();
             DisableR07FakeStairWall();
             DisableLegacyResidueFloorArt(palette);
             foreach (var tilemap in FindObjectsByType<Tilemap>(
@@ -245,6 +236,41 @@ namespace HiddenWeight.World
             BuildWallClimbSurfaces(palette);
             BuildPlatformSurfaces(palette);
             BuildBlockedHints();
+        }
+
+        static void ConfigureGazeG06FloorSafety()
+        {
+            if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("Gaze"))
+                return;
+
+            Room room = null;
+            foreach (var candidate in FindObjectsByType<Room>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (candidate.name != "GazeRoom06") continue;
+                room = candidate;
+                break;
+            }
+            if (room == null || room.transform.Find("G06_FloorSafety_Runtime") != null) return;
+
+            var root = new GameObject("G06_FloorSafety_Runtime");
+            root.transform.SetParent(room.transform, false);
+            float z = room.transform.position.z;
+            Vector3 min = room.WorldBounds.min;
+            AddHiddenGround(root.transform, "Floor_A", new Vector3(min.x + 9.5f, min.y + 1f, z), new Vector2(19f, 2f));
+            AddHiddenGround(root.transform, "Floor_B", new Vector3(min.x + 22.5f, min.y + 1f, z), new Vector2(3f, 2f));
+            AddHiddenGround(root.transform, "Floor_C", new Vector3(min.x + 26f, min.y + 1.5f, z), new Vector2(4f, 3f));
+            AddHiddenGround(root.transform, "Floor_D", new Vector3(min.x + 30f, min.y + 2f, z), new Vector2(4f, 4f));
+        }
+
+        static void AddHiddenGround(Transform parent, string name, Vector3 center, Vector2 size)
+        {
+            var ground = new GameObject(name);
+            ground.transform.SetParent(parent, true);
+            ground.transform.position = center;
+            ground.layer = LayerMask.NameToLayer("Ground");
+            var collider = ground.AddComponent<BoxCollider2D>();
+            collider.size = size;
         }
 
         static void DisableR07FakeStairWall()

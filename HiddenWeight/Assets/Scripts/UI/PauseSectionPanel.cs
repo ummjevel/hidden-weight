@@ -313,9 +313,21 @@ namespace HiddenWeight.UI
             var chip = new GameObject("MapNode_" + roomId, typeof(RectTransform));
             chip.transform.SetParent(row, false);
 
-            chip.AddComponent<Image>().color = current
+            var background = chip.AddComponent<Image>();
+            background.color = current
                 ? new Color(UIBuilder.AccentColor.r, UIBuilder.AccentColor.g, UIBuilder.AccentColor.b, 0.85f)
                 : discovered ? new Color(1f, 1f, 1f, 0.085f) : new Color(0.3f, 0.3f, 0.3f, 0.05f);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
+            // 보스 확인용 임시 워프. 정식 릴리스 빌드에서는 컴파일 자체가 되지 않는다.
+            if (roomId == "Gaze/GazeRoom12")
+            {
+                var button = chip.AddComponent<Button>();
+                button.targetGraphic = background;
+                button.onClick.AddListener(WarpToGazeBossForQa);
+                _actionButtons.Add(button);
+            }
+#endif
 
             var element = chip.AddComponent<LayoutElement>();
             element.preferredWidth = ChipWidth;
@@ -344,6 +356,30 @@ namespace HiddenWeight.UI
 
             _dynamicItems.Add(chip);
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD || HIDDENWEIGHT_STAGE_SELECT
+        void WarpToGazeBossForQa()
+        {
+            var targetRoom = Object.FindObjectsByType<HiddenWeight.World.Room>(
+                    FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .FirstOrDefault(room => room.name == "GazeRoom12");
+            var player = HiddenWeight.Player.PlayerController.Instance;
+            var camera = HiddenWeight.World.RoomCamera.Instance;
+            if (targetRoom == null || player == null || camera == null) return;
+
+            // 서쪽 잠금벽 바깥이 아니라 전장 안쪽의 바닥 위로 보낸다.
+            // G12 조우 범위(local x=2..28, y=3..15)에도 들어가므로 보스가 곧바로 시작된다.
+            Vector3 target = targetRoom.WorldBounds.min + new Vector3(4f, 5.5f, 0f);
+            target.z = player.transform.position.z;
+            player.TeleportTo(target);
+            camera.SetRoom(targetRoom);
+            camera.SnapToPlayer();
+
+            var pause = Object.FindFirstObjectByType<PauseMenu>();
+            if (pause != null) pause.Close(SfxCue.UiMapClose);
+            else Hide();
+        }
+#endif
 
         void BuildJournal()
         {

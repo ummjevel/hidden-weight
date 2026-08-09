@@ -1393,10 +1393,6 @@ namespace HiddenWeight.EditorTools
 
             // 기능 없는 갤러리 판과 세로 Curtain 블록은 단색 직사각형으로 보여 제거한다.
 
-            // 관객 조각상 5개. 자각이 없으면 다섯이 같은 예고를 보내고, 자각 중에는 하나만 남는다.
-            for (int i = 0; i < 5; i++)
-                BuildStatue(c.Root.transform, $"G12_Statue_{i}", c.P(4f + i * 5.5f, 4f), i == 2, i * 0.35f);
-
             var boss = BuildBoss(c.Root.transform, c.P(15f, 7.5f), "Enemy_Gaze_AllEyes", 20,
                 new[]
                 {

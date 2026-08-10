@@ -1433,7 +1433,6 @@ namespace HiddenWeight.EditorTools
             var reward = BuildRewardChest(c.Root.transform, "gaze_g12_boss", c.P(15f, 5.5f), 70, true);
             var encounter = BuildEncounter(c.Root.transform, "gaze_g12_boss", c.P(15f, 9f), new Vector2(26f, 12f), true,
                 new[] { new[] { boss } }, new int[0], reward, null);
-            SetField(encounter, "observeSeconds", p => p.floatValue = 0f);
             SetField(encounter, "lockHeightOverride", p => p.floatValue = 60f);
             SetField(encounter, "lockCenterYOffset", p => p.floatValue = 24f);
             SetField(encounter, "hideLockVisuals", p => p.boolValue = true);
